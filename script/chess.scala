@@ -16,9 +16,3 @@ var index = 1
 }
 
 printAndMove(Board(), randomMove)
-
-// TODO Add promotion!
-// TODO Add castling!
-// TODO Add black!
-// TODO Add captures!
-// TODO Add scores!

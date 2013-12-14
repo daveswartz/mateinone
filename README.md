@@ -17,7 +17,7 @@ The *chess.scala* script randomly selects a move, prints the move and makes the 
 Design Principles
 =================
 
-The code aims to be approachable rather than performant. That trade-off may shift with time.
+The code aims to be approachable rather than perform well. That trade-off may shift with time.
 
 Next Steps
 ==========
@@ -28,7 +28,6 @@ The follow features remain (at least):
 
 * Black
 * Castling
-* Promotion
 * Capture
 * Scoring
 * Input/Ouput

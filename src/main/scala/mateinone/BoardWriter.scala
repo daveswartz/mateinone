@@ -1,25 +1,15 @@
 package mateinone
 
 object BoardWriter {
-  def writeBoard(board: Board): String = {
-    def writePiece(piece: Piece): String = {
-      import PieceType._
-      piece.pieceType match {
-        case Pawn => ""
-        case Rook => "R"
-        case Knight => "N"
-        case Bishop => "B"
-        case Queen => "Q"
-        case King => "K"
-      }
-    } + writeSquare(piece.square)
-    def rankThenFile(a: Piece, b: Piece) =
-      if (a.square.rank == b.square.rank) a.square.file < b.square.file
-      else if (a.square.rank > b.square.rank) true
-      else false
-
-    board.pieces.toList.sortWith(rankThenFile).map(writePiece).reduce(_ + " " + _)
-  }
+  def writePieceType(pieceType: PieceType): String =
+    pieceType match {
+      case Pawn => ""
+      case Rook => "R"
+      case Knight => "N"
+      case Bishop => "B"
+      case Queen => "Q"
+      case King => "K"
+    }
   def writeSquare(square: Square): String = {
     def writeFile(file: File): String = file match {
       case A => "a"
@@ -43,5 +33,20 @@ object BoardWriter {
     }
     writeFile(square.file) + writeRank(square.rank)
   }
-  def writeMove(move: Move): String = writeSquare(move.start) + "->" + writeSquare(move.end)
+  def writeMove(move: Move): String = {
+    def writeStartAndEnd = writeSquare(move.start) + "->" + writeSquare(move.end)
+    move match {
+      case m: SimpleMove => writeStartAndEnd
+      case m: Promotion => writeStartAndEnd + "=" + writePieceType(m.promotionType)
+    }
+  }
+  def writeBoard(board: Board): String = {
+    def writePiece(piece: Piece): String = writePieceType(piece.pieceType) + writeSquare(piece.square)
+    def rankThenFile(a: Piece, b: Piece) =
+      if (a.square.rank == b.square.rank) a.square.file < b.square.file
+      else if (a.square.rank > b.square.rank) true
+      else false
+
+    board.pieces.toList.sortWith(rankThenFile).map(writePiece).reduce(_ + " " + _)
+  }
 }
