@@ -8,60 +8,40 @@ object Square {
 case class Square(file: File, rank: Rank)
 
 sealed trait PieceType
-case object Pawn extends PieceType
-case object King extends PieceType
+
 object PromotionType { val all = Set(Knight, Rook, Bishop, Queen) }
 sealed trait PromotionType extends PieceType
+
+case object Pawn extends PieceType
+case object King extends PieceType
 case object Knight extends PromotionType
 case object Rook extends PromotionType
 case object Bishop extends PromotionType
 case object Queen extends PromotionType
 
-sealed trait Move { val start: Square; val end: Square }
-case class SimpleMove(start: Square, end: Square) extends Move
-case class Promotion(start: Square, end: Square, promotionType: PromotionType) extends Move
+case class Piece(pieceType: PieceType, square: Square)
 
-case class OccupiedPath(path: Path, occupied: Set[Square]) {
-  def validEnds: Set[Square] = {
-    def firstOccupiedInx = occupied.map(s => path.indexOf(s)).min
-    if (occupied.isEmpty) path.toSet else path.splitAt(firstOccupiedInx)._1.toSet
-  }
-  def isValidEnd(end: Square): Boolean = validEnds.contains(end)
+sealed trait Move {
+  val piece: Piece
+  val end: Square
+  def start: Square = piece.square
 }
-
-case class Piece(pieceType: PieceType, square: Square, occupiedPaths: Set[OccupiedPath]) {
-
-  private def canPromote(end: Rank): Boolean = pieceType == Pawn && end == `8`
-
-  def isValidMove(move: Move): Boolean = {
-    def areStartAndEndValid(move: Move): Boolean = if (move.start == square) {
-      occupiedPaths.find(_.path.contains(move.end)).fold(false)(_.isValidEnd(move.end))
-    } else false
-    move match {
-      case m: SimpleMove => areStartAndEndValid(m)
-      case m: Promotion => areStartAndEndValid(m) && canPromote(m.end.rank)
-    }
-  }
-
-  def otherPieceMoved(move: Move): Piece = {
-    def vacated(o: OccupiedPath) = if (o.path.contains(move.start)) o.copy(occupied = o.occupied - move.start) else o
-    def occupied(o: OccupiedPath) = if (o.path.contains(move.end)) o.copy(occupied = o.occupied + move.end) else o
-    copy(occupiedPaths = occupiedPaths.map(vacated).map(occupied))
-  }
-
-  def moves: Set[Move] = occupiedPaths.flatMap(path =>
-    path.validEnds.map { end =>
-      if (canPromote(end.rank))
-        PromotionType.all.map(t => Promotion(square, end, t))
-      else
-        Set(SimpleMove(square, end))
-    }
-  ).flatten
-
-}
+case class SimpleMove(piece: Piece, end: Square) extends Move
+case class Promotion(piece: Piece, end: Square, promotionType: PromotionType) extends Move
 
 object Board {
 
+  type Path = List[Square]
+
+  case class OccupiedPath(path: Path, occupied: Set[Square]) {
+    def validEnds: Set[Square] = {
+      def firstOccupiedInx = occupied.map(s => path.indexOf(s)).min
+      if (occupied.isEmpty) path.toSet else path.splitAt(firstOccupiedInx)._1.toSet
+    }
+    def isValidEnd(end: Square): Boolean = validEnds.contains(end)
+  }
+
+  // TODO put in board class and make use of board state (eventually will need for pins, castling)
   def occupiedPathsFrom(pieceType: PieceType, allOthersOccupied: Set[Square]): Square => Set[OccupiedPath] = {
     def pathsFrom(pieceType: PieceType): Square => Set[Path] = {
       def path(square: Square, step: Square => Option[Square], remaining: Int): Path = {
@@ -87,7 +67,7 @@ object Board {
         path(square, Square.offset(_, File.dec, Rank.dec), 7)
       )
 
-      (s: Square) => pieceType match {
+      (s: Square) => pieceType match { // TODO make this function of the board state not just a square
         case Pawn =>
           val single = path(s, Square.offset(_, File.identity, Rank.inc), 1)
           if (s.rank == `2`) Set(single, path(s, Square.offset(_, File.identity, Rank.inc), 2)) else Set(single)
@@ -130,7 +110,7 @@ object Board {
       squares.map { square =>
         val allOthersOccupied = allOccupied - square
         val occupiedPaths = occupiedPathsFrom(pieceType, allOthersOccupied)(square)
-        Piece(pieceType, square, occupiedPaths)
+        (Piece(pieceType, square), occupiedPaths)
       }
     }
 
@@ -141,37 +121,67 @@ object Board {
     val king = piecesFor(King, kingSquare)
     val queen = piecesFor(Queen, queenSquare)
 
-    new Board(pawns ++ rooks ++ knights ++ bishops ++ king ++ queen)
+    new Board { val piecesToOccupiedPaths = (pawns ++ rooks ++ knights ++ bishops ++ king ++ queen).toMap }
   }
 
 }
 
-case class Board(pieces: Set[Piece]) {
+trait Board {
   import Board._
 
+  protected val piecesToOccupiedPaths: Map[Piece, Set[OccupiedPath]]
+
+  def pieces: Set[Piece] = piecesToOccupiedPaths.keys.toSet
+
+  private def canPromote(piece: Piece, end: Square): Boolean = piece.pieceType == Pawn && end.rank == `8`
+
   def move(move: Move): Option[Board] = {
-    val piece = pieces.find(_.square == move.start)
-    val isValidMove = piece.fold(false)(_.isValidMove(move))
-    if (isValidMove) {
-      val others = pieces -- piece
-      val allOthersOccupied = others.map(_.square)
-      val updatedOthers = others.map(_.otherPieceMoved(move))
-      val updatedMover = piece.map { piece =>
+
+    piecesToOccupiedPaths.get(move.piece).flatMap { occupiedPaths =>
+
+      def isValidMove: Boolean = {
+        def isValidEnd: Boolean = occupiedPaths.find(_.path.contains(move.end)).fold(false)(_.isValidEnd(move.end))
         move match {
-          case m: SimpleMove =>
-            val occupiedPaths = occupiedPathsFrom(piece.pieceType, allOthersOccupied)(m.end)
-            piece.copy(square = move.end, occupiedPaths = occupiedPaths)
-          case m: Promotion =>
-            val occupiedPaths = occupiedPathsFrom(m.promotionType, allOthersOccupied)(m.end)
-            piece.copy(pieceType = m.promotionType, square = move.end, occupiedPaths = occupiedPaths)
+          case _: SimpleMove => isValidEnd
+          case _: Promotion => isValidEnd && canPromote(move.piece, move.end)
         }
       }
-      Some(copy(pieces = updatedOthers ++ updatedMover))
-    } else {
-      None
+
+      if (isValidMove) {
+        val others = piecesToOccupiedPaths - move.piece
+
+        val othersUpdated = others.map { case (otherPiece, otherOccupiedPaths) =>
+          def vacated(o: OccupiedPath) = if (o.path.contains(move.start)) o.copy(occupied = o.occupied - move.start) else o
+          def occupied(o: OccupiedPath) = if (o.path.contains(move.end)) o.copy(occupied = o.occupied + move.end) else o
+          (otherPiece, otherOccupiedPaths.map(vacated).map(occupied))
+        }
+
+        val otherSquares = others.keys.map(_.square).toSet
+
+        val moverUpdated = move match {
+          case SimpleMove(_, _) =>
+            (move.piece.copy(square = move.end), occupiedPathsFrom(move.piece.pieceType, otherSquares)(move.end))
+          case Promotion(_, _, promotionType) =>
+            (move.piece.copy(square = move.end, pieceType = promotionType), occupiedPathsFrom(promotionType, otherSquares)(move.end))
+        }
+
+        Some(new Board { val piecesToOccupiedPaths = othersUpdated + moverUpdated })
+      } else {
+        None
+      }
     }
   }
 
-  def moves: Set[Move] = pieces.flatMap(_.moves)
+  def moves: Set[Move] =
+    piecesToOccupiedPaths.map { case (piece, occupiedPaths) =>
+      occupiedPaths.map { occupiedPath =>
+        occupiedPath.validEnds.map { end: Square =>
+          if (canPromote(piece, end))
+            PromotionType.all.map(promotionType => Promotion(piece, end, promotionType))
+          else
+            Set(SimpleMove(piece, end))
+        }
+      }
+    }.toSet.flatten.flatten.flatten
 
 }
