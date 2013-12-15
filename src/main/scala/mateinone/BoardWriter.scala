@@ -36,8 +36,10 @@ object BoardWriter {
   def writeMove(move: Move): String = {
     def writeStartAndEnd = writeSquare(move.start) + "->" + writeSquare(move.end)
     move match {
-      case m: SimpleMove => writeStartAndEnd
-      case m: Promotion => writeStartAndEnd + "=" + writePieceType(m.promotionType)
+      case SimpleMove(_, _) => writeStartAndEnd
+      case Promotion(_, _, promotionType) => writeStartAndEnd + "=" + writePieceType(promotionType)
+      case KingsideCastle => "O-O"
+      case QueensideCastle => "O-O-O"
     }
   }
   def writeBoard(board: Board): String = {

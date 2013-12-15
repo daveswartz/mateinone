@@ -28,12 +28,29 @@ sealed trait Move {
 }
 case class SimpleMove(piece: Piece, end: Square) extends Move
 case class Promotion(piece: Piece, end: Square, promotionType: PromotionType) extends Move
+object Castle {
+  def unapply(castle: Castle): Option[(Piece, Square, SimpleMove)] = Some((castle.piece, castle.end, castle.rookMove))
+}
+sealed trait Castle extends Move { val rookMove: SimpleMove }
+case object KingsideCastle extends Castle {
+  val piece = Piece(King, Square(E, `1`))
+  val end = Square(G, `1`)
+  val rookMove = SimpleMove(Piece(Rook, Square(H, `1`)), Square(F, `1`))
+}
+case object QueensideCastle extends Castle {
+  val piece = Piece(King, Square(E, `1`))
+  val end = Square(C, `1`)
+  val rookMove = SimpleMove(Piece(Rook, Square(A, `1`)), Square(D, `1`))
+}
 
 object Board {
 
-  type Path = List[Square]
+  private type Path = List[Square]
 
-  case class OccupiedPath(path: Path, occupied: Set[Square]) {
+  case class OccupiedPath(private val path: Path, private val occupied: Set[Square]) {
+    def contains(s: Square): Boolean = path.contains(s)
+    def vacated(s: Square): OccupiedPath = if (contains(s)) copy(occupied = occupied - s) else this
+    def occupied(s: Square) = if (contains(s)) copy(occupied = occupied + s) else this
     def validEnds: Set[Square] = {
       def firstOccupiedInx = occupied.map(s => path.indexOf(s)).min
       if (occupied.isEmpty) path.toSet else path.splitAt(firstOccupiedInx)._1.toSet
@@ -41,87 +58,94 @@ object Board {
     def isValidEnd(end: Square): Boolean = validEnds.contains(end)
   }
 
-  // TODO put in board class and make use of board state (eventually will need for pins, castling)
-  def occupiedPathsFrom(pieceType: PieceType, allOthersOccupied: Set[Square]): Square => Set[OccupiedPath] = {
-    def pathsFrom(pieceType: PieceType): Square => Set[Path] = {
-      def path(square: Square, step: Square => Option[Square], remaining: Int): Path = {
-        def pathRecur(current: Path, step: Square => Option[Square], remaining: Int): Path = step(current.last) match {
-          case Some(next) if remaining > 0 => pathRecur(current :+ next, step, remaining - 1)
-          case _ => current
-        }
-        pathRecur(List(square), step, remaining).tail
-      }
+  private def occupiedPathsFor(piece: Piece, others: Set[Piece], moved: Set[Piece]): Set[OccupiedPath] = {
 
-      def file(square: Square) = Set(
-        path(square, Square.offset(_, File.inc, Rank.identity), 7),
-        path(square, Square.offset(_, File.dec, Rank.identity), 7)
-      )
-      def rank(square: Square) = Set(
-        path(square, Square.offset(_, File.identity, Rank.inc), 7),
-        path(square, Square.offset(_, File.identity, Rank.dec), 7)
-      )
-      def diagonals(square: Square) = Set(
-        path(square, Square.offset(_, File.inc, Rank.inc), 7),
-        path(square, Square.offset(_, File.inc, Rank.dec), 7),
-        path(square, Square.offset(_, File.dec, Rank.inc), 7),
-        path(square, Square.offset(_, File.dec, Rank.dec), 7)
-      )
-
-      (s: Square) => pieceType match { // TODO make this function of the board state not just a square
-        case Pawn =>
-          val single = path(s, Square.offset(_, File.identity, Rank.inc), 1)
-          if (s.rank == `2`) Set(single, path(s, Square.offset(_, File.identity, Rank.inc), 2)) else Set(single)
-        case Rook =>
-          file(s) ++ rank(s)
-        case Knight =>
-          Set((2, 1), (2, -1), (1, 2), (1, -2), (-2, 1), (-2, -1), (-1, 2), (-1, -2))
-            .flatMap { case (f, r) => Square.offset(s, File.offset(_, f), Rank.offset(_, r)) }.map(List(_))
-        case Bishop =>
-          diagonals(s)
-        case King =>
-          Set(
-            path(s, Square.offset(_, File.identity, Rank.inc), 1),
-            path(s, Square.offset(_, File.inc, Rank.inc), 1),
-            path(s, Square.offset(_, File.inc, Rank.identity), 1),
-            path(s, Square.offset(_, File.inc, Rank.dec), 1),
-            path(s, Square.offset(_, File.identity, Rank.dec), 1),
-            path(s, Square.offset(_, File.dec, Rank.dec), 1),
-            path(s, Square.offset(_, File.dec, Rank.identity), 1),
-            path(s, Square.offset(_, File.dec, Rank.inc), 1)
-          )
-        case Queen =>
-          file(s) ++ rank(s) ++ diagonals(s)
+    def path(square: Square, step: Square => Option[Square], remaining: Int): Path = {
+      def pathRecur(current: Path, step: Square => Option[Square], remaining: Int): Path = step(current.last) match {
+        case Some(next) if remaining > 0 => pathRecur(current :+ next, step, remaining - 1)
+        case _ => current
       }
+      pathRecur(List(square), step, remaining).tail
     }
-    (s) => pathsFrom(pieceType)(s).map(p => OccupiedPath(p, allOthersOccupied.filter(p.contains)))
+
+    def file(square: Square) = Set(
+      path(square, Square.offset(_, File.inc, Rank.identity), 7),
+      path(square, Square.offset(_, File.dec, Rank.identity), 7)
+    )
+
+    def rank(square: Square) = Set(
+      path(square, Square.offset(_, File.identity, Rank.inc), 7),
+      path(square, Square.offset(_, File.identity, Rank.dec), 7)
+    )
+
+    def diagonals(square: Square) = Set(
+      path(square, Square.offset(_, File.inc, Rank.inc), 7),
+      path(square, Square.offset(_, File.inc, Rank.dec), 7),
+      path(square, Square.offset(_, File.dec, Rank.inc), 7),
+      path(square, Square.offset(_, File.dec, Rank.dec), 7)
+    )
+
+    val pathsForPiece = piece.pieceType match {
+      case Pawn =>
+        val single = path(piece.square, Square.offset(_, File.identity, Rank.inc), 1)
+        if (!moved.contains(piece))
+          Set(single, path(piece.square, Square.offset(_, File.identity, Rank.inc), 2))
+        else
+          Set(single)
+      case Rook =>
+        file(piece.square) ++ rank(piece.square)
+      case Knight =>
+        Set((2, 1), (2, -1), (1, 2), (1, -2), (-2, 1), (-2, -1), (-1, 2), (-1, -2))
+          .flatMap { case (f, r) => Square.offset(piece.square, File.offset(_, f), Rank.offset(_, r)) }.map(List(_))
+      case Bishop =>
+        diagonals(piece.square)
+      case King =>
+        var kingPaths = Set(
+          path(piece.square, Square.offset(_, File.identity, Rank.inc), 1),
+          path(piece.square, Square.offset(_, File.inc, Rank.inc), 1),
+          path(piece.square, Square.offset(_, File.inc, Rank.identity), 1),
+          path(piece.square, Square.offset(_, File.inc, Rank.dec), 1),
+          path(piece.square, Square.offset(_, File.identity, Rank.dec), 1),
+          path(piece.square, Square.offset(_, File.dec, Rank.dec), 1),
+          path(piece.square, Square.offset(_, File.dec, Rank.identity), 1),
+          path(piece.square, Square.offset(_, File.dec, Rank.inc), 1)
+        )
+        if (!moved.contains(piece)) {
+          def kingsideRookMoved = others.find(_.square == Square(G, `1`)).fold(false)(!moved.contains(_))
+          val kingsideCastle = path(piece.square, Square.offset(_, File.offset(_, 2), Rank.identity), 1)
+          if (kingsideRookMoved) kingPaths = kingPaths + kingsideCastle
+          def queensideRookMoved = others.find(_.square == Square(A, `1`)).fold(false)(!moved.contains(_))
+          val queensideCastle = path(piece.square, Square.offset(_, File.offset(_, -2), Rank.identity), 1)
+          if (queensideRookMoved) kingPaths = kingPaths + queensideCastle
+        }
+        kingPaths
+      case Queen =>
+        file(piece.square) ++ rank(piece.square) ++ diagonals(piece.square)
+    }
+
+    pathsForPiece.map(p => OccupiedPath(p, others.map(_.square).filter(p.contains)))
+
   }
 
   def apply(): Board = {
-    val pawnSquares = File.allFiles.map(Square(_, `2`)).toSet
-    val rookSquares = Set(A, H).map(Square(_, `1`))
-    val knightSquares = Set(B, G).map(Square(_, `1`))
-    val bishopSquares = Set(C, F).map(Square(_, `1`))
-    val queenSquare = Set(Square(D, `1`))
-    val kingSquare = Set(Square(E, `1`))
+    def piece(pieceType: PieceType)(square: Square): Piece = Piece(pieceType, square)
+    val noneMoved = Set.empty[Piece]
+    def occupiedPaths(piece: Piece, others: Set[Piece]): Set[OccupiedPath] = occupiedPathsFor(piece, others, noneMoved)
 
-    val allOccupied = pawnSquares ++ rookSquares ++ knightSquares ++ bishopSquares ++ queenSquare ++ kingSquare
+    val pawns = File.allFiles.map(Square(_, `2`)).toSet.map(piece(Pawn))
+    val rooks = Set(A, H).map(Square(_, `1`)).map(piece(Rook))
+    val knights = Set(B, G).map(Square(_, `1`)).map(piece(Knight))
+    val bishops = Set(C, F).map(Square(_, `1`)).map(piece(Bishop))
+    val queen = Set(Square(D, `1`)).map(piece(Queen))
+    val king = Set(Square(E, `1`)).map(piece(King))
 
-    def piecesFor(pieceType: PieceType, squares: Set[Square]) = {
-      squares.map { square =>
-        val allOthersOccupied = allOccupied - square
-        val occupiedPaths = occupiedPathsFrom(pieceType, allOthersOccupied)(square)
-        (Piece(pieceType, square), occupiedPaths)
-      }
+    val pieces = pawns ++ rooks ++ knights ++ bishops ++ king ++ queen
+    val initialPiecesToOccupiedPaths = pieces.map(piece => (piece, occupiedPaths(piece, pieces - piece))).toMap
+
+    new Board {
+      val piecesToOccupiedPaths = initialPiecesToOccupiedPaths
+      val moved = noneMoved
     }
-
-    val pawns = piecesFor(Pawn, pawnSquares)
-    val rooks = piecesFor(Rook, rookSquares)
-    val knights = piecesFor(Knight, knightSquares)
-    val bishops = piecesFor(Bishop, bishopSquares)
-    val king = piecesFor(King, kingSquare)
-    val queen = piecesFor(Queen, queenSquare)
-
-    new Board { val piecesToOccupiedPaths = (pawns ++ rooks ++ knights ++ bishops ++ king ++ queen).toMap }
   }
 
 }
@@ -131,6 +155,8 @@ trait Board {
 
   protected val piecesToOccupiedPaths: Map[Piece, Set[OccupiedPath]]
 
+  protected val moved: Set[Piece]
+
   def pieces: Set[Piece] = piecesToOccupiedPaths.keys.toSet
 
   private def canPromote(piece: Piece, end: Square): Boolean = piece.pieceType == Pawn && end.rank == `8`
@@ -139,49 +165,75 @@ trait Board {
 
     piecesToOccupiedPaths.get(move.piece).flatMap { occupiedPaths =>
 
+      def isValidEnd(move: Move): Boolean = occupiedPaths.find(_.contains(move.end)).fold(false)(_.isValidEnd(move.end))
+
       def isValidMove: Boolean = {
-        def isValidEnd: Boolean = occupiedPaths.find(_.path.contains(move.end)).fold(false)(_.isValidEnd(move.end))
         move match {
-          case _: SimpleMove => isValidEnd
-          case _: Promotion => isValidEnd && canPromote(move.piece, move.end)
+          case _: SimpleMove => isValidEnd(move)
+          case _: Promotion => isValidEnd(move) && canPromote(move.piece, move.end)
+          case Castle(_, _, rookMove) => isValidEnd(move) && isValidEnd(rookMove)
         }
       }
 
       if (isValidMove) {
-        val others = piecesToOccupiedPaths - move.piece
-
-        val othersUpdated = others.map { case (otherPiece, otherOccupiedPaths) =>
-          def vacated(o: OccupiedPath) = if (o.path.contains(move.start)) o.copy(occupied = o.occupied - move.start) else o
-          def occupied(o: OccupiedPath) = if (o.path.contains(move.end)) o.copy(occupied = o.occupied + move.end) else o
-          (otherPiece, otherOccupiedPaths.map(vacated).map(occupied))
+        val others = piecesToOccupiedPaths -- (move match {
+          case Castle(_, _, rookMove) => Set(move.piece, rookMove.piece)
+          case _ => Set(move.piece)
+        })
+        val othersUpdated = others.map {
+          case (otherPiece, otherOccupiedPaths) =>
+            (otherPiece,
+             otherOccupiedPaths
+               .map { o => o.vacated(move.start); o.occupied(move.end) }
+               .map { o =>
+               move match {
+                 case Castle(_, _, rookMove) => o.vacated(rookMove.start); o.occupied(rookMove.end)
+                 case _ => o
+               }
+             })
         }
 
-        val otherSquares = others.keys.map(_.square).toSet
-
-        val moverUpdated = move match {
-          case SimpleMove(_, _) =>
-            (move.piece.copy(square = move.end), occupiedPathsFrom(move.piece.pieceType, otherSquares)(move.end))
-          case Promotion(_, _, promotionType) =>
-            (move.piece.copy(square = move.end, pieceType = promotionType), occupiedPathsFrom(promotionType, otherSquares)(move.end))
+        val moversUpdated = {
+          def withOccupiedPaths(p: Piece): (Piece, Set[OccupiedPath]) = (p, occupiedPathsFor(p, pieces - p, moved))
+          move match {
+            case SimpleMove(_, _) =>
+              Set(withOccupiedPaths(move.piece.copy(square = move.end)))
+            case Promotion(_, _, promotionType) =>
+              Set(withOccupiedPaths(move.piece.copy(square = move.end, pieceType = promotionType)))
+            case Castle(_, _, rookMove) =>
+              Set(
+                withOccupiedPaths(move.piece.copy(square = move.end)),
+                withOccupiedPaths(rookMove.piece.copy(square = rookMove.end))
+              )
+          }
         }
 
-        Some(new Board { val piecesToOccupiedPaths = othersUpdated + moverUpdated })
+        val movedUpdated = moved ++ (move match { case Castle(_, _, rookMove) => Set(move.piece, rookMove.piece) case _ => Set(move.piece) })
+
+        Some(
+          new Board {
+            val piecesToOccupiedPaths = othersUpdated ++ moversUpdated
+            val moved = movedUpdated
+          }
+        )
       } else {
         None
       }
     }
   }
 
+  // TODO Generate castling moves
   def moves: Set[Move] =
-    piecesToOccupiedPaths.map { case (piece, occupiedPaths) =>
-      occupiedPaths.map { occupiedPath =>
-        occupiedPath.validEnds.map { end: Square =>
-          if (canPromote(piece, end))
-            PromotionType.all.map(promotionType => Promotion(piece, end, promotionType))
-          else
-            Set(SimpleMove(piece, end))
+    piecesToOccupiedPaths.map {
+      case (piece, occupiedPaths) =>
+        occupiedPaths.map { occupiedPath =>
+          occupiedPath.validEnds.map { end: Square =>
+            if (canPromote(piece, end))
+              PromotionType.all.map(promotionType => Promotion(piece, end, promotionType))
+            else
+              Set(SimpleMove(piece, end))
+          }
         }
-      }
     }.toSet.flatten.flatten.flatten
 
 }
