@@ -49,8 +49,8 @@ object Board {
 
   case class OccupiedPath(private val path: Path, private val occupied: Set[Square]) {
     def contains(s: Square): Boolean = path.contains(s)
-    def vacated(s: Square): OccupiedPath = if (contains(s)) copy(occupied = occupied - s) else this
-    def occupied(s: Square) = if (contains(s)) copy(occupied = occupied + s) else this
+    def vacate(s: Square): OccupiedPath = if (contains(s)) copy(occupied = this.occupied - s) else this
+    def occupy(s: Square): OccupiedPath = if (contains(s)) copy(occupied = this.occupied + s) else this
     def validEnds: Set[Square] = {
       def firstOccupiedInx = occupied.map(s => path.indexOf(s)).min
       if (occupied.isEmpty) path.toSet else path.splitAt(firstOccupiedInx)._1.toSet
@@ -123,7 +123,7 @@ object Board {
         file(piece.square) ++ rank(piece.square) ++ diagonals(piece.square)
     }
 
-    pathsForPiece.map(p => OccupiedPath(p, others.map(_.square).filter(p.contains)))
+    pathsForPiece.filterNot(_.isEmpty).map(p => OccupiedPath(p, others.map(_.square).filter(p.contains)))
 
   }
 
@@ -184,10 +184,10 @@ trait Board {
           case (otherPiece, otherOccupiedPaths) =>
             (otherPiece,
              otherOccupiedPaths
-               .map { o => o.vacated(move.start); o.occupied(move.end) }
+               .map(_.vacate(move.start).occupy(move.end))
                .map { o =>
                move match {
-                 case Castle(_, _, rookMove) => o.vacated(rookMove.start); o.occupied(rookMove.end)
+                 case Castle(_, _, rookMove) => o.vacate(rookMove.start).occupy(rookMove.end)
                  case _ => o
                }
              })
