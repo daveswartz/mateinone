@@ -26,7 +26,6 @@ The project is in a primordial state. White pieces are placed on a board and mov
 
 The follow features remain (at least):
 
-* Testing
 * Castling move generation
 * Black Side
 * Capture

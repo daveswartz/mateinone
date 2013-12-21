@@ -1,11 +1,6 @@
 package mateinone
 
-object Square {
-  def offset(s: Square, f: File => Option[File], r: Rank => Option[Rank]): Option[Square] =
-    f(s.file).flatMap(fo => r(s.rank).map(ro => Square(fo, ro)))
-}
-
-case class Square(file: File, rank: Rank)
+import Square._
 
 sealed trait PieceType
 
@@ -33,14 +28,14 @@ object Castle {
 }
 sealed trait Castle extends Move { val rookMove: SimpleMove }
 case object KingsideCastle extends Castle {
-  val piece = Piece(King, Square(E, `1`))
-  val end = Square(G, `1`)
-  val rookMove = SimpleMove(Piece(Rook, Square(H, `1`)), Square(F, `1`))
+  val piece = Piece(King, e1)
+  val end = g1
+  val rookMove = SimpleMove(Piece(Rook, h1), f1)
 }
 case object QueensideCastle extends Castle {
-  val piece = Piece(King, Square(E, `1`))
-  val end = Square(C, `1`)
-  val rookMove = SimpleMove(Piece(Rook, Square(A, `1`)), Square(D, `1`))
+  val piece = Piece(King, e1)
+  val end = c1
+  val rookMove = SimpleMove(Piece(Rook, a1), d1)
 }
 
 object Board {
@@ -111,10 +106,10 @@ object Board {
           path(piece.square, Square.offset(_, File.dec, Rank.inc), 1)
         )
         if (!moved.contains(piece)) {
-          def kingsideRookMoved = others.find(_.square == Square(G, `1`)).fold(false)(!moved.contains(_))
+          def kingsideRookMoved = others.find(_.square == g1).fold(false)(!moved.contains(_))
           val kingsideCastle = path(piece.square, Square.offset(_, File.offset(_, 2), Rank.identity), 1)
           if (kingsideRookMoved) kingPaths = kingPaths + kingsideCastle
-          def queensideRookMoved = others.find(_.square == Square(A, `1`)).fold(false)(!moved.contains(_))
+          def queensideRookMoved = others.find(_.square == a1).fold(false)(!moved.contains(_))
           val queensideCastle = path(piece.square, Square.offset(_, File.offset(_, -2), Rank.identity), 1)
           if (queensideRookMoved) kingPaths = kingPaths + queensideCastle
         }
@@ -136,8 +131,8 @@ object Board {
     val rooks = Set(A, H).map(Square(_, `1`)).map(piece(Rook))
     val knights = Set(B, G).map(Square(_, `1`)).map(piece(Knight))
     val bishops = Set(C, F).map(Square(_, `1`)).map(piece(Bishop))
-    val queen = Set(Square(D, `1`)).map(piece(Queen))
-    val king = Set(Square(E, `1`)).map(piece(King))
+    val queen = Set(d1).map(piece(Queen))
+    val king = Set(e1).map(piece(King))
 
     val pieces = pawns ++ rooks ++ knights ++ bishops ++ king ++ queen
     val initialPiecesToOccupiedPaths = pieces.map(piece => (piece, occupiedPaths(piece, pieces - piece))).toMap
@@ -222,7 +217,12 @@ trait Board {
     }
   }
 
-  // TODO Generate castling moves
+  def moves(moves: List[Move]): Option[Board] = moves match {
+    case Nil => Some(this)
+    case move :: Nil => this.move(move)
+    case head :: tail => this.move(head).flatMap(_.moves(tail))
+  }
+
   def moves: Set[Move] =
     piecesToOccupiedPaths.map {
       case (piece, occupiedPaths) =>
