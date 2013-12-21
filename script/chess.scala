@@ -9,7 +9,7 @@ var index = 1
 @tailrec def printAndMove(board: Board, nextMove: Board => Move) {
   println(writeBoard(board))
   val next = nextMove(board)
-  println(index+": "+writeMove(next))
+  println(index+". "+writeMove(next))
   val moved = board.move(next)
   index = index + 1
   printAndMove(moved.get, nextMove)

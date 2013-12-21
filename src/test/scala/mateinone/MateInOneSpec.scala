@@ -25,7 +25,7 @@ trait OccupiedPathScope extends Scope {
   val occupiedPath = OccupiedPath(path, occupied)
 }
 
-class BoardSpec extends Specification {
+class BoardSpec extends Specification { // TODO add some simple move generation testing (e.g., test all valid moves that can be gen right before a castle).
 
   def movesMustOnlyMove(moves: List[Move], movers: Set[Piece]) =
     Board().moves(moves) must beSome.which { board =>
@@ -54,11 +54,12 @@ class BoardSpec extends Specification {
       movesMustOnlyMove(N_to_a3 :: P_to_d3 :: B_to_g5 :: Q_to_d2 :: QueensideCastle :: Nil, Set(N_at_a3, P_at_d3, B_at_g5, Q_at_d2, R_at_d1, K_at_c1))
     }
   }
+
 }
 
 trait BoardScope extends Scope {
 
-  val N_to_a3 = SimpleMove(Piece(Knight, b1), a3)
+  val N_to_a3 = SimpleMove(Piece(Knight, b1), a3) // TODO b1 -> a3
   val N_to_f3 = SimpleMove(Piece(Knight, g1), f3)
   val Q_to_d2 = SimpleMove(Piece(Queen, d1), d2)
   val P_to_d3 = SimpleMove(Piece(Pawn, d2), d3)

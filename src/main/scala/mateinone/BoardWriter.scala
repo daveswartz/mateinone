@@ -1,16 +1,28 @@
 package mateinone
 
 object BoardWriter {
-  def writePieceType(pieceType: PieceType): String =
-    pieceType match {
-      case Pawn => ""
-      case Rook => "R"
-      case Knight => "N"
-      case Bishop => "B"
-      case Queen => "Q"
-      case King => "K"
-    }
-  def writeSquare(square: Square): String = {
+
+  private def writePieceType(pieceType: PieceType): String = pieceType match {
+    case Pawn => "♙"
+    case Rook => "♖"
+    case Knight => "♘"
+    case Bishop => "♗"
+    case Queen => "♕"
+    case King => "♔"
+  }
+
+  def writeBoard(board: Board): String = Square.fileRank
+    .map(_.reverse).transpose
+    .map(_.map(board.piece))
+    .map(_.map {
+      case Some(piece) =>
+        writePieceType(piece.pieceType)
+      case None =>
+        " "
+    })
+    .map(_.reduce(_+_)).reduce(_+"\n"+_)
+
+  private def writeSquare(square: Square): String = {
     def writeFile(file: File): String = file match {
       case A => "a"
       case B => "b"
@@ -33,22 +45,16 @@ object BoardWriter {
     }
     writeFile(square.file) + writeRank(square.rank)
   }
-  def writeMove(move: Move): String = {
-    def writeStartAndEnd = writeSquare(move.start) + "->" + writeSquare(move.end)
-    move match {
-      case SimpleMove(_, _) => writeStartAndEnd
-      case Promotion(_, _, promotionType) => writeStartAndEnd + "=" + writePieceType(promotionType)
-      case KingsideCastle => "O-O"
-      case QueensideCastle => "O-O-O"
-    }
-  }
-  def writeBoard(board: Board): String = {
-    def writePiece(piece: Piece): String = writePieceType(piece.pieceType) + writeSquare(piece.square)
-    def rankThenFile(a: Piece, b: Piece) =
-      if (a.square.rank == b.square.rank) a.square.file < b.square.file
-      else if (a.square.rank > b.square.rank) true
-      else false
 
-    board.pieces.toList.sortWith(rankThenFile).map(writePiece).reduce(_ + " " + _)
+  def writeMove(move: Move): String = move match {
+    case SimpleMove(piece, end) =>
+      writePieceType(piece.pieceType)+"->"+writeSquare(end)
+    case Promotion(piece, end, promotionType) =>
+      writePieceType(piece.pieceType)+"->"+writeSquare(end)+"="+writePieceType(promotionType)
+    case KingsideCastle =>
+      "O-O"
+    case QueensideCastle =>
+      "O-O-O"
   }
+
 }
