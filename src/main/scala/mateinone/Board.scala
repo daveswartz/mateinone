@@ -14,9 +14,19 @@ case object Rook extends PromotionType
 case object Bishop extends PromotionType
 case object Queen extends PromotionType
 
-case class Piece(pieceType: PieceType, square: Square, hasMoved: Boolean = false)
+object Piece {
+  val pawn = Piece(Pawn, _: Square, _: Boolean)
+  val king = Piece(King, _: Square, _: Boolean)
+  val knight = Piece(Knight, _: Square, _: Boolean)
+  val rook = Piece(Rook, _: Square, _: Boolean)
+  val bishop = Piece(Bishop, _: Square, _: Boolean)
+  val queen = Piece(Queen, _: Square, _: Boolean)
+  def unmoved(pieceOf: (Square, Boolean) => Piece) = pieceOf(_: Square, false)
+  def moved(pieceOf: (Square, Boolean) => Piece) = pieceOf(_: Square, true)
+}
+case class Piece(pieceType: PieceType, square: Square, hasMoved: Boolean)
 
-sealed trait Move { // TODO make move definition more succinct (e.g., c1 -> a3). May split how move represented and specified.
+sealed trait Move {
   val piece: Piece
   val end: Square
   def start: Square = piece.square
@@ -31,14 +41,14 @@ object Castle {
 }
 sealed trait Castle extends Move { val rookMove: SimpleMove }
 case object KingsideCastle extends Castle {
-  val piece = Piece(King, e1)
+  val piece = Piece(King, e1, hasMoved = false)
   val end = g1
-  val rookMove = SimpleMove(Piece(Rook, h1), f1)
+  val rookMove = SimpleMove(Piece(Rook, h1, hasMoved = false), f1)
 }
 case object QueensideCastle extends Castle {
-  val piece = Piece(King, e1)
+  val piece = Piece(King, e1, hasMoved = false)
   val end = c1
-  val rookMove = SimpleMove(Piece(Rook, a1), d1)
+  val rookMove = SimpleMove(Piece(Rook, a1, hasMoved = false), d1)
 }
 
 object Board {
@@ -126,14 +136,14 @@ object Board {
   }
 
   def apply(): Board = {
-    def pieceOfType(pieceType: PieceType)(square: Square): Piece = Piece(pieceType, square)
+    def unmoved(pieceOf: (Square, Boolean) => Piece) = pieceOf(_: Square, false)
 
-    val pawns = File.allFiles.map(Square(_, `2`)).toSet.map(pieceOfType(Pawn))
-    val rooks = Set(A, H).map(Square(_, `1`)).map(pieceOfType(Rook))
-    val knights = Set(B, G).map(Square(_, `1`)).map(pieceOfType(Knight))
-    val bishops = Set(C, F).map(Square(_, `1`)).map(pieceOfType(Bishop))
-    val queen = Set(d1).map(pieceOfType(Queen))
-    val king = Set(e1).map(pieceOfType(King))
+    val pawns = File.allFiles.map(Square(_, `2`)).toSet.map(unmoved(Piece.pawn))
+    val rooks = Set(A, H).map(Square(_, `1`)).map(unmoved(Piece.rook))
+    val knights = Set(B, G).map(Square(_, `1`)).map(unmoved(Piece.knight))
+    val bishops = Set(C, F).map(Square(_, `1`)).map(unmoved(Piece.bishop))
+    val queen = Set(d1).map(unmoved(Piece.queen))
+    val king = Set(e1).map(unmoved(Piece.king))
 
     val pieces = pawns ++ rooks ++ knights ++ bishops ++ king ++ queen
     val initialPiecesToOccupiedPaths = pieces.map(piece => (piece, occupiedPathsFor(piece, pieces - piece))).toMap
@@ -154,7 +164,7 @@ trait Board {
 
   private def canPromote(piece: Piece, end: Square): Boolean = piece.pieceType == Pawn && end.rank == `8`
 
-  def move(move: Move): Option[Board] =
+  private def oneMove(move: Move): Option[Board] = {
     piecesToOccupiedPaths.get(move.piece).flatMap { occupiedPaths =>
 
       def isValidMove: Boolean = {
@@ -200,11 +210,24 @@ trait Board {
       } else None
 
     }
+  }
 
-  def moves(moves: List[Move]): Option[Board] = moves match {
+  // TODO rename to move once type erasure override issues resolved, allow specification w/o piece for castle and promotion
+  def moveSquares(startAndEnd: (Square, Square)*): Option[Board] = {
+    def toMove(start: Square, end: Square): Option[Move] = piece(start).map(SimpleMove(_, end))
+
+    startAndEnd.toList match {
+      case Nil => Some(this)
+      case (start, end) :: Nil => toMove(start, end).flatMap(oneMove)
+      case (start, end) :: tail => toMove(start, end).flatMap(oneMove).flatMap(_.moveSquares(tail :_*))
+    }
+  }
+
+  // TODO duplicates much of moveSquares
+  def move(moves: Move*): Option[Board] = moves.toList match {
     case Nil => Some(this)
-    case move :: Nil => this.move(move)
-    case head :: tail => this.move(head).flatMap(_.moves(tail))
+    case last :: Nil => oneMove(last)
+    case head :: tail => oneMove(head).flatMap(_.move(tail :_*))
   }
 
   def moves: Set[Move] =
