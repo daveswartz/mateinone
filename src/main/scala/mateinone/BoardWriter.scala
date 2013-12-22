@@ -18,9 +18,9 @@ object BoardWriter {
       case Some(piece) =>
         writePieceType(piece.pieceType)
       case None =>
-        " "
+        "∙"
     })
-    .map(_.reduce(_+_)).reduce(_+"\n"+_)
+    .zip(8.to(1, -1)).map { case (rank, i) => rank.reduce(_+_)+i }.reduce(_+"\n"+_)+"\nabcdefgh"
 
   private def writeSquare(square: Square): String = {
     def writeFile(file: File): String = file match {
