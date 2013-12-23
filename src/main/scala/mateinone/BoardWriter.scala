@@ -1,6 +1,7 @@
 package mateinone
 
 object BoardWriter {
+  import Castle._
 
   private def writePieceType(pieceType: PieceType): String = pieceType match {
     case Pawn => "♙"
@@ -13,7 +14,7 @@ object BoardWriter {
 
   def writeBoard(board: Board): String = Square.fileRank
     .map(_.reverse).transpose
-    .map(_.map(board.piece))
+    .map(_.map(board.pieceAt))
     .map(_.map {
       case Some(piece) =>
         writePieceType(piece.pieceType)
@@ -47,13 +48,13 @@ object BoardWriter {
   }
 
   def writeMove(move: Move): String = move match {
-    case SimpleMove(piece, end) =>
-      writePieceType(piece.pieceType)+"->"+writeSquare(end)
-    case Promotion(piece, end, promotionType) =>
-      writePieceType(piece.pieceType)+"->"+writeSquare(end)+"="+writePieceType(promotionType)
-    case KingsideCastle =>
+    case SimpleMove(start, end) =>
+      writeSquare(start)+"->"+writeSquare(end)
+    case Promotion(start, end, promotionType) =>
+      writeSquare(start)+"->"+writeSquare(end)+"="+writePieceType(promotionType)
+    case `O-O` =>
       "O-O"
-    case QueensideCastle =>
+    case `O-O-O` =>
       "O-O-O"
   }
 
