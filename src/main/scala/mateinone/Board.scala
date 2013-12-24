@@ -49,8 +49,8 @@ object Board {
 
   case class OccupiedPath(private val path: Path, private val occupied: Set[Square]) {
     def contains(s: Square): Boolean = path.contains(s)
-    def vacate(s: Square): OccupiedPath = if (contains(s)) copy(occupied = this.occupied - s) else this
-    def occupy(s: Square): OccupiedPath = if (contains(s)) copy(occupied = this.occupied + s) else this
+    def vacate(s: Set[Square]): OccupiedPath = copy(occupied = this.occupied -- s)
+    def occupy(s: Set[Square]): OccupiedPath = copy(occupied = this.occupied ++ s.filter(contains))
     def validEnds: Set[Square] = {
       def firstOccupiedInx = occupied.map(s => path.indexOf(s)).min
       if (occupied.isEmpty) path.toSet else path.splitAt(firstOccupiedInx)._1.toSet
@@ -58,7 +58,7 @@ object Board {
     def isValidEnd(end: Square): Boolean = validEnds.contains(end)
   }
 
-  private def occupiedPathsFor(piece: Piece, others: Set[Piece]): Set[OccupiedPath] = {
+  private def occupiedPathsFor(piece: Piece, pieces: Set[Piece]): Set[OccupiedPath] = {
 
     def path(square: Square, step: Square => Option[Square], remaining: Int): Path = {
       def pathRecur(current: Path, step: Square => Option[Square], remaining: Int): Path = step(current.last) match {
@@ -111,10 +111,10 @@ object Board {
           path(piece.square, Square.offset(_, File.dec, Rank.inc), 1)
         )
         if (!piece.hasMoved) {
-          def kingsideRookMoved = others.find(_.square == g1).fold(false)(!_.hasMoved)
+          def kingsideRookMoved = pieces.find(_.square == g1).fold(false)(!_.hasMoved)
           val kingsideCastle = path(piece.square, Square.offset(_, File.offset(_, 2), Rank.identity), 1)
           if (kingsideRookMoved) kingPaths = kingPaths + kingsideCastle
-          def queensideRookMoved = others.find(_.square == a1).fold(false)(!_.hasMoved)
+          def queensideRookMoved = pieces.find(_.square == a1).fold(false)(!_.hasMoved)
           val queensideCastle = path(piece.square, Square.offset(_, File.offset(_, -2), Rank.identity), 1)
           if (queensideRookMoved) kingPaths = kingPaths + queensideCastle
         }
@@ -123,7 +123,7 @@ object Board {
         file(piece.square) ++ rank(piece.square) ++ diagonals(piece.square)
     }
 
-    pathsForPiece.filterNot(_.isEmpty).map(p => OccupiedPath(p, others.map(_.square).filter(p.contains)))
+    pathsForPiece.filterNot(_.isEmpty).map(p => OccupiedPath(p, pieces.map(_.square).filter(p.contains)))
 
   }
 
@@ -138,7 +138,7 @@ object Board {
     val king = Set(e1).map(unmoved(Piece.king))
 
     val pieces = pawns ++ rooks ++ knights ++ bishops ++ king ++ queen
-    val initialPiecesToOccupiedPaths = pieces.map(piece => (piece, occupiedPathsFor(piece, pieces - piece))).toMap
+    val initialPiecesToOccupiedPaths = pieces.map(piece => (piece, occupiedPathsFor(piece, pieces))).toMap
 
     new Board { val piecesToOccupiedPaths = initialPiecesToOccupiedPaths }
   }
@@ -150,67 +150,44 @@ trait Board {
 
   protected val piecesToOccupiedPaths: Map[Piece, Set[OccupiedPath]]
 
-  def pieces: Set[Piece] = piecesToOccupiedPaths.keys.toSet
+  def pieces: Set[Piece] = piecesToOccupiedPaths.keySet
 
   def pieceAt(square: Square): Option[Piece] = pieces.find(square == _.square)
 
   private def canPromote(piece: Piece, end: Square): Boolean = piece.pieceType == Pawn && end.rank == `8`
 
-  private def oneMove(move: Move): Option[Board] = {
-
+  private def oneMove(move: Move): Option[Board] =
     pieceAt(move.start).flatMap { piece =>
-
       piecesToOccupiedPaths.get(piece).flatMap { occupiedPaths =>
 
-        // TODO reorganize to avoid need to multiple cases and calling get on move end (use map instead)
+        def isValidEnd(end: Square): Boolean = occupiedPaths.find(_.contains(end)).fold(false)(_.isValidEnd(end))
 
-        def isValidMove: Boolean = {
-          def isValidEnd(move: Move): Boolean = occupiedPaths.find(_.contains(move.end)).fold(false)(_.isValidEnd(move.end))
-          move match {
-            case _: SimpleMove => isValidEnd(move)
-            case _: Promotion => isValidEnd(move) && canPromote(piece, move.end)
-            case Castle(_, _, rookMove) => isValidEnd(move) && isValidEnd(rookMove)
-          }
+        def updateOccupiedPathsFor(somePieces: Set[Piece], moves: Set[Move]) =
+          somePieces.map { piece => (piece, piecesToOccupiedPaths(piece).map(_.vacate(moves.map(_.start)).occupy(moves.map(_.end)))) }.toMap
+
+        def replaceOccupiedPathsFor(pieceAndMoves: Set[(Piece, Move)]) =
+          pieceAndMoves.map { case (p, m) => val pe = p.atEnd(m.end); (pe, occupiedPathsFor(pe, pieces)) }.toMap
+
+        def doMove(piecesAndMoves: Set[(Piece, Move)]) = {
+          val (p, m) = piecesAndMoves.unzip
+          val unmoved = updateOccupiedPathsFor(pieces -- p, m)
+          val moved = replaceOccupiedPathsFor(piecesAndMoves)
+          Some(new Board { val piecesToOccupiedPaths = unmoved ++ moved })
         }
 
-        if (isValidMove) {
-
-          val others = piecesToOccupiedPaths -- (move match {
-            case Castle(_, _, rookMove) => Set(piece, pieceAt(rookMove.start).get)
-            case _ => Set(piece)
-          })
-
-          val othersUpdated = others.map {
-            case (otherPiece, otherOccupiedPaths) =>
-              (
-                otherPiece,
-                otherOccupiedPaths.map(_.vacate(move.start).occupy(move.end)).map { o =>
-                  move match {
-                    case Castle(_, _, rookMove) => o.vacate(rookMove.start).occupy(rookMove.end)
-                    case _ => o
-                  }
-                }
-              )
-          }
-
-          val moversUpdated = {
-            def withOccupiedPaths(p: Piece): (Piece, Set[OccupiedPath]) = (p, occupiedPathsFor(p, others.keys.toSet))
-            move match {
-              case Castle(_, _, rookMove) =>
-                Set(withOccupiedPaths(piece.atEnd(move.end)), withOccupiedPaths(pieceAt(rookMove.start).get.atEnd(rookMove.end)))
-              case _ =>
-                Set(withOccupiedPaths(piece.atEnd(move.end)))
+        move match {
+          case SimpleMove(_, end) =>
+            if (isValidEnd(end)) doMove(Set((piece, move))) else None
+          case Castle(start, end, rookMove) =>
+            pieceAt(rookMove.start).flatMap { rookPiece =>
+              if (isValidEnd(end) && isValidEnd(rookMove.end)) doMove(Set((piece, move), (rookPiece, rookMove))) else None
             }
-          }
-
-          Some( new Board { val piecesToOccupiedPaths = othersUpdated ++ moversUpdated } )
-        } else None
+          case Promotion(_, end, promotion) =>
+            if (isValidEnd(end) && canPromote(piece, end)) doMove(Set((piece, move))) else None
+        }
 
       }
-
     }
-
-  }
 
   def move(moves: Move*): Option[Board] = moves.toList match {
     case Nil => Some(this)

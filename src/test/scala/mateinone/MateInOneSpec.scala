@@ -8,13 +8,13 @@ import Square._
 class OccupiedPathSpec extends Specification {
   "OccupiedPath" should {
     "vacate squares" in new OccupiedPathScope {
-      occupiedPath.vacate(g2) must beEqualTo(OccupiedPath(path, Set()))
+      occupiedPath.vacate(Set(g2)) must beEqualTo(OccupiedPath(path, Set()))
     }
     "occupy squares" in new OccupiedPathScope {
-      occupiedPath.occupy(h3) must beEqualTo(OccupiedPath(path, Set(g2, h3)))
+      occupiedPath.occupy(Set(h3)) must beEqualTo(OccupiedPath(path, Set(g2, h3)))
     }
     "determine valid move squares" in new OccupiedPathScope {
-      occupiedPath.vacate(g2).validEnds must beEqualTo(Set(g2, h3))
+      occupiedPath.vacate(Set(g2)).validEnds must beEqualTo(Set(g2, h3))
     }
   }
 }
@@ -71,6 +71,8 @@ class BoardSpec extends Specification {
     "not allow castle queenside after moving the king" in {
       Board().move(b1->a3, d2->d3, c1->g5, d1->d2, e1->d1, `O-O-O`) must beNone
     }
+    // TODO test that for a board, moving does not mutate, but rather creates a new board
+    // TODO test a promotion
     // TODO add some simple move generation testing (e.g., test all valid moves that can be gen right before a castle).
   }
 
