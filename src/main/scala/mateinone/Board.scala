@@ -25,7 +25,8 @@ object Piece {
   def moved(pieceOf: (Square, Boolean) => Piece) = pieceOf(_: Square, true)
 }
 case class Piece(pieceType: PieceType, square: Square, hasMoved: Boolean) {
-  def atEnd(end: Square): Piece = copy(square = end, hasMoved = true)
+  def atEnd(move: Move): Piece = copy(square = move.end, hasMoved = true)
+  def promotedTo(promotionType: PromotionType): Piece = copy(pieceType = promotionType)
 }
 
 sealed trait Move { val start: Square; val end: Square }
@@ -33,7 +34,9 @@ sealed trait Move { val start: Square; val end: Square }
 object SimpleMove {
   implicit def tupleToSimpleMove(t: (Square, Square)): SimpleMove = t match { case (start, end) => SimpleMove(start, end) }
 }
-case class SimpleMove(start: Square, end: Square) extends Move
+case class SimpleMove(start: Square, end: Square) extends Move {
+  def promote(promotionType: PromotionType): Promotion = Promotion(start, end, promotionType)
+}
 
 case class Promotion(start: Square, end: Square, promotionType: PromotionType) extends Move
 
@@ -41,7 +44,7 @@ object Castle {
   val `O-O` = Castle(e1, g1, SimpleMove(h1, f1))
   val `O-O-O` = Castle(e1, c1, SimpleMove(a1, d1))
 }
-sealed case class Castle(start: Square, end: Square, rookMove: SimpleMove) extends Move
+case class Castle private(start: Square, end: Square, rookMove: SimpleMove) extends Move
 
 object Board {
 
@@ -162,28 +165,33 @@ trait Board {
 
         def isValidEnd(end: Square): Boolean = occupiedPaths.find(_.contains(end)).fold(false)(_.isValidEnd(end))
 
-        def updateOccupiedPathsFor(somePieces: Set[Piece], moves: Set[Move]) =
-          somePieces.map { piece => (piece, piecesToOccupiedPaths(piece).map(_.vacate(moves.map(_.start)).occupy(moves.map(_.end)))) }.toMap
+        def updateOccupiedPathsFor(moves: Set[Move], stationaryPieces: Set[Piece]) =
+          stationaryPieces.map(p => (p, piecesToOccupiedPaths(p).map(_.vacate(moves.map(_.start)).occupy(moves.map(_.end))))).toMap
 
-        def replaceOccupiedPathsFor(pieceAndMoves: Set[(Piece, Move)]) =
-          pieceAndMoves.map { case (p, m) => val pe = p.atEnd(m.end); (pe, occupiedPathsFor(pe, pieces)) }.toMap
+        def replaceOccupiedPathsFor(movedPieces: Set[Piece]) =
+          movedPieces.map(p => (p, occupiedPathsFor(p, pieces))).toMap
 
-        def doMove(piecesAndMoves: Set[(Piece, Move)]) = {
-          val (p, m) = piecesAndMoves.unzip
-          val unmoved = updateOccupiedPathsFor(pieces -- p, m)
-          val moved = replaceOccupiedPathsFor(piecesAndMoves)
-          Some(new Board { val piecesToOccupiedPaths = unmoved ++ moved })
+        def doMove(moves: Set[Move], movedPieces: Set[Piece], stationaryPieces: Set[Piece]) = {
+          val stationaryEntries = updateOccupiedPathsFor(moves, stationaryPieces)
+          val movedEntries = replaceOccupiedPathsFor(movedPieces)
+          Some(new Board { val piecesToOccupiedPaths = stationaryEntries ++ movedEntries })
         }
 
         move match {
           case SimpleMove(_, end) =>
-            if (isValidEnd(end)) doMove(Set((piece, move))) else None
+            if (isValidEnd(end))
+              doMove(Set(move), Set(piece.atEnd(move)), pieces - piece)
+            else None
           case Castle(start, end, rookMove) =>
             pieceAt(rookMove.start).flatMap { rookPiece =>
-              if (isValidEnd(end) && isValidEnd(rookMove.end)) doMove(Set((piece, move), (rookPiece, rookMove))) else None
+              if (isValidEnd(end) && isValidEnd(rookMove.end))
+                doMove(Set(move, rookMove), Set(piece.atEnd(move), rookPiece.atEnd(rookMove)), pieces - piece - rookPiece)
+              else None
             }
-          case Promotion(_, end, promotion) =>
-            if (isValidEnd(end) && canPromote(piece, end)) doMove(Set((piece, move))) else None
+          case Promotion(_, end, promotionType) =>
+            if (isValidEnd(end) && canPromote(piece, end))
+              doMove(Set(move), Set(piece.atEnd(move).promotedTo(promotionType)), pieces - piece)
+            else None
         }
 
       }

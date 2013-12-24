@@ -30,6 +30,7 @@ class BoardSpec extends Specification {
   import SimpleMove._
   import Castle._
 
+  // TODO this is too complex, must be a better way than reusing the ofTypeAndSquare here
   def onlyTheseMoved(ofTypeAndSquare: ((Square, Boolean) => Piece, Square)*): Board => Boolean = {
     def toPiece(ofTypeAndSquare: ((Square, Boolean) => Piece, Square)): Piece = ofTypeAndSquare match { case (ofType, s) => moved(ofType)(s) }
     val movedPieces = ofTypeAndSquare.toSet.map(toPiece)
@@ -62,6 +63,12 @@ class BoardSpec extends Specification {
     "allow castle queenside" in {
       Board().move(b1->a3, d2->d3, c1->g5, d1->d2, `O-O-O`) must beSome.which(onlyTheseMoved(knight->a3, pawn->d3, bishop->g5, queen->d2, rook->d1, king->c1))
     }
+    "allow promotion of a pawn on the 8th rank" in {
+      Board().move(g2->g4, g4->g5, g5->g6, g6->g7, g7->g8 promote Queen) must beSome.which(onlyTheseMoved(queen->g8))
+    }
+    "require promotion of a pawn on the 8th rank" in {
+      Board().move(g2->g4, g4->g5, g5->g6, g6->g7, g7->g8) must beNone // TODO should not be allowed
+    }
     "not allow pawn to g6 after pawn to g4" in {
       Board().move(g2->g4, g4->g6) must beNone
     }
@@ -76,7 +83,6 @@ class BoardSpec extends Specification {
       after_g3.get.move(g3->g4)
       after_g3 must beSome.which(onlyTheseMoved(pawn->g3))
     }
-    // TODO test a promotion
     // TODO add some simple move generation testing (e.g., test all valid moves that can be gen right before a castle).
   }
 
