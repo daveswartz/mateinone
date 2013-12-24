@@ -3,7 +3,7 @@ Scala chess move generation and validation
 Getting Started
 ===============
 
-Follow the procedure below to get the project running locally.
+How to run locally:
 
 * Setup the latest version of SBT;
 * Clone this repository;
@@ -14,21 +14,21 @@ Follow the procedure below to get the project running locally.
 
 The *chess.scala* script randomly selects a move, prints the move and makes the move in an infinite loop until you terminate it.
 
+Status
+==========
+
+The project is in a primordial state. White pieces are placed on a board and moves can be generated and validated according to most of the rules of chess.
+
+Next steps:
+
+* Black Side
+* Capture
+* Scoring
+* Input/Ouput (PGN & FEN)
+* Computer Player
+* Documentation
+
 Design Principles
 =================
 
 The code aims to be approachable rather than perform well. That trade-off may shift with time.
-
-Next Steps
-==========
-
-The project is in a primordial state. White pieces are placed on a board and moves can be generated and validated according to most of the rules of chess. 
-
-The follow features remain (at least):
-
-* Castling move generation
-* Black Side
-* Capture
-* Scoring
-* Input/Ouput
-* Documentation

@@ -14,16 +14,6 @@ case object Rook extends PromotionType
 case object Bishop extends PromotionType
 case object Queen extends PromotionType
 
-object Piece {
-  val pawn = Piece(Pawn, _: Square, _: Boolean)
-  val king = Piece(King, _: Square, _: Boolean)
-  val knight = Piece(Knight, _: Square, _: Boolean)
-  val rook = Piece(Rook, _: Square, _: Boolean)
-  val bishop = Piece(Bishop, _: Square, _: Boolean)
-  val queen = Piece(Queen, _: Square, _: Boolean)
-  def unmoved(pieceOf: (Square, Boolean) => Piece) = pieceOf(_: Square, false)
-  def moved(pieceOf: (Square, Boolean) => Piece) = pieceOf(_: Square, true)
-}
 case class Piece(pieceType: PieceType, square: Square, hasMoved: Boolean) {
   def atEnd(move: Move): Piece = copy(square = move.end, hasMoved = true)
   def promotedTo(promotionType: PromotionType): Piece = copy(pieceType = promotionType)
@@ -61,7 +51,7 @@ object Board {
     def isValidEnd(end: Square): Boolean = validEnds.contains(end)
   }
 
-  private def occupiedPathsFor(piece: Piece, pieces: Set[Piece]): Set[OccupiedPath] = { // TODO pieces arg should just be occupied squares
+  private def occupiedPathsFor(piece: Piece, otherPieces: Set[Piece]): Set[OccupiedPath] = {
 
     def path(square: Square, step: Square => Option[Square], remaining: Int): Path = {
       def pathRecur(current: Path, step: Square => Option[Square], remaining: Int): Path = step(current.last) match {
@@ -98,7 +88,7 @@ object Board {
       case Rook =>
         file(piece.square) ++ rank(piece.square)
       case Knight =>
-        Set((2, 1), (2, -1), (1, 2), (1, -2), (-2, 1), (-2, -1), (-1, 2), (-1, -2)) // TODO use tuples of offsets to simplify specification
+        Set((2, 1), (2, -1), (1, 2), (1, -2), (-2, 1), (-2, -1), (-1, 2), (-1, -2))
           .flatMap { case (f, r) => Square.offset(piece.square, File.offset(_, f), Rank.offset(_, r)) }.map(List(_))
       case Bishop =>
         diagonals(piece.square)
@@ -114,10 +104,10 @@ object Board {
           path(piece.square, Square.offset(_, File.dec, Rank.inc), 1)
         )
         if (!piece.hasMoved) {
-          def kingsideRookMoved = pieces.find(_.square == g1).fold(false)(!_.hasMoved)
+          def kingsideRookMoved = otherPieces.find(_.square == g1).fold(false)(!_.hasMoved)
           val kingsideCastle = path(piece.square, Square.offset(_, File.offset(_, 2), Rank.identity), 1)
           if (kingsideRookMoved) kingPaths = kingPaths + kingsideCastle
-          def queensideRookMoved = pieces.find(_.square == a1).fold(false)(!_.hasMoved)
+          def queensideRookMoved = otherPieces.find(_.square == a1).fold(false)(!_.hasMoved)
           val queensideCastle = path(piece.square, Square.offset(_, File.offset(_, -2), Rank.identity), 1)
           if (queensideRookMoved) kingPaths = kingPaths + queensideCastle
         }
@@ -126,22 +116,27 @@ object Board {
         file(piece.square) ++ rank(piece.square) ++ diagonals(piece.square)
     }
 
-    pathsForPiece.filterNot(_.isEmpty).map(p => OccupiedPath(p, pieces.map(_.square).filter(p.contains)))
+    pathsForPiece.filterNot(_.isEmpty).map(p => OccupiedPath(p, otherPieces.map(_.square).filter(p.contains)))
 
   }
 
   def apply(): Board = {
-    def unmoved(pieceOf: (Square, Boolean) => Piece) = pieceOf(_: Square, false)
+    val pawnAt = Piece(Pawn, _: Square, hasMoved = false)
+    val kingAt = Piece(King, _: Square, hasMoved = false)
+    val knightAt = Piece(Knight, _: Square, hasMoved = false)
+    val rookAt = Piece(Rook, _: Square, hasMoved = false)
+    val bishopAt = Piece(Bishop, _: Square, hasMoved = false)
+    val queenAt = Piece(Queen, _: Square, hasMoved = false)
 
-    val pawns = File.allFiles.map(Square(_, `2`)).toSet.map(unmoved(Piece.pawn))
-    val rooks = Set(A, H).map(Square(_, `1`)).map(unmoved(Piece.rook))
-    val knights = Set(B, G).map(Square(_, `1`)).map(unmoved(Piece.knight))
-    val bishops = Set(C, F).map(Square(_, `1`)).map(unmoved(Piece.bishop))
-    val queen = Set(d1).map(unmoved(Piece.queen))
-    val king = Set(e1).map(unmoved(Piece.king))
+    val pawns = File.allFiles.map(Square(_, `2`)).toSet.map(pawnAt)
+    val rooks = Set(A, H).map(Square(_, `1`)).map(rookAt)
+    val knights = Set(B, G).map(Square(_, `1`)).map(knightAt)
+    val bishops = Set(C, F).map(Square(_, `1`)).map(bishopAt)
+    val queen = queenAt(d1)
+    val king = kingAt(e1)
 
-    val pieces = pawns ++ rooks ++ knights ++ bishops ++ king ++ queen
-    val initialPiecesToOccupiedPaths = pieces.map(piece => (piece, occupiedPathsFor(piece, pieces))).toMap
+    val allPieces = pawns ++ rooks ++ knights ++ bishops + king + queen
+    val initialPiecesToOccupiedPaths = allPieces.map(piece => (piece, occupiedPathsFor(piece, allPieces - piece))).toMap
 
     new Board { val piecesToOccupiedPaths = initialPiecesToOccupiedPaths }
   }
@@ -159,6 +154,10 @@ trait Board {
 
   private def mustPromote(piece: Piece, end: Square): Boolean = piece.pieceType == Pawn && end.rank == `8`
 
+  private def mayCastleKingside(piece: Piece, end: Square): Boolean = piece.pieceType == King && end == g1
+
+  private def mayCastleQueenside(piece: Piece, end: Square): Boolean = piece.pieceType == King && end == c1
+
   private def oneMove(move: Move): Option[Board] =
     pieceAt(move.start).flatMap { piece =>
       piecesToOccupiedPaths.get(piece).flatMap { occupiedPaths =>
@@ -169,7 +168,7 @@ trait Board {
           stationaryPieces.map(p => (p, piecesToOccupiedPaths(p).map(_.vacate(moves.map(_.start)).occupy(moves.map(_.end))))).toMap
 
         def replaceOccupiedPathsFor(movedPieces: Set[Piece]) =
-          movedPieces.map(p => (p, occupiedPathsFor(p, pieces))).toMap
+          movedPieces.map(p => (p, occupiedPathsFor(p, pieces - p))).toMap
 
         def doMove(moves: Set[Move], movedPieces: Set[Piece], stationaryPieces: Set[Piece]) = {
           val stationaryEntries = updateOccupiedPathsFor(moves, stationaryPieces)
@@ -203,17 +202,24 @@ trait Board {
     case head :: tail => oneMove(head).flatMap(_.move(tail :_*))
   }
 
-  def moves: Set[Move] =
+  def moves: Set[Move] = {
+    import Castle._
+
     piecesToOccupiedPaths.map {
       case (piece, occupiedPaths) =>
         occupiedPaths.map { occupiedPath =>
           occupiedPath.validEnds.map { end: Square =>
             if (mustPromote(piece, end))
               PromotionType.all.map(promotionType => Promotion(piece.square, end, promotionType))
+            else if (mayCastleKingside(piece, end))
+              Set(`O-O`)
+            else if (mayCastleQueenside(piece, end))
+              Set(`O-O-O`)
             else
               Set(SimpleMove(piece.square, end))
           }
         }
     }.toSet.flatten.flatten.flatten
+  }
 
 }
