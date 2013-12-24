@@ -47,11 +47,11 @@ class BoardSpec extends Specification {
       Board().pieces must haveSize(16)
       Board().moves must haveSize(20)
     }
-    "allow knight to f3" in {
-      Board().move(g1->f3) must beSome.which(onlyTheseMoved(knight->f3))
-    }
     "allow pawn to g3" in {
       Board().move(g2->g3) must beSome.which(onlyTheseMoved(pawn->g3))
+    }
+    "allow knight to f3" in {
+      Board().move(g1->f3) must beSome.which(onlyTheseMoved(knight->f3))
     }
     "allow bishop to h3" in {
       Board().move(g2->g3, f1->h3) must beSome.which(onlyTheseMoved(pawn->g3, bishop->h3))
@@ -62,7 +62,7 @@ class BoardSpec extends Specification {
     "allow castle queenside" in {
       Board().move(b1->a3, d2->d3, c1->g5, d1->d2, `O-O-O`) must beSome.which(onlyTheseMoved(knight->a3, pawn->d3, bishop->g5, queen->d2, rook->d1, king->c1))
     }
-    "not pawn to g6 after pawn to g4" in {
+    "not allow pawn to g6 after pawn to g4" in {
       Board().move(g2->g4, g4->g6) must beNone
     }
     "not allow castle kingside after moving the king" in {
@@ -71,7 +71,11 @@ class BoardSpec extends Specification {
     "not allow castle queenside after moving the king" in {
       Board().move(b1->a3, d2->d3, c1->g5, d1->d2, e1->d1, `O-O-O`) must beNone
     }
-    // TODO test that for a board, moving does not mutate, but rather creates a new board
+    "be immutable" in {
+      val after_g3 = Board().move(g2->g3)
+      after_g3.get.move(g3->g4)
+      after_g3 must beSome.which(onlyTheseMoved(pawn->g3))
+    }
     // TODO test a promotion
     // TODO add some simple move generation testing (e.g., test all valid moves that can be gen right before a castle).
   }
