@@ -61,7 +61,7 @@ object Board {
     def isValidEnd(end: Square): Boolean = validEnds.contains(end)
   }
 
-  private def occupiedPathsFor(piece: Piece, pieces: Set[Piece]): Set[OccupiedPath] = {
+  private def occupiedPathsFor(piece: Piece, pieces: Set[Piece]): Set[OccupiedPath] = { // TODO pieces arg should just be occupied squares
 
     def path(square: Square, step: Square => Option[Square], remaining: Int): Path = {
       def pathRecur(current: Path, step: Square => Option[Square], remaining: Int): Path = step(current.last) match {
@@ -98,7 +98,7 @@ object Board {
       case Rook =>
         file(piece.square) ++ rank(piece.square)
       case Knight =>
-        Set((2, 1), (2, -1), (1, 2), (1, -2), (-2, 1), (-2, -1), (-1, 2), (-1, -2))
+        Set((2, 1), (2, -1), (1, 2), (1, -2), (-2, 1), (-2, -1), (-1, 2), (-1, -2)) // TODO use tuples of offsets to simplify specification
           .flatMap { case (f, r) => Square.offset(piece.square, File.offset(_, f), Rank.offset(_, r)) }.map(List(_))
       case Bishop =>
         diagonals(piece.square)
@@ -157,7 +157,7 @@ trait Board {
 
   def pieceAt(square: Square): Option[Piece] = pieces.find(square == _.square)
 
-  private def canPromote(piece: Piece, end: Square): Boolean = piece.pieceType == Pawn && end.rank == `8`
+  private def mustPromote(piece: Piece, end: Square): Boolean = piece.pieceType == Pawn && end.rank == `8`
 
   private def oneMove(move: Move): Option[Board] =
     pieceAt(move.start).flatMap { piece =>
@@ -179,7 +179,7 @@ trait Board {
 
         move match {
           case SimpleMove(_, end) =>
-            if (isValidEnd(end))
+            if (isValidEnd(end) && !mustPromote(piece, end))
               doMove(Set(move), Set(piece.atEnd(move)), pieces - piece)
             else None
           case Castle(start, end, rookMove) =>
@@ -189,7 +189,7 @@ trait Board {
               else None
             }
           case Promotion(_, end, promotionType) =>
-            if (isValidEnd(end) && canPromote(piece, end))
+            if (isValidEnd(end) && mustPromote(piece, end))
               doMove(Set(move), Set(piece.atEnd(move).promotedTo(promotionType)), pieces - piece)
             else None
         }
@@ -208,7 +208,7 @@ trait Board {
       case (piece, occupiedPaths) =>
         occupiedPaths.map { occupiedPath =>
           occupiedPath.validEnds.map { end: Square =>
-            if (canPromote(piece, end))
+            if (mustPromote(piece, end))
               PromotionType.all.map(promotionType => Promotion(piece.square, end, promotionType))
             else
               Set(SimpleMove(piece.square, end))

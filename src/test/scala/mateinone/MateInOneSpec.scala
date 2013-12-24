@@ -67,7 +67,7 @@ class BoardSpec extends Specification {
       Board().move(g2->g4, g4->g5, g5->g6, g6->g7, g7->g8 promote Queen) must beSome.which(onlyTheseMoved(queen->g8))
     }
     "require promotion of a pawn on the 8th rank" in {
-      Board().move(g2->g4, g4->g5, g5->g6, g6->g7, g7->g8) must beNone // TODO should not be allowed
+      Board().move(g2->g4, g4->g5, g5->g6, g6->g7, g7->g8) must beNone
     }
     "not allow pawn to g6 after pawn to g4" in {
       Board().move(g2->g4, g4->g6) must beNone
