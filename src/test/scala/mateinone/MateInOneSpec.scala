@@ -1,9 +1,10 @@
 package mateinone
 
 import org.specs2.mutable._
-import mateinone.Board.OccupiedPath
 import org.specs2.specification.Scope
 import Square._
+import SimpleMove._
+import Castle._
 
 class OccupiedPathSpec extends Specification {
   "OccupiedPath" should {
@@ -26,11 +27,9 @@ trait OccupiedPathScope extends Scope {
 }
 
 class BoardSpec extends Specification {
-  import SimpleMove._
-  import Castle._
 
   def toPiece(pieceTypeAndSquare: (PieceType, Square), hasMoved: Boolean) =
-    pieceTypeAndSquare match { case (t, s) => Piece(t, s, hasMoved = hasMoved) }
+    pieceTypeAndSquare match { case (t, s) => Piece(White, t, s, hasMoved = hasMoved) }
   def toMovedPiece(pieceTypeAndSquare: (PieceType, Square)): Piece = toPiece(pieceTypeAndSquare, hasMoved = true)
   def toUnmovedPiece(pieceTypeAndSquare: (PieceType, Square)): Piece = toPiece(pieceTypeAndSquare, hasMoved = false)
 

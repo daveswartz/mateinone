@@ -1,9 +1,10 @@
 package mateinone
 
-object BoardWriter {
-  import Castle._
+import Castle._
 
-  private def writePieceType(pieceType: PieceType): String = pieceType match {
+object BoardWriter {
+
+  private def writePieceType(pieceType: PieceType): String = pieceType match { // TODO add support for black side
     case Pawn => "♙"
     case Rook => "♖"
     case Knight => "♘"

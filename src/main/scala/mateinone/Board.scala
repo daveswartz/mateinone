@@ -1,55 +1,10 @@
 package mateinone
 
 import Square._
-
-sealed trait PieceType
-
-object PromotionType { val all = Set(Knight, Rook, Bishop, Queen) }
-sealed trait PromotionType extends PieceType
-
-case object Pawn extends PieceType
-case object King extends PieceType
-case object Knight extends PromotionType
-case object Rook extends PromotionType
-case object Bishop extends PromotionType
-case object Queen extends PromotionType
-
-case class Piece(pieceType: PieceType, square: Square, hasMoved: Boolean) {
-  def atEnd(move: Move): Piece = copy(square = move.end, hasMoved = true)
-  def promotedTo(promotionType: PromotionType): Piece = copy(pieceType = promotionType)
-}
-
-sealed trait Move { val start: Square; val end: Square }
-
-object SimpleMove {
-  implicit def tupleToSimpleMove(t: (Square, Square)): SimpleMove = t match { case (start, end) => SimpleMove(start, end) }
-}
-case class SimpleMove(start: Square, end: Square) extends Move {
-  def promote(promotionType: PromotionType): Promotion = Promotion(start, end, promotionType)
-}
-
-case class Promotion(start: Square, end: Square, promotionType: PromotionType) extends Move
-
-object Castle {
-  val `O-O` = Castle(e1, g1, SimpleMove(h1, f1))
-  val `O-O-O` = Castle(e1, c1, SimpleMove(a1, d1))
-}
-case class Castle private(start: Square, end: Square, rookMove: SimpleMove) extends Move
+import Castle._
+import OccupiedPath._
 
 object Board {
-
-  private type Path = List[Square]
-
-  case class OccupiedPath(private val path: Path, private val occupied: Set[Square]) {
-    def contains(s: Square): Boolean = path.contains(s)
-    def vacate(s: Set[Square]): OccupiedPath = copy(occupied = this.occupied -- s)
-    def occupy(s: Set[Square]): OccupiedPath = copy(occupied = this.occupied ++ s.filter(contains))
-    def validEnds: Set[Square] = {
-      def firstOccupiedInx = occupied.map(s => path.indexOf(s)).min
-      if (occupied.isEmpty) path.toSet else path.splitAt(firstOccupiedInx)._1.toSet
-    }
-    def isValidEnd(end: Square): Boolean = validEnds.contains(end)
-  }
 
   private def occupiedPathsFor(piece: Piece, otherPieces: Set[Piece]): Set[OccupiedPath] = {
 
@@ -80,9 +35,9 @@ object Board {
 
     val pathsForPiece = piece.pieceType match {
       case Pawn =>
-        val single = path(piece.square, Square.offset(_, File.identity, Rank.inc), 1)
+        val single = path(piece.square, Square.offset(_, File.identity, Rank.inc), 1) // TODO black is Rank.dec
         if (!piece.hasMoved)
-          Set(single, path(piece.square, Square.offset(_, File.identity, Rank.inc), 2))
+          Set(single, path(piece.square, Square.offset(_, File.identity, Rank.inc), 2)) // TODO black is Rank.dec
         else
           Set(single)
       case Rook =>
@@ -104,10 +59,10 @@ object Board {
           path(piece.square, Square.offset(_, File.dec, Rank.inc), 1)
         )
         if (!piece.hasMoved) {
-          def kingsideRookMoved = otherPieces.find(_.square == g1).fold(false)(!_.hasMoved)
+          def kingsideRookMoved = otherPieces.find(_.square == g1).fold(false)(!_.hasMoved) // TODO white rook hard-coded
           val kingsideCastle = path(piece.square, Square.offset(_, File.offset(_, 2), Rank.identity), 1)
           if (kingsideRookMoved) kingPaths = kingPaths + kingsideCastle
-          def queensideRookMoved = otherPieces.find(_.square == a1).fold(false)(!_.hasMoved)
+          def queensideRookMoved = otherPieces.find(_.square == a1).fold(false)(!_.hasMoved) // TODO white rook hard-coded
           val queensideCastle = path(piece.square, Square.offset(_, File.offset(_, -2), Rank.identity), 1)
           if (queensideRookMoved) kingPaths = kingPaths + queensideCastle
         }
@@ -121,30 +76,28 @@ object Board {
   }
 
   def apply(): Board = {
-    val pawnAt = Piece(Pawn, _: Square, hasMoved = false)
-    val kingAt = Piece(King, _: Square, hasMoved = false)
-    val knightAt = Piece(Knight, _: Square, hasMoved = false)
-    val rookAt = Piece(Rook, _: Square, hasMoved = false)
-    val bishopAt = Piece(Bishop, _: Square, hasMoved = false)
-    val queenAt = Piece(Queen, _: Square, hasMoved = false)
+    def piece(side: Side, pieceType: PieceType)(square: Square) = Piece(side, pieceType, square, hasMoved = false)
 
-    val pawns = File.allFiles.map(Square(_, `2`)).toSet.map(pawnAt)
-    val rooks = Set(A, H).map(Square(_, `1`)).map(rookAt)
-    val knights = Set(B, G).map(Square(_, `1`)).map(knightAt)
-    val bishops = Set(C, F).map(Square(_, `1`)).map(bishopAt)
-    val queen = queenAt(d1)
-    val king = kingAt(e1)
+    val whitePieces = {
+      val pawns = File.allFiles.map(Square(_, `2`)).toSet.map(piece(White, Pawn))
+      val rooks = Set(A, H).map(Square(_, `1`)).map(piece(White, Rook))
+      val knights = Set(B, G).map(Square(_, `1`)).map(piece(White, Knight))
+      val bishops = Set(C, F).map(Square(_, `1`)).map(piece(White, Bishop))
+      val queen = piece(White, Queen)(d1)
+      val king = piece(White, King)(e1)
 
-    val allPieces = pawns ++ rooks ++ knights ++ bishops + king + queen
-    val initialPiecesToOccupiedPaths = allPieces.map(piece => (piece, occupiedPathsFor(piece, allPieces - piece))).toMap
+      pawns ++ rooks ++ knights ++ bishops + king + queen
+    } // TODO only white now
+
+    val initialPiecesToOccupiedPaths = whitePieces.map(piece => (piece, occupiedPathsFor(piece, whitePieces - piece))).toMap
 
     new Board { val piecesToOccupiedPaths = initialPiecesToOccupiedPaths }
   }
 
 }
+import Board._
 
 trait Board {
-  import Board._
 
   protected val piecesToOccupiedPaths: Map[Piece, Set[OccupiedPath]]
 
@@ -152,11 +105,11 @@ trait Board {
 
   def pieceAt(square: Square): Option[Piece] = pieces.find(square == _.square)
 
-  private def mustPromote(piece: Piece, end: Square): Boolean = piece.pieceType == Pawn && end.rank == `8`
+  private def mustPromote(piece: Piece, end: Square): Boolean = piece.pieceType == Pawn && end.rank == `8` // TODO support black
 
-  private def mayCastleKingside(piece: Piece, end: Square): Boolean = piece.pieceType == King && end == g1
+  private def mayCastleKingside(piece: Piece, end: Square): Boolean = piece.pieceType == King && end == g1 // TODO support black
 
-  private def mayCastleQueenside(piece: Piece, end: Square): Boolean = piece.pieceType == King && end == c1
+  private def mayCastleQueenside(piece: Piece, end: Square): Boolean = piece.pieceType == King && end == c1 // TODO support black
 
   private def oneMove(move: Move): Option[Board] =
     pieceAt(move.start).flatMap { piece =>
@@ -202,9 +155,7 @@ trait Board {
     case head :: tail => oneMove(head).flatMap(_.move(tail :_*))
   }
 
-  def moves: Set[Move] = {
-    import Castle._
-
+  def moves: Set[Move] = // TODO support alternating moves
     piecesToOccupiedPaths.map {
       case (piece, occupiedPaths) =>
         occupiedPaths.map { occupiedPath =>
@@ -220,6 +171,5 @@ trait Board {
           }
         }
     }.toSet.flatten.flatten.flatten
-  }
 
 }
