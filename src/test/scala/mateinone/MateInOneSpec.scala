@@ -44,7 +44,7 @@ class BoardSpec extends Specification {
     }
   }
 
-  "Board" should {
+  "Board" should { // TODO update for Black, failing now
     "have the correct state after construction" in {
       val expectedPieces: Seq[Piece] = Seq(
         Rook->a1, Pawn->a2, Knight->b1, Pawn->b2, Bishop->c1, Pawn->c2, Queen->d1, Pawn->d2,
@@ -92,18 +92,19 @@ class BoardSpec extends Specification {
       moves must contain(`O-O`)
       val simple: SimpleMove = e1->g1
       moves must not contain simple
-    }
+    } // TODO not generate castling kingside
     "generate castling queenside" in {
       val moves = Board().move(b1->a3, d2->d3, c1->g5, d1->d2).get.moves
       moves must contain(`O-O-O`)
       val simple: SimpleMove = e1->c1
       moves must not contain simple
-    }
+    } // TODO not generate castling queenside
     "be immutable" in {
       val after_g3 = Board().move(g2->g3)
       after_g3.get.move(g3->g4)
       after_g3 must beSome.which(onlyTheseMoved(Pawn->g3))
     }
+    // TODO Test that after the rook moves a castle is not allowed and not generated
   }
 
 }

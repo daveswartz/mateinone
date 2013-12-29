@@ -14,9 +14,6 @@ object Rank {
     case _ => None
   }
   def offset(r: Rank, o: Int): Option[Rank] = fromInt(r.n + o)
-  def inc(r: Rank): Option[Rank] = offset(r, 1)
-  def identity(r: Rank): Option[Rank] = Some(r)
-  def dec(r: Rank): Option[Rank] = offset(r, -1)
 }
 sealed class Rank(val n: Int) extends Ordered[Rank] {
   def compare(that: Rank): Int = this.n.compare(that.n)

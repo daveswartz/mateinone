@@ -14,9 +14,6 @@ object File {
     case _ => None
   }
   def offset(f: File, o: Int): Option[File] = fromInt(f.n + o)
-  def inc(f: File): Option[File] = offset(f, 1)
-  def identity(f: File): Option[File] = Some(f)
-  def dec(f: File): Option[File] = offset(f, -1)
 }
 sealed class File(val n: Int) extends Ordered[File] {
   def compare(that: File): Int = this.n.compare(that.n)

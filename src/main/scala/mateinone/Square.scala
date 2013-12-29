@@ -1,10 +1,10 @@
 package mateinone
 
 object Square {
-  def offset(s: Square, f: File => Option[File], r: Rank => Option[Rank]): Option[Square] =
-    f(s.file).flatMap(fo => r(s.rank).map(ro => Square(fo, ro)))
+  def offset(s: Square, f: Int, r: Int): Option[Square] =
+    File.offset(s.file, f).flatMap(fo => Rank.offset(s.rank, r).map(ro => Square(fo, ro)))
 
-  private def forFile(file: File) = List.fill(7)(1).scanLeft(Square(file, `1`))((s, _) => offset(s, File.identity, Rank.inc).get)
+  private def forFile(file: File) = List.fill(7)(1).scanLeft(Square(file, `1`))((s, _) => offset(s, 0, 1).get)
   val List(a1, a2, a3, a4, a5, a6, a7, a8) = forFile(A)
   val List(b1, b2, b3, b4, b5, b6, b7, b8) = forFile(B)
   val List(c1, c2, c3, c4, c5, c6, c7, c8) = forFile(C)
