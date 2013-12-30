@@ -17,11 +17,10 @@ The *chess.scala* script randomly selects a move, prints the move and makes the 
 Status
 ==========
 
-The project is in a primordial state. White pieces are placed on a board and moves can be generated and validated according to most of the rules of chess.
+The project is in a primordial state. Pieces are placed on a board and moves can be generated and validated according to most of the rules of chess.
 
 Next steps:
 
-* Black Side
 * Capture
 * Scoring
 * Input/Ouput (PGN & FEN)

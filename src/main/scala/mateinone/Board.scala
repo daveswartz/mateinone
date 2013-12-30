@@ -88,6 +88,7 @@ object Board {
     val initialPieces = piecesFor(White, `2`, `1`) ++ piecesFor(Black, `7`, `8`)
     new Board {
       val piecesToOccupiedPaths = initialPieces.map(piece => (piece, occupiedPathsFor(piece, initialPieces - piece))).toMap
+      val turn = White
     }
 
   }
@@ -95,67 +96,74 @@ object Board {
 }
 import Board._
 
-trait Board {
+trait Board { // TODO see if this can be a case class
 
   protected val piecesToOccupiedPaths: Map[Piece, Set[OccupiedPath]]
+
+  protected val turn: Side
 
   def pieces: Set[Piece] = piecesToOccupiedPaths.keySet
 
   def pieceAt(square: Square): Option[Piece] = pieces.find(square == _.square)
 
   private def oneMove(move: Move): Option[Board] =
-    pieceAt(move.start).flatMap { piece =>
+    pieceAt(move.start).filter(_.side == turn).flatMap { piece =>
       piecesToOccupiedPaths.get(piece).flatMap { occupiedPaths =>
 
         def isValidEnd(end: Square): Boolean = occupiedPaths.find(_.contains(end)).fold(false)(_.isValidEnd(end))
 
-        def updateOccupiedOf(stationaryPieces: Set[Piece], moves: Set[Move]) =
-          stationaryPieces.map(p => (p, piecesToOccupiedPaths(p).map(_.vacate(moves.map(_.start)).occupy(moves.map(_.end))))).toMap
+        def updateOccupiedOf(stationary: Set[Piece], moves: Set[Move]) =
+          stationary.map(p => (p, piecesToOccupiedPaths(p).map(_.vacate(moves.map(_.start)).occupy(moves.map(_.end))))).toMap
 
-        def updatePathsOf(movedPieces: Set[Piece]) =
-          movedPieces.map(p => (p, occupiedPathsFor(p, pieces - p))).toMap
+        def updatePathsOf(movedBefore: Set[Piece], movedAfter: Set[Piece]) =
+          movedAfter.map(p => (p, occupiedPathsFor(p, pieces -- movedBefore))).toMap
 
-        def doMove(movesMade: Set[Move], movedPieces: Set[Piece], stationaryPieces: Set[Piece]) =
-          Some(new Board { val piecesToOccupiedPaths = updateOccupiedOf(stationaryPieces, movesMade) ++ updatePathsOf(movedPieces) })
+        def doMove(movesMade: Set[Move], movedBefore: Set[Piece], movedAfter: Set[Piece], stationary: Set[Piece]) = {
+          val nextTurn = if (turn == White) Black else White
+          Some(new Board {
+            val piecesToOccupiedPaths = updateOccupiedOf(stationary, movesMade) ++ updatePathsOf(movedBefore, movedAfter)
+            val turn = nextTurn
+          })
+        }
 
         move match {
           case SimpleMove(_, end) =>
             if (isValidEnd(end) && !mustPromote(piece)) {
               val kingPiece = piece match {
                 case Piece(_, Rook, _, false) =>
-                  pieceAt(d1) match {
+                  pieceAt(d1) match { // TODO hard-coded to white king
                     case k @ Some(Piece(_, King, _, false)) => k
                     case _ => None
                   }
                 case _ => None
-              }
-              doMove(Set(move), Set(piece.atEnd(move)) ++ kingPiece, pieces - piece)
+              } // TODO there must be a simpler means to this end
+              doMove(Set(move), Set(piece), Set(piece.atEnd(move)) ++ kingPiece, pieces - piece)
             }
             else None
           case Castle(start, end, rookMove) =>
             pieceAt(rookMove.start).flatMap { rookPiece =>
               if (!piece.hasMoved && !rookPiece.hasMoved && isValidEnd(end) && isValidEnd(rookMove.end))
-                doMove(Set(move, rookMove), Set(piece.atEnd(move), rookPiece.atEnd(rookMove)), pieces - piece - rookPiece)
+                doMove(Set(move, rookMove), Set(piece), Set(piece.atEnd(move), rookPiece.atEnd(rookMove)), pieces - piece - rookPiece)
               else None
             }
           case Promotion(_, end, promotionType) =>
             if (isValidEnd(end) && mustPromote(piece))
-              doMove(Set(move), Set(piece.atEnd(move).promotedTo(promotionType)), pieces - piece)
+              doMove(Set(move), Set(piece), Set(piece.atEnd(move).promotedTo(promotionType)), pieces - piece)
             else None
         }
 
       }
     }
 
-  def move(moves: Move*): Option[Board] = moves.toList match { // TODO require alternating moves
+  def move(moves: Move*): Option[Board] = moves.toList match {
     case Nil => Some(this)
     case last :: Nil => oneMove(last)
     case head :: tail => oneMove(head).flatMap(_.move(tail :_*))
   }
 
-  def moves: Set[Move] = // TODO require alternating moves
-    piecesToOccupiedPaths.map {
-      case (piece, occupiedPaths) =>
+  def moves: Set[Move] =
+    piecesToOccupiedPaths.collect {
+      case (piece, occupiedPaths) if piece.side == turn =>
         occupiedPaths.map { occupiedPath =>
           occupiedPath.validEnds.map { end: Square =>
             if (mustPromote(piece))
