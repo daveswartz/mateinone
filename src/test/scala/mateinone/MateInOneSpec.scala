@@ -28,32 +28,35 @@ trait OccupiedPathScope extends Scope {
 
 class BoardSpec extends Specification {
 
-  def toPiece(pieceTypeAndSquare: (PieceType, Square), hasMoved: Boolean) =
-    pieceTypeAndSquare match { case (t, s) => Piece(White, t, s, hasMoved = hasMoved) }
-  def toMovedPiece(pieceTypeAndSquare: (PieceType, Square)): Piece = toPiece(pieceTypeAndSquare, hasMoved = true)
-  def toUnmovedPiece(pieceTypeAndSquare: (PieceType, Square)): Piece = toPiece(pieceTypeAndSquare, hasMoved = false)
+  def piece(side: Side, hasMoved: Boolean)(pieceTypeAndSquare: (PieceType, Square)) =
+    pieceTypeAndSquare match { case (pieceType, square) => Piece(side, pieceType, square, hasMoved) }
 
   def onlyTheseMoved(pieceTypeAndSquares: (PieceType, Square)*): Board => Boolean = {
     val initial = Board().pieces
-    val movedPieces = pieceTypeAndSquares.toSet.map(toMovedPiece)
+    val movedPieces = pieceTypeAndSquares.toSet.map(piece(White, hasMoved = true))
     (board) => {
       val unmovedPieces = board.pieces.filterNot(_.hasMoved)
-      unmovedPieces.size + movedPieces.size == 16 &&  // the total number of pieces is 16
+      unmovedPieces.size + movedPieces.size == 32 &&  // the total number of pieces is 32
         unmovedPieces.forall(initial.contains) &&     // all unmoved pieces are at the initial state
         movedPieces.forall(board.pieces.contains)     // all moved pieces are in the specified state
     }
   }
 
-  "Board" should { // TODO update for Black, failing now
+  "Board" should {
     "have the correct state after construction" in {
-      val expectedPieces: Seq[Piece] = Seq(
-        Rook->a1, Pawn->a2, Knight->b1, Pawn->b2, Bishop->c1, Pawn->c2, Queen->d1, Pawn->d2,
-        King->e1, Pawn->e2, Bishop->f1, Pawn->f2, Knight->g1, Pawn->g2, Rook->h1, Pawn->h2
-      ).map(toUnmovedPiece)
+      val expectedPieces: Seq[Piece] =
+        Seq(
+          Rook->a1, Pawn->a2, Knight->b1, Pawn->b2, Bishop->c1, Pawn->c2, Queen->d1, Pawn->d2,
+          King->e1, Pawn->e2, Bishop->f1, Pawn->f2, Knight->g1, Pawn->g2, Rook->h1, Pawn->h2
+        ).map(piece(White, hasMoved = false)) ++
+        Seq(
+          Rook->a8, Pawn->a7, Knight->b8, Pawn->b7, Bishop->c8, Pawn->c7, Queen->d8, Pawn->d7,
+          King->e8, Pawn->e7, Bishop->f8, Pawn->f7, Knight->g8, Pawn->g7, Rook->h8, Pawn->h7
+        ).map(piece(Black, hasMoved = false))
       Board().pieces must containTheSameElementsAs(expectedPieces)
       val expectedMoves: Seq[SimpleMove] = Seq(
         a2->a3, a2->a4, b1->a3, b1->c3, b2->b3, b2->b4, c2->c3, c2->c4, d2->d3, d2->d4,
-        e2->e3, e2->e4, f2->f3, f2->f4, g1->f3, g1->h3, g2->g3, g2->g4, h2->h3, h2->h4
+        e2->e3, e2->e4, f2->f3, f2->f4, g1->f3, g1->h3, g2->g3, g2->g4, h2->h3, h2->h4  // TODO good but fails as now generating all moves, no turn concept, add test after single white move
       )
       Board().moves must containTheSameElementsAs(expectedMoves)
     }
@@ -72,10 +75,10 @@ class BoardSpec extends Specification {
     "allow castle queenside" in {
       Board().move(b1->a3, d2->d3, c1->g5, d1->d2, `O-O-O`) must beSome.which(onlyTheseMoved(Knight->a3, Pawn->d3, Bishop->g5, Queen->d2, Rook->d1, King->c1))
     }
-    "allow promotion of a pawn on the 8th rank" in {
+    "allow promotion of a pawn on the 8th rank" in { // TODO failing as blocked by black pieces
       Board().move(g2->g4, g4->g5, g5->g6, g6->g7, g7->g8 promote Queen) must beSome.which(onlyTheseMoved(Queen->g8))
     }
-    "require promotion of a pawn on the 8th rank" in {
+    "require promotion of a pawn on the 8th rank" in { // TODO failing as blocked by black, not because of requirement
       Board().move(g2->g4, g4->g5, g5->g6, g6->g7, g7->g8) must beNone
     }
     "not allow pawn to g6 after pawn to g4" in {
@@ -92,13 +95,13 @@ class BoardSpec extends Specification {
       moves must contain(`O-O`)
       val simple: SimpleMove = e1->g1
       moves must not contain simple
-    } // TODO not generate castling kingside
+    }
     "generate castling queenside" in {
       val moves = Board().move(b1->a3, d2->d3, c1->g5, d1->d2).get.moves
       moves must contain(`O-O-O`)
       val simple: SimpleMove = e1->c1
       moves must not contain simple
-    } // TODO not generate castling queenside
+    }
     "be immutable" in {
       val after_g3 = Board().move(g2->g3)
       after_g3.get.move(g3->g4)

@@ -115,8 +115,8 @@ trait Board {
         def updatePathsOf(movedPieces: Set[Piece]) =
           movedPieces.map(p => (p, occupiedPathsFor(p, pieces - p))).toMap
 
-        def doMove(moves: Set[Move], movedPieces: Set[Piece], stationaryPieces: Set[Piece]) =
-          Some(new Board { val piecesToOccupiedPaths = updateOccupiedOf(stationaryPieces, moves) ++ updatePathsOf(movedPieces) })
+        def doMove(movesMade: Set[Move], movedPieces: Set[Piece], stationaryPieces: Set[Piece]) =
+          Some(new Board { val piecesToOccupiedPaths = updateOccupiedOf(stationaryPieces, movesMade) ++ updatePathsOf(movedPieces) })
 
         move match {
           case SimpleMove(_, end) =>
