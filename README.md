@@ -3,7 +3,7 @@ Mate in one ♔
 
 Scala chess move generation and validation.
 
-The project is in a primordial state. White pieces are placed on a board and moves can be generated and validated according to most of the rules of chess.
+The project is in a primordial state. Pieces are placed on a board and moves can be generated and validated according to the rules of chess.
 
 Getting Started ♕
 -----------------
