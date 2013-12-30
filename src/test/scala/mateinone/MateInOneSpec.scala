@@ -126,6 +126,7 @@ class BoardSpec extends Specification {
       after_g3.get.move(g3->g4)
       after_g3 must beSome.which(onlyTheseMoved(white = Set(Pawn->g3)))
     }
+    // TODO add tests to cover what is causing the chess.scala script to fail
     // TODO Test castle for black side
   }
 

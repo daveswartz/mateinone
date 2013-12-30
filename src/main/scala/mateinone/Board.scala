@@ -130,8 +130,8 @@ trait Board { // TODO see if this can be a case class
           case SimpleMove(_, end) =>
             if (isValidEnd(end) && !mustPromote(piece)) {
               val kingPiece = piece match {
-                case Piece(_, Rook, _, false) =>
-                  pieceAt(d1) match { // TODO hard-coded to white king
+                case Piece(side, Rook, _, false) =>
+                  pieceAt(if (side == White) d1 else d8) match {
                     case k @ Some(Piece(_, King, _, false)) => k
                     case _ => None
                   }
@@ -169,9 +169,9 @@ trait Board { // TODO see if this can be a case class
             if (mustPromote(piece))
               PromotionType.all.map(promotionType => Promotion(piece.square, end, promotionType))
             else if (isCastleKingside(piece, end))
-              Set(`O-O`)
+              Set(`O-O`) // TODO should not be generating unless valid
             else if (isCastleQueenside(piece, end))
-              Set(`O-O-O`)
+              Set(`O-O-O`) // TODO should not be generating unless valid (seeing this generated in chess.scala script)
             else
               Set(SimpleMove(piece.square, end))
           }

@@ -17,12 +17,22 @@ object BoardWriter {
     .map(_.reverse).transpose
     .map(_.map(board.pieceAt))
     .map(_.map {
-      case Some(piece) =>
-        writePieceType(piece.pieceType)
+      case Some(Piece(White, Pawn, _, _)) => "♙"
+      case Some(Piece(White, Rook, _, _)) => "♖"
+      case Some(Piece(White, Knight, _, _)) => "♘"
+      case Some(Piece(White, Bishop, _, _)) => "♗"
+      case Some(Piece(White, Queen, _, _)) => "♕"
+      case Some(Piece(White, King, _, _)) => "♔"
+      case Some(Piece(Black, Pawn, _, _)) => "♟"
+      case Some(Piece(Black, Rook, _, _)) => "♜"
+      case Some(Piece(Black, Knight, _, _)) => "♞"
+      case Some(Piece(Black, Bishop, _, _)) => "♝"
+      case Some(Piece(Black, Queen, _, _)) => "♛"
+      case Some(Piece(Black, King, _, _)) => "♚"
       case None =>
         "∙"
     })
-    .zip(8.to(1, -1)).map { case (rank, i) => rank.reduce(_+_)+i }.reduce(_+"\n"+_)+"\nabcdefgh"
+    .zip(8.to(1, -1)).map { case (rank, i) => rank.reduce(_+_)+" "+i }.reduce(_+"\n"+_)+"\nabcdefgh"
 
   private def writeSquare(square: Square): String = {
     def writeFile(file: File): String = file match {
