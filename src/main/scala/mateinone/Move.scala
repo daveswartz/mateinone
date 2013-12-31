@@ -14,7 +14,17 @@ case class SimpleMove(start: Square, end: Square) extends Move {
 case class Promotion(start: Square, end: Square, promotionType: PromotionType) extends Move
 
 object Castle {
-  val `O-O` = Castle(e1, g1, SimpleMove(h1, f1)) // TODO white side is hard-coded
-  val `O-O-O` = Castle(e1, c1, SimpleMove(a1, d1)) // TODO white side is hard-coded
+  val whiteKingside = Castle(e1, g1, SimpleMove(h1, f1))
+  val whiteQueenside = Castle(e1, c1, SimpleMove(a1, d1))
+  val blackKingside = Castle(e8, g8, SimpleMove(h8, f8))
+  val blackQueenside = Castle(e8, c8, SimpleMove(a8, d8))
+  def `O-O`(side: Side) = side match {
+    case White => whiteKingside
+    case Black => blackKingside
+  }
+  def `O-O-O`(side: Side) = side match {
+    case White => whiteQueenside
+    case Black => blackQueenside
+  }
 }
 case class Castle private(start: Square, end: Square, rookMove: SimpleMove) extends Move

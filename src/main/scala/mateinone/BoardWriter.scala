@@ -1,7 +1,5 @@
 package mateinone
 
-import Castle._
-
 object BoardWriter {
 
   private def writePieceType(pieceType: PieceType): String = pieceType match { // TODO add support for black side
@@ -63,9 +61,13 @@ object BoardWriter {
       writeSquare(start)+"->"+writeSquare(end)
     case Promotion(start, end, promotionType) =>
       writeSquare(start)+"->"+writeSquare(end)+"="+writePieceType(promotionType)
-    case `O-O` =>
+    case Castle.whiteKingside =>
       "O-O"
-    case `O-O-O` =>
+    case Castle.blackKingside =>
+      "O-O"
+    case Castle.whiteQueenside =>
+      "O-O-O"
+    case Castle.blackQueenside =>
       "O-O-O"
   }
 

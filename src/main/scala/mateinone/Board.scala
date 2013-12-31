@@ -1,15 +1,16 @@
 package mateinone
 
-import Square._
 import Castle._
 import OccupiedPath._
 
 object Board {
 
+  // Ignores position on the board and whether pieces have moved when generating paths. Castling and two step pawn moves
+  // are always generated as paths.
   private def occupiedPathsFor(piece: Piece, otherPieces: Set[Piece]): Set[OccupiedPath] = {
 
     def path(square: Square, fileOffset: Int, rankOffset: Int, remaining: Int): Path = {
-      def step(fileOffset: Int, rankOffset: Int): Square => Option[Square] = offset(_, fileOffset, rankOffset)
+      def step(fileOffset: Int, rankOffset: Int): Square => Option[Square] = Square.offset(_, fileOffset, rankOffset)
       def pathRecur(current: Path, step: Square => Option[Square], remaining: Int): Path = step(current.last) match {
         case Some(next) if remaining > 0 => pathRecur(current :+ next, step, remaining - 1)
         case _ => current
@@ -23,25 +24,16 @@ object Board {
 
     val pathsFor = piece match {
       case Piece(side, Pawn, square, hasMoved) =>
-        val rankOffset = if (side == White) 1 else -1
-        val single = path(square, 0, rankOffset, 1)
-        val double = path(square, 0, rankOffset, 2)
-        if (!hasMoved) Set(single, double) else Set(single)
+        val dir = if (side == White) 1 else -1
+        Set(path(square, 0, dir, 2))
       case Piece(_, Rook, square, _) =>
         file(square) ++ rank(square)
       case Piece(_, Knight, square, _) =>
         Set((2, 1), (2, -1), (1, 2), (1, -2), (-2, 1), (-2, -1), (-1, 2), (-1, -2)).map { case (f, r) => path(square, f, r, 1) }
       case Piece(_, Bishop, square, _) =>
         diagonals(square)
-      case Piece(side, King, square, hasMoved) =>
-        val paths =  Set((0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1), (-1, 0), (-1, 1)).map { case (f, r) => path(square, f, r, 1) }
-        if (!hasMoved) {
-          def pieceAt(s: Square): Option[Piece] = otherPieces.find(_.square == s)
-          val kingside = (if (side == White) pieceAt(g1) else pieceAt(g8)).filter(!_.hasMoved).map(_ => path(square, 2, 0, 1))
-          val queenside = (if (side == White) pieceAt(a1) else pieceAt(a8)).filter(!_.hasMoved).map(_ => path(square, -2, 0, 1))
-          paths ++ kingside ++ queenside
-        } else
-          paths
+      case Piece(_, King, square, _) =>
+        Set((0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1), (-1, 0), (-1, 1), (2, 0), (-2, 0)).map { case (f, r) => path(square, f, r, 1) }
       case Piece(_, Queen, square, _) =>
         file(square) ++ rank(square) ++ diagonals(square)
     }
@@ -51,7 +43,18 @@ object Board {
 
   }
 
-  private def mustPromote(piece: Piece): Boolean = {
+  // Checks if the piece is a King and the move is offset by 2 files
+  private def mustBeKingsideCastle(piece: Piece, end: Square): Boolean =
+    piece.pieceType == King && File.offset(piece.square.file, end.file) == 2
+
+  // Checks if the piece is a King and the move is offset by -2 files
+  private def mustBeQueensideCastle(piece: Piece, end: Square): Boolean =
+    piece.pieceType == King && File.offset(piece.square.file, end.file) == -2
+
+  private def mustBeCastle(piece: Piece, end: Square): Boolean = mustBeKingsideCastle(piece, end) || mustBeQueensideCastle(piece, end)
+
+  // If a vacant path exists for promotion, the Pawn must be promoted for any valid move
+  private def mustBePromotion(piece: Piece): Boolean = {
     piece match {
       case Piece(White, Pawn, Square(_, `7`), _) => true
       case Piece(Black, Pawn, Square(_, `2`), _) => true
@@ -59,17 +62,9 @@ object Board {
     }
   }
 
-  private def isCastleKingside(piece: Piece, end: Square): Boolean = piece match {
-    case Piece(White, King, _, false) => end match { case Square(G, `1`) => true case _ => false }
-    case Piece(Black, King, _, false) => end match { case Square(G, `8`) => true case _ => false }
-    case _ => false
-  }
-
-  private def isCastleQueenside(piece: Piece, end: Square): Boolean = piece match {
-    case Piece(White, King, _, false) => end match { case Square(C, `1`) => true case _ => false }
-    case Piece(Black, King, _, false) => end match { case Square(C, `8`) => true case _ => false }
-    case _ => false
-  }
+  // Checks if the piece is a Pawn and the move is ofset by two files
+  private def isTwoSquareAdvance(piece: Piece, end: Square): Boolean =
+    piece.pieceType == Pawn && math.abs(Rank.offset(piece.square.rank, end.rank)) == 2
 
   def apply(): Board = {
 
@@ -128,16 +123,8 @@ trait Board { // TODO see if this can be a case class
 
         move match {
           case SimpleMove(_, end) =>
-            if (isValidEnd(end) && !mustPromote(piece)) {
-              val kingPiece = piece match {
-                case Piece(side, Rook, _, false) =>
-                  pieceAt(if (side == White) d1 else d8) match {
-                    case k @ Some(Piece(_, King, _, false)) => k
-                    case _ => None
-                  }
-                case _ => None
-              } // TODO there must be a simpler means to this end
-              doMove(Set(move), Set(piece), Set(piece.atEnd(move)) ++ kingPiece, pieces - piece)
+            if (isValidEnd(end) && !mustBeCastle(piece, end) && (!isTwoSquareAdvance(piece, end) || !piece.hasMoved) && !mustBePromotion(piece)) {
+              doMove(Set(move), Set(piece), Set(piece.atEnd(move)), pieces - piece)
             }
             else None
           case Castle(start, end, rookMove) =>
@@ -147,7 +134,7 @@ trait Board { // TODO see if this can be a case class
               else None
             }
           case Promotion(_, end, promotionType) =>
-            if (isValidEnd(end) && mustPromote(piece))
+            if (isValidEnd(end) && mustBePromotion(piece))
               doMove(Set(move), Set(piece), Set(piece.atEnd(move).promotedTo(promotionType)), pieces - piece)
             else None
         }
@@ -161,21 +148,22 @@ trait Board { // TODO see if this can be a case class
     case head :: tail => oneMove(head).flatMap(_.move(tail :_*))
   }
 
-  def moves: Set[Move] =
+  def moves: Set[Move] = {
     piecesToOccupiedPaths.collect {
       case (piece, occupiedPaths) if piece.side == turn =>
         occupiedPaths.map { occupiedPath =>
-          occupiedPath.validEnds.map { end: Square =>
-            if (mustPromote(piece))
+          occupiedPath.validEnds.map { end: Square => // TODO only generate two step pawn move in case where pawn is unmoved
+            if (mustBePromotion(piece))
               PromotionType.all.map(promotionType => Promotion(piece.square, end, promotionType))
-            else if (isCastleKingside(piece, end))
-              Set(`O-O`) // TODO should not be generating unless valid
-            else if (isCastleQueenside(piece, end))
-              Set(`O-O-O`) // TODO should not be generating unless valid (seeing this generated in chess.scala script)
+            else if (mustBeKingsideCastle(piece, end)) // TODO not verifying if the king has moved or the rook has moved in generation, only move check
+              Set(`O-O`(turn))
+            else if (mustBeQueensideCastle(piece, end))
+              Set(`O-O-O`(turn))
             else
               Set(SimpleMove(piece.square, end))
           }
         }
     }.toSet.flatten.flatten.flatten
+  }
 
 }
