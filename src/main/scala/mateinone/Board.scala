@@ -62,7 +62,7 @@ object Board {
     }
   }
 
-  // Checks if the piece is a Pawn and the move is ofset by two files
+  // Checks if the piece is a Pawn and the move is ofset by two ranks
   private def isTwoSquareAdvance(piece: Piece, end: Square): Boolean =
     piece.pieceType == Pawn && math.abs(Rank.offset(piece.square.rank, end.rank)) == 2
 
