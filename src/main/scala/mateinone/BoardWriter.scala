@@ -2,7 +2,7 @@ package mateinone
 
 object BoardWriter {
 
-  private def writePieceType(pieceType: PieceType): String = pieceType match { // TODO add support for black side
+  private def writePieceType(pieceType: PieceType): String = pieceType match {
     case Pawn => "♙"
     case Rook => "♖"
     case Knight => "♘"

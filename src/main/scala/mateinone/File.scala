@@ -14,7 +14,7 @@ object File {
     case _ => None
   }
   def offset(f: File, o: Int): Option[File] = fromInt(f.n + o)
-  def offset(a: File, b: File): Int = a.n - b.n
+  def offset(a: File, b: File): Int = b.n - a.n
 }
 sealed class File(val n: Int) extends Ordered[File] {
   def compare(that: File): Int = this.n.compare(that.n)

@@ -148,22 +148,27 @@ trait Board { // TODO see if this can be a case class
     case head :: tail => oneMove(head).flatMap(_.move(tail :_*))
   }
 
-  def moves: Set[Move] = {
+  def moves: Set[Move] =
     piecesToOccupiedPaths.collect {
       case (piece, occupiedPaths) if piece.side == turn =>
+        def canCastle(castle: Castle): Boolean = !piece.hasMoved && pieceAt(castle.rookMove.start).fold(false)(!_.hasMoved)
         occupiedPaths.map { occupiedPath =>
-          occupiedPath.validEnds.map { end: Square => // TODO only generate two step pawn move in case where pawn is unmoved
-            if (mustBePromotion(piece))
+          occupiedPath.validEnds.map { end: Square =>
+            if (mustBePromotion(piece)) {
               PromotionType.all.map(promotionType => Promotion(piece.square, end, promotionType))
-            else if (mustBeKingsideCastle(piece, end)) // TODO not verifying if the king has moved or the rook has moved in generation, only move check
-              Set(`O-O`(turn))
-            else if (mustBeQueensideCastle(piece, end))
-              Set(`O-O-O`(turn))
-            else
+            } else if (mustBeKingsideCastle(piece, end)) {
+              val castle = `O-O`(turn)
+              if (canCastle(castle)) Set(castle) else Set()
+            } else if (mustBeQueensideCastle(piece, end)) {
+              val castle = `O-O-O`(turn)
+              if (canCastle(castle)) Set(castle) else Set()
+            } else if (isTwoSquareAdvance(piece, end) && piece.hasMoved) {
+              Set()
+            } else {
               Set(SimpleMove(piece.square, end))
+            }
           }
         }
     }.toSet.flatten.flatten.flatten
-  }
 
 }

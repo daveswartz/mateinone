@@ -6,6 +6,8 @@ import Square._
 import SimpleMove._
 import Castle._
 
+// TODO merge below into one spec and organize by what is being tested not just by classes (http://etorreborre.github.io/specs2/guide/org.specs2.guide.Structure.html)
+
 class OccupiedPathSpec extends Specification {
   "OccupiedPath" should {
     "vacate squares" in new OccupiedPathScope {
@@ -49,6 +51,7 @@ class BoardSpec extends Specification {
   }
 
   "Board" should {
+
     "have the correct initial pieces" in {
       val expectedPieces: Seq[Piece] =
         Seq(
@@ -61,20 +64,21 @@ class BoardSpec extends Specification {
         ).map(piece(Black, hasMoved = false))
       Board().pieces must containTheSameElementsAs(expectedPieces)
     }
-    "have the correct initial moves for white" in {
+    "generate initial moves for white" in {
       val expectedMoves: Seq[SimpleMove] = Seq(
         a2->a3, a2->a4, b1->a3, b1->c3, b2->b3, b2->b4, c2->c3, c2->c4, d2->d3, d2->d4,
         e2->e3, e2->e4, f2->f3, f2->f4, g1->f3, g1->h3, g2->g3, g2->g4, h2->h3, h2->h4
       )
       Board().moves must containTheSameElementsAs(expectedMoves)
     }
-    "have the correct initial moves for black" in {
+    "generate initial moves for black" in {
       val expectedMoves: Seq[SimpleMove] = Seq(
         a7->a6, a7->a5, b8->a6, b8->c6, b7->b6, b7->b5, c7->c6, c7->c5, d7->d6, d7->d5,
         e7->e6, e7->e5, f7->f6, f7->f5, g8->f6, g8->h6, g7->g6, g7->g5, h7->h6, h7->h5
       )
       Board().move(g2->g3) must beSome.which(_.moves must containTheSameElementsAs(expectedMoves))
     }
+
     "allow pawn to g3" in {
       Board().move(g2->g3) must beSome.which(onlyTheseMoved(white = Set(Pawn->g3)))
     }
@@ -84,63 +88,93 @@ class BoardSpec extends Specification {
     "allow bishop to h3" in {
       Board().move(g2->g3, a7->a6, f1->h3) must beSome.which(onlyTheseMoved(white = Set(Pawn->g3, Bishop->h3), black = Set(Pawn->a6)))
     }
-    "allow castle kingside for white" in {
-      Board().move(g1->f3, a7->a6, g2->g3, a6->a5, f1->h3, a5->a4, `O-O`(White)) must beSome.which(onlyTheseMoved(white = Set(Knight->f3, Pawn->g3, Bishop->h3, King->g1, Rook->f1), black = Set(Pawn->a4)))
+    "not allow pawn to g6 after pawn to g4" in {
+      val simple: SimpleMove = g4->g6
+      Board().move(g2->g4, a7->a6) must beSome.which { b =>
+        b.moves must not contain simple
+        b.move(g4->g6) must beNone
+      }
     }
-    "allow castle queenside for white" in {
-      Board().move(b1->c3, a7->a6, d2->d3, a6->a5, c1->g5, a5->a4, d1->d2, a4->a3, `O-O-O`(White)) must beSome.which(onlyTheseMoved(white = Set(Knight->c3, Pawn->d3, Bishop->g5, Queen->d2, Rook->d1, King->c1), black = Set(Pawn->a3)))
-    }
+
     "allow promotion of a pawn on the 8th rank" in {
       Board().move(g2->g4, g4->g5, g5->g6, g6->g7, g7->g8 promote Queen) must beSome.which(onlyTheseMoved(white = Set(Queen->g8)))
     }.pendingUntilFixed("Failing as the moves are blocked by black pieces (cannot fix w/o promotion)")
     "require promotion of a pawn on the 8th rank" in {
       Board().move(g2->g4, g4->g5, g5->g6, g6->g7) must beSome.which(_.move(g7->g8) must beNone)
     }.pendingUntilFixed("Failing as the moves are blocked by black pieces, not because or the requirement (cannot fix w/o promotion)")
-    "not allow pawn to g6 after pawn to g4" in {
-      Board().move(g2->g4, a7->a6, g4->g6) must beNone
-    }
-    "not allow castle kingside for white after moving the king" in {
-      Board().move(g1->f3, a7->a6, g2->g3, a6->a5, f1->h3, a5->a4, e1->f1, a4->a3) must beSome.which(_.move(`O-O`(White)) must beNone)
-    }
-    "not allow castle kingside for white after moving the rook" in {
-      Board().move(g1->f3, a7->a6, g2->g3, a6->a5, f1->h3, a5->a4, h1->g1, a4->a3, g1->h1, b7->b6) must beSome.which(_.move(`O-O`(White)) must beNone)
-    }
-    "not allow castle queenside for white after moving the king" in {
-      Board().move(b1->c3, a7->a6, d2->d3, a6->a5, c1->g5, a5->a4, d1->d2, a4->a3, e1->d1, b7->b6) must beSome.which(_.move(`O-O-O`(White)) must beNone)
-    }
-    "not allow castle queenside for white after moving the rook" in {
-      Board().move(b1->c3, a7->a6, d2->d3, a6->a5, c1->g5, a5->a4, d1->d2, a4->a3, a1->b1, b7->b6, b1->a1, b6->b5) must beSome.which(_.move(`O-O-O`(White)) must beNone)
-    }
-    "generate castling kingside" in {
+
+    // Castling
+    "allow castling kingside for white" in {
       val castle = `O-O`(White)
       val simple: SimpleMove = e1->g1
       Board().move(g1->f3, a7->a6, g2->g3, a6->a5, f1->h3, a5->a4) must beSome.which { b =>
-        val moves = b.moves
-        moves must contain(castle)
-        moves must not contain simple
+        b.moves must contain(castle)
+        b.moves must not contain simple
+        b.move(castle) must beSome.which(onlyTheseMoved(white = Set(Knight->f3, Pawn->g3, Bishop->h3, King->g1, Rook->f1), black = Set(Pawn->a4)))
       }
     }
-    "generate castling queenside" in {
+    "not allow castling kingside for white after moving the king" in {
+      val castle = `O-O`(White)
+      Board().move(g1->f3, a7->a6, g2->g3, a6->a5, f1->h3, a5->a4, e1->f1, a4->a3, f1->e1, b7->b6) must beSome.which { b =>
+        b.moves must not contain castle
+        b.move(castle) must beNone
+      }
+    }
+    "not allow castling kingside for white after moving the rook" in {
+      val castle = `O-O`(White)
+      Board().move(g1->f3, a7->a6, g2->g3, a6->a5, f1->h3, a5->a4, h1->g1, a4->a3, g1->h1, b7->b6) must beSome.which { b =>
+        b.moves must not contain castle
+        b.move(castle) must beNone
+      }
+    }
+    "not allow a two file move kingside for the white king" in {
+      val simple: SimpleMove = e1->g1
+      Board().move(g1->f3, a7->a6, g2->g3, a6->a5, f1->h3, a5->a4) must beSome.which { b =>
+        b.moves must not contain simple
+        b.move(e1->g1) must beNone
+      }
+    }
+    "allow castling queenside for white" in {
       val castle = `O-O-O`(White)
       val simple: SimpleMove = e1->c1
-      Board().move(b1->a3, a7->a6, d2->d3, a6->a5, c1->g5, a5->a4, d1->d2, b7->b6) must beSome.which { b =>
-        val moves = b.moves
-        moves must contain(castle)
-        moves must not contain simple
+      Board().move(b1->c3, a7->a6, d2->d3, a6->a5, c1->g5, a5->a4, d1->d2, a4->a3) must beSome.which { b =>
+        b.moves must contain(castle)
+        b.moves must not contain simple
+        b.move(castle) must beSome.which(onlyTheseMoved(white = Set(Knight->c3, Pawn->d3, Bishop->g5, Queen->d2, Rook->d1, King->c1), black = Set(Pawn->a3)))
       }
     }
+    "not allow castle queenside for white after moving the king" in {
+      val castle = `O-O-O`(White)
+      Board().move(b1->c3, a7->a6, d2->d3, a6->a5, c1->g5, a5->a4, d1->d2, a4->a3, e1->d1, b7->b6) must beSome.which { b =>
+        b.moves must not contain castle
+        b.move(castle) must beNone
+      }
+    }
+    "not allow castle queenside for white after moving the rook" in {
+      val castle = `O-O-O`(White)
+      Board().move(b1->c3, a7->a6, d2->d3, a6->a5, c1->g5, a5->a4, d1->d2, a4->a3, a1->b1, b7->b6, b1->a1, b6->b5) must beSome.which { b =>
+        b.moves must not contain castle
+        b.move(castle) must beNone
+      }
+    }
+    "not allow a two file move queenside for the white king" in {
+      val simple: SimpleMove = e1->c1
+      Board().move(b1->c3, a7->a6, d2->d3, a6->a5, c1->g5, a5->a4, d1->d2, a4->a3) must beSome.which { b =>
+        b.moves must not contain simple
+        b.move(e1->c1) must beNone
+      }
+    }
+
     "be immutable" in {
       val after_g3 = Board().move(g2->g3)
       after_g3.get.move(g3->g4)
       after_g3 must beSome.which(onlyTheseMoved(white = Set(Pawn->g3)))
     }
-    // TODO test the if we try to specify a simple move of two steps for a king same as a castle, will fail
-    // TODO review that pawn two step test, castling tests are good, thought some would fail with changes and still passed
-    // TODO add test that kingside/queenside castling is generated and not generated appropriately
-    // TODO add tests to cover what is causing the chess.scala script to fail
+
     // TODO Test castle for black side
     // TODO want to specify castle as just O-O and O-O-O and let board figure out side from turn order
-    // TODO ensure a two step pawn advance is not generated for a moved pawn
+
+    // TODO add tests to cover what is causing the chess.scala script to fail
   }
 
 }
