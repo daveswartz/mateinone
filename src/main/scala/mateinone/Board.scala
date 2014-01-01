@@ -142,10 +142,13 @@ trait Board {
       }
     }
 
-  def move(moves: Move*): Option[Board] = moves.toList match {
-    case Nil => Some(this)
-    case last :: Nil => oneMove(last)
-    case head :: tail => oneMove(head).flatMap(_.move(tail :_*))
+  def move(moves: Either[Move, Side => Move]*): Option[Board] = {
+    def toMove(m: Either[Move, Side => Move]): Move = m match { case Left(l) => l case Right(r) => r(turn)}
+    moves.toList match {
+      case Nil => Some(this)
+      case last :: Nil => oneMove(toMove(last))
+      case head :: tail => oneMove(toMove(head)).flatMap(_.move(tail :_*))
+    }
   }
 
   def moves: Set[Move] =

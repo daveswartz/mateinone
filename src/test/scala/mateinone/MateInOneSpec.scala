@@ -105,26 +105,23 @@ class BoardSpec extends Specification {
 
     // Castling
     "allow castling kingside for white" in {
-      val castle = `O-O`(White)
       val simple: SimpleMove = e1->g1
       Board().move(g1->f3, a7->a6, g2->g3, a6->a5, f1->h3, a5->a4) must beSome.which { b =>
-        b.moves must contain(castle)
+        b.moves must contain(`O-O`(White))
         b.moves must not contain simple
-        b.move(castle) must beSome.which(onlyTheseMoved(white = Set(Knight->f3, Pawn->g3, Bishop->h3, King->g1, Rook->f1), black = Set(Pawn->a4)))
+        b.move(`O-O`) must beSome.which(onlyTheseMoved(white = Set(Knight->f3, Pawn->g3, Bishop->h3, King->g1, Rook->f1), black = Set(Pawn->a4)))
       }
     }
     "not allow castling kingside for white after moving the king" in {
-      val castle = `O-O`(White)
       Board().move(g1->f3, a7->a6, g2->g3, a6->a5, f1->h3, a5->a4, e1->f1, a4->a3, f1->e1, b7->b6) must beSome.which { b =>
-        b.moves must not contain castle
-        b.move(castle) must beNone
+        b.moves must not contain `O-O`(White)
+        b.move(`O-O`) must beNone
       }
     }
     "not allow castling kingside for white after moving the rook" in {
-      val castle = `O-O`(White)
       Board().move(g1->f3, a7->a6, g2->g3, a6->a5, f1->h3, a5->a4, h1->g1, a4->a3, g1->h1, b7->b6) must beSome.which { b =>
-        b.moves must not contain castle
-        b.move(castle) must beNone
+        b.moves must not contain `O-O`(White)
+        b.move(`O-O`) must beNone
       }
     }
     "not allow a two file move kingside for the white king" in {
@@ -135,26 +132,23 @@ class BoardSpec extends Specification {
       }
     }
     "allow castling queenside for white" in {
-      val castle = `O-O-O`(White)
       val simple: SimpleMove = e1->c1
       Board().move(b1->c3, a7->a6, d2->d3, a6->a5, c1->g5, a5->a4, d1->d2, a4->a3) must beSome.which { b =>
-        b.moves must contain(castle)
+        b.moves must contain(`O-O-O`(White))
         b.moves must not contain simple
-        b.move(castle) must beSome.which(onlyTheseMoved(white = Set(Knight->c3, Pawn->d3, Bishop->g5, Queen->d2, Rook->d1, King->c1), black = Set(Pawn->a3)))
+        b.move(`O-O-O`) must beSome.which(onlyTheseMoved(white = Set(Knight->c3, Pawn->d3, Bishop->g5, Queen->d2, Rook->d1, King->c1), black = Set(Pawn->a3)))
       }
     }
     "not allow castle queenside for white after moving the king" in {
-      val castle = `O-O-O`(White)
       Board().move(b1->c3, a7->a6, d2->d3, a6->a5, c1->g5, a5->a4, d1->d2, a4->a3, e1->d1, b7->b6) must beSome.which { b =>
-        b.moves must not contain castle
-        b.move(castle) must beNone
+        b.moves must not contain `O-O-O`(White)
+        b.move(`O-O-O`) must beNone
       }
     }
     "not allow castle queenside for white after moving the rook" in {
-      val castle = `O-O-O`(White)
       Board().move(b1->c3, a7->a6, d2->d3, a6->a5, c1->g5, a5->a4, d1->d2, a4->a3, a1->b1, b7->b6, b1->a1, b6->b5) must beSome.which { b =>
-        b.moves must not contain castle
-        b.move(castle) must beNone
+        b.moves must not contain `O-O-O`(White)
+        b.move(`O-O-O`) must beNone
       }
     }
     "not allow a two file move queenside for the white king" in {
@@ -171,8 +165,7 @@ class BoardSpec extends Specification {
       after_g3 must beSome.which(onlyTheseMoved(white = Set(Pawn->g3)))
     }
 
-    // TODO Test castle for black side
-    // TODO want to specify castle as just O-O and O-O-O and let board figure out side from turn order
+    // TODO Test castling for black side
   }
 
 }
