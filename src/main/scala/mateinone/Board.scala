@@ -91,7 +91,7 @@ object Board {
 }
 import Board._
 
-trait Board { // TODO see if this can be a case class
+trait Board {
 
   protected val piecesToOccupiedPaths: Map[Piece, Set[OccupiedPath]]
 

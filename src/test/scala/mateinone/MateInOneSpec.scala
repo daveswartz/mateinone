@@ -173,8 +173,6 @@ class BoardSpec extends Specification {
 
     // TODO Test castle for black side
     // TODO want to specify castle as just O-O and O-O-O and let board figure out side from turn order
-
-    // TODO add tests to cover what is causing the chess.scala script to fail
   }
 
 }
