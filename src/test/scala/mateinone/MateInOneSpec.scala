@@ -28,7 +28,6 @@ class OccupiedPathSpec extends Specification {
 class BoardSpec extends Specification {
 
   // TODO pull out common moves
-  // TODO nest to reduce repeated wording e.g., White { Allow Move { Pawn to g3, knight to f3 }, Not Allow Move {} }, Black {}
   // TODO test castling for black side
 
   "Board" should {
@@ -53,36 +52,57 @@ class BoardSpec extends Specification {
       }
     }
 
-    "allow pawn to g3" in moveAndCheckMoved(g2->g3)(white = Set(Pawn->g3))
-    "allow knight to f3" in moveAndCheckMoved(g1->f3)(white = Set(Knight->f3))
-    "allow bishop to h3" in moveAndCheckMoved(g2->g3, a7->a6, f1->h3)(white = Set(Pawn->g3, Bishop->h3), black = Set(Pawn->a6))
-    "allow castling kingside for white" in moveAndCheckMoved(g1->f3, a7->a6, g2->g3, a6->a5, f1->h3, a5->a4, `O-O`)(white = Set(Knight->f3, Pawn->g3, Bishop->h3, King->g1, Rook->f1), black = Set(Pawn->a4))
-    "allow castling queenside for white" in moveAndCheckMoved(b1->c3, a7->a6, d2->d3, a6->a5, c1->g5, a5->a4, d1->d2, a4->a3, `O-O-O`)(white = Set(Knight->c3, Pawn->d3, Bishop->g5, Queen->d2, Rook->d1, King->c1), black = Set(Pawn->a3))
-    "allow promotion of a pawn on the 8th rank" in moveAndCheckMoved(g2->g4, g4->g5, g5->g6, g6->g7, g7->g8 promote Queen)(white = Set(Queen->g8)).pendingUntilFixed("Failing as the moves are blocked by black pieces (cannot fix w/o promotion)")
+    "Allow white to move".txt
 
-    "not allow a two file kingside move for white that is not castling" in moveAndEnsureInvalidLastMove(g1->f3, a7->a6, g2->g3, a6->a5, f1->h3, a5->a4, e1->g1)
-    "not allow a two file queenside move for white that is not castling" in moveAndEnsureInvalidLastMove(b1->c3, a7->a6, d2->d3, a6->a5, c1->g5, a5->a4, d1->d2, a4->a3, e1->c1)
-    "not allow pawn to g6 after pawn to g4" in moveAndEnsureInvalidLastMove(g2->g4, a7->a6, g4->g6)
-    "require promotion of a pawn on the 8th rank" in moveAndEnsureInvalidLastMove(g2->g4, g4->g5, g5->g6, g6->g7, g7->g8).pendingUntilFixed("Failing as the moves are blocked by black pieces, not because or the requirement (cannot fix w/o promotion)")
-    "not allow castling kingside for white after moving the king" in moveAndEnsureInvalidLastMove(g1->f3, a7->a6, g2->g3, a6->a5, f1->h3, a5->a4, e1->f1, a4->a3, f1->e1, b7->b6, `O-O`)
-    "not allow castling kingside for white after moving the rook" in moveAndEnsureInvalidLastMove(g1->f3, a7->a6, g2->g3, a6->a5, f1->h3, a5->a4, h1->g1, a4->a3, g1->h1, b7->b6, `O-O`)
-    "not allow castling queenside for white after moving the king" in moveAndEnsureInvalidLastMove(b1->c3, a7->a6, d2->d3, a6->a5, c1->g5, a5->a4, d1->d2, a4->a3, e1->d1, b7->b6, `O-O-O`)
-    "not allow castling queenside for white after moving the rook" in moveAndEnsureInvalidLastMove(b1->c3, a7->a6, d2->d3, a6->a5, c1->g5, a5->a4, d1->d2, a4->a3, a1->b1, b7->b6, b1->a1, b6->b5, `O-O-O`)
+    "... pawn to g3" in moveAndCheckMoved(g2->g3)(white = Set(Pawn->g3))
+    "... knight to f3" in moveAndCheckMoved(g1->f3)(white = Set(Knight->f3))
+    "... bishop to h3" in moveAndCheckMoved(g2->g3, a7->a6, f1->h3)(white = Set(Pawn->g3, Bishop->h3), black = Set(Pawn->a6))
+    "... castling kingside" in moveAndCheckMoved(g1->f3, a7->a6, g2->g3, a6->a5, f1->h3, a5->a4, `O-O`)(white = Set(Knight->f3, Pawn->g3, Bishop->h3, King->g1, Rook->f1), black = Set(Pawn->a4))
+    "... castling queenside" in moveAndCheckMoved(b1->c3, a7->a6, d2->d3, a6->a5, c1->g5, a5->a4, d1->d2, a4->a3, `O-O-O`)(white = Set(Knight->c3, Pawn->d3, Bishop->g5, Queen->d2, Rook->d1, King->c1), black = Set(Pawn->a3))
+    "... pawn promotion" in moveAndCheckMoved(g2->g4, g4->g5, g5->g6, g6->g7, g7->g8 promote Queen)(white = Set(Queen->g8)).pendingUntilFixed("Failing as the moves are blocked by black pieces (cannot fix w/o promotion)")
 
-    "generate initial moves for white" in moveAndCheckMoves()(a2->a3, a2->a4, b1->a3, b1->c3, b2->b3, b2->b4, c2->c3, c2->c4, d2->d3, d2->d4, e2->e3, e2->e4, f2->f3, f2->f4, g1->f3, g1->h3, g2->g3, g2->g4, h2->h3, h2->h4)
-    "generate initial moves for black" in moveAndCheckMoves(g2->g3)(a7->a6, a7->a5, b8->a6, b8->c6, b7->b6, b7->b5, c7->c6, c7->c5, d7->d6, d7->d5, e7->e6, e7->e5, f7->f6, f7->f5, g8->f6, g8->h6, g7->g6, g7->g5, h7->h6, h7->h5)
-    "generate castling kingside for white" in moveAndCheckSomeMoves(g1->f3, a7->a6, g2->g3, a6->a5, f1->h3, a5->a4)(`O-O`(White))
-    "generate castling queenside for white" in moveAndCheckSomeMoves(b1->c3, a7->a6, d2->d3, a6->a5, c1->g5, a5->a4, d1->d2, a4->a3)(`O-O-O`(White))
+    "Not allow white to move".txt
+
+    "... king to g1 without castling" in moveAndEnsureInvalidLastMove(g1->f3, a7->a6, g2->g3, a6->a5, f1->h3, a5->a4, e1->g1)
+    "... king to c1 without castling" in moveAndEnsureInvalidLastMove(b1->c3, a7->a6, d2->d3, a6->a5, c1->g5, a5->a4, d1->d2, a4->a3, e1->c1)
+    "... pawn to g6 after pawn to g4" in moveAndEnsureInvalidLastMove(g2->g4, a7->a6, g4->g6)
+    "... pawn to g8 without promotion" in moveAndEnsureInvalidLastMove(g2->g4, g4->g5, g5->g6, g6->g7, g7->g8).pendingUntilFixed("Failing as the moves are blocked by black pieces, not because or the requirement (cannot fix w/o promotion)")
+
+    "Not allow white to castle kingside after".txt
+
+    "... moving the king" in moveAndEnsureInvalidLastMove(g1->f3, a7->a6, g2->g3, a6->a5, f1->h3, a5->a4, e1->f1, a4->a3, f1->e1, b7->b6, `O-O`)
+    "... moving the rook" in moveAndEnsureInvalidLastMove(g1->f3, a7->a6, g2->g3, a6->a5, f1->h3, a5->a4, h1->g1, a4->a3, g1->h1, b7->b6, `O-O`)
+
+    "Not allow white to castle queenside after".txt
+
+    "... moving the king" in moveAndEnsureInvalidLastMove(b1->c3, a7->a6, d2->d3, a6->a5, c1->g5, a5->a4, d1->d2, a4->a3, e1->d1, b7->b6, `O-O-O`)
+    "... moving the rook" in moveAndEnsureInvalidLastMove(b1->c3, a7->a6, d2->d3, a6->a5, c1->g5, a5->a4, d1->d2, a4->a3, a1->b1, b7->b6, b1->a1, b6->b5, `O-O-O`)
+
+    "Generate initial moves for".txt
+
+    "... white" in moveAndCheckMoves()(a2->a3, a2->a4, b1->a3, b1->c3, b2->b3, b2->b4, c2->c3, c2->c4, d2->d3, d2->d4, e2->e3, e2->e4, f2->f3, f2->f4, g1->f3, g1->h3, g2->g3, g2->g4, h2->h3, h2->h4)
+    "... black" in moveAndCheckMoves(g2->g3)(a7->a6, a7->a5, b8->a6, b8->c6, b7->b6, b7->b5, c7->c6, c7->c5, d7->d6, d7->d5, e7->e6, e7->e5, f7->f6, f7->f5, g8->f6, g8->h6, g7->g6, g7->g5, h7->h6, h7->h5)
+
+    "Generate castling".txt
+
+    "... white kingside" in moveAndCheckSomeMoves(g1->f3, a7->a6, g2->g3, a6->a5, f1->h3, a5->a4)(`O-O`(White))
+    "... white queenside" in moveAndCheckSomeMoves(b1->c3, a7->a6, d2->d3, a6->a5, c1->g5, a5->a4, d1->d2, a4->a3)(`O-O-O`(White))
+
     // TODO generate promotion
 
-    "not generate a two file kingside move for white that is not castling" in moveAndCheckNotSomeMoves(g1->f3, a7->a6, g2->g3, a6->a5, f1->h3, a5->a4)(e1->g1)
-    "not generate a two file queenside move for white that is not castling" in moveAndCheckNotSomeMoves(b1->c3, a7->a6, d2->d3, a6->a5, c1->g5, a5->a4, d1->d2, a4->a3)(e1->c1)
-    "not generate pawn to g6 after pawn to g4" in moveAndCheckNotSomeMoves(g2->g4, a7->a6)(g4->g6)
+    "Not generate".txt
+
+    "... king to g1 without castling" in moveAndCheckNotSomeMoves(g1->f3, a7->a6, g2->g3, a6->a5, f1->h3, a5->a4)(e1->g1)
+    "... king to c1 without castling" in moveAndCheckNotSomeMoves(b1->c3, a7->a6, d2->d3, a6->a5, c1->g5, a5->a4, d1->d2, a4->a3)(e1->c1)
+    "... pawn to g6 after pawn to g4" in moveAndCheckNotSomeMoves(g2->g4, a7->a6)(g4->g6)
     // TODO not generate pawn move to the 8th rank that is not promotion
-    "not generate castling kingside for white after moving the king" in moveAndCheckNotSomeMoves(g1->f3, a7->a6, g2->g3, a6->a5, f1->h3, a5->a4, e1->f1, a4->a3, f1->e1, b7->b6)(`O-O`(White))
-    "not generate castling kingside for white after moving the rook" in moveAndCheckNotSomeMoves(g1->f3, a7->a6, g2->g3, a6->a5, f1->h3, a5->a4, h1->g1, a4->a3, g1->h1, b7->b6)(`O-O`(White))
-    "not generate castling queenside for white after moving the king" in moveAndCheckNotSomeMoves(b1->c3, a7->a6, d2->d3, a6->a5, c1->g5, a5->a4, d1->d2, a4->a3, e1->d1, b7->b6)(`O-O-O`(White))
-    "not generate castling queenside for white after moving the rook" in moveAndCheckNotSomeMoves(b1->c3, a7->a6, d2->d3, a6->a5, c1->g5, a5->a4, d1->d2, a4->a3, a1->b1, b7->b6, b1->a1, b6->b5)(`O-O-O`(White))
+
+    "Not generate castling for white".txt
+
+    "... kingside after moving the king" in moveAndCheckNotSomeMoves(g1->f3, a7->a6, g2->g3, a6->a5, f1->h3, a5->a4, e1->f1, a4->a3, f1->e1, b7->b6)(`O-O`(White))
+    "... kingside after moving the rook" in moveAndCheckNotSomeMoves(g1->f3, a7->a6, g2->g3, a6->a5, f1->h3, a5->a4, h1->g1, a4->a3, g1->h1, b7->b6)(`O-O`(White))
+    "... queenside after moving the king" in moveAndCheckNotSomeMoves(b1->c3, a7->a6, d2->d3, a6->a5, c1->g5, a5->a4, d1->d2, a4->a3, e1->d1, b7->b6)(`O-O-O`(White))
+    "... queenside after moving the rook" in moveAndCheckNotSomeMoves(b1->c3, a7->a6, d2->d3, a6->a5, c1->g5, a5->a4, d1->d2, a4->a3, a1->b1, b7->b6, b1->a1, b6->b5)(`O-O-O`(White))
 
   }
 
