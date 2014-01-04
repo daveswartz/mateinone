@@ -63,10 +63,11 @@ object Board {
     }
   }
 
-  // Checks if the piece is a Pawn and the move is ofset by two ranks
+  // Checks if the piece is a Pawn and the move is offset by two ranks
   private def isTwoSquareAdvance(piece: Piece, end: Square): Boolean =
     piece.pieceType == Pawn && math.abs(Rank.offset(piece.square.rank, end.rank)) == 2
 
+  // Creates a chess board in the initial state
   def apply(): Board = {
 
     def piece(side: Side, pieceType: PieceType)(square: Square) = Piece(side, pieceType, square, hasMoved = false)
@@ -104,6 +105,9 @@ trait Board {
 
   private def endsFor(piece: Piece): Set[Square] = piecesToOccupiedPaths(piece).flatMap(_.validEnds)
 
+  // Returns `Some[Board]` when the moves are valid; otherwise, `None`. The repeated parameter is either a `Move`
+  // instance or a function that takes a `Side` and returns a `Move`. The reason for using an `Either` is to allow
+  // castling to be specified as `O-O` or `O-O-O` without requiring the side to be specified, as in `O-O`(White).
   def move(moves: Either[Move, Side => Move]*): Option[Board] = {
 
     def oneMove(move: Move): Option[Board] =
@@ -150,6 +154,7 @@ trait Board {
 
   }
 
+  // Returns the set of valid moves that can be made.
   def moves: Set[Move] =
     piecesToOccupiedPaths.collect {
       case (piece, occupiedPaths) if piece.side == turn =>

@@ -15,7 +15,8 @@ Getting Started ♕
 Examples ♖
 ----------
 
-* [script/random-game.scala](script/random-game.scala) plays boths sides in a random game that continues until one side wins.
+* [script/random-game.scala](script/random-game.scala) plays both sides in a random game that continues until one side wins.
+* [script/simple-examples.scala](script/simple-examples.scala) demonstrates how to create a board, move and generate moves.
 
 Next steps ♗
 ------------

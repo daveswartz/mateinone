@@ -60,7 +60,7 @@ class BoardSpec extends Specification {
     "O-O-O for both sides" in movesAllowed(b1->c3, b8->c6, d2->d3, d7->d6, c1->g5, c8->g4, d1->d2, d8->d7, `O-O-O`, `O-O-O`)(white = Set(Knight->c3, Pawn->d3, Bishop->g5, Queen->d2, Rook->d1, King->c1), black = Set(Knight->c6, Pawn->d6, Bishop->g4, Queen->d7, Rook->d8, King->c8))
     "pawn promotion" in movesAllowed(g2->g4, g4->g5, g5->g6, g6->g7, g7->g8 promote Queen)(white = Set(Queen->g8)).pendingUntilFixed("Failing as the moves are blocked by black pieces (cannot fix w/o promotion)")
 
-    "1. d4 e5 2. dxe5 d6 3. Bg5 dxe5 4. Bxe8" in movesAllowed(d2->d4, e7->e5, d4->e5, d7->d6, c1->g5, d6->e5, g5->d8)(white = Set(Bishop->e8), black = Set(Pawn->e5), nCaptured = 3).pendingUntilFixed("Requires capture")
+    "1. d4 e5 2. dxe5 d6 3. Bg5 dxe5 4. Bxd8" in movesAllowed(d2->d4, e7->e5, d4->e5, d7->d6, c1->g5, d6->e5, g5->d8)(white = Set(Bishop->d8), black = Set(Pawn->e5), nCaptured = 3).pendingUntilFixed("Requires capture")
 
     "white king to g1 without castling" in lastMoveNotAllowed(g1->f3, g8->f6, g2->g3, g7->g6, f1->h3, f8->h6, e1->g1)
     "black king to g8 without castling" in lastMoveNotAllowed(g1->f3, g8->f6, g2->g3, g7->g6, f1->h3, f8->h6, `O-O`, e8->g8)
