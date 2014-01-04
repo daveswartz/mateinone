@@ -17,7 +17,7 @@ Examples ♖
 
 The *script* directory has examples that use the library.
 
-* *chess.scala* script randomly selects a valid move, makes the move and prints the move and the board in an infinite loop until one terminates it.
+* *random-game.scala* script makes random moves until one side wins.
 
 Next steps ♗
 ------------
