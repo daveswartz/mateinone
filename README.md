@@ -15,9 +15,7 @@ Getting Started ♕
 Examples ♖
 ----------
 
-The *script* directory has examples that use the library.
-
-* *random-game.scala* script makes random moves until one side wins.
+* [script/random-game.scala](script/random-game.scala) plays boths sides in a random moves that continues until one side wins.
 
 Next steps ♗
 ------------
