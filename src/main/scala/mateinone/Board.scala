@@ -2,6 +2,7 @@ package mateinone
 
 import Castle._
 import OccupiedPath._
+import Move._
 
 object Board {
 
@@ -95,7 +96,7 @@ trait Board {
 
   protected val piecesToOccupiedPaths: Map[Piece, Set[OccupiedPath]]
 
-  protected val turn: Side
+  val turn: Side
 
   def pieces: Set[Piece] = piecesToOccupiedPaths.keySet
 
@@ -143,11 +144,11 @@ trait Board {
     }
 
   def move(moves: Either[Move, Side => Move]*): Option[Board] = {
-    def toMove(m: Either[Move, Side => Move]): Move = m match { case Left(l) => l case Right(r) => r(turn)}
     moves.toList match {
-      case Nil => Some(this)
-      case last :: Nil => oneMove(toMove(last))
-      case head :: tail => oneMove(toMove(head)).flatMap(_.move(tail :_*))
+      case Nil =>
+        Some(this)
+      case head :: tail =>
+        oneMove(toMove(head, turn)).flatMap(_.move(tail :_*))
     }
   }
 
