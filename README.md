@@ -1,9 +1,7 @@
 Mate in one ♔
 =============
 
-Scala chess move generation and validation.
-
-The project is in a primordial state. Pieces are placed on a board and moves can be generated and validated according to the rules of chess.
+Scala chess move generation and validation library.
 
 Getting Started ♕
 -----------------
@@ -13,11 +11,15 @@ Getting Started ♕
 * Setup IntelliJ IDEA 12;
 * Run `sbt update gen-idea` from the project root;
 * Open the project in IntelliJ IDEA 12;
-* Run the *chess.scala* script in the *script* directory; 
 
-The *chess.scala* script randomly selects a move, prints the move and makes the move in an infinite loop until you terminate it.
+Examples ♖
+----------
 
-Next steps ♖
+The *script* directory has examples that use the library.
+
+* *chess.scala* script randomly selects a valid move, makes the move and prints the move and the board in an infinite loop until one terminates it.
+
+Next steps ♗
 ------------
 
 * Capture
@@ -26,7 +28,7 @@ Next steps ♖
 * Computer Player
 * Documentation
 
-Design Principles ♗
+Design Principles ♘
 -------------------
 
-The code aims to be approachable rather than perform well. That trade-off may shift with time.
+The code aims to be approachable and is not expected to perform particularly well. That trade-off may shift with time.

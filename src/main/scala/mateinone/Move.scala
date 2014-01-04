@@ -3,6 +3,7 @@ package mateinone
 import Square._
 
 object Move {
+  implicit def moveToEither(m: Move): Either[Move, Side => Move] = Left(m)
   def toMove(e: Either[Move, Side => Move], s: Side): Move = e match { case Left(l) => l case Right(r) => r(s)}
 }
 sealed trait Move { val start: Square; val end: Square }

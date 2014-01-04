@@ -72,6 +72,8 @@ class BoardSpec extends Specification {
     "O-O for black after moving the king" in lastMoveNotAllowed(g1->f3, g8->f6, g2->g3, g7->g6, f1->h3, f8->h6, e1->f1, e8->f8, f1->e1, f8->e8, e1->f1, `O-O`)
     "O-O for white after moving the rook" in lastMoveNotAllowed(g1->f3, g8->f6, g2->g3, g7->g6, f1->h3, f8->h6, h1->g1, h8->g8, g1->h1, g8->h8, `O-O`)
     "O-O for black after moving the rook" in lastMoveNotAllowed(g1->f3, g8->f6, g2->g3, g7->g6, f1->h3, f8->h6, h1->g1, h8->g8, g1->h1, g8->h8, h1->g1, `O-O`)
+    "O-O-O for white before moving the queen" in lastMoveNotAllowed(b1->c3, b8->c6, d2->d3, d7->d6, c1->g5, c8->g4, `O-O-O`).pendingUntilFixed("Bug that will be fixed")
+    "O-O-O for black before moving the queen" in lastMoveNotAllowed(b1->c3, b8->c6, d2->d3, d7->d6, c1->g5, c8->g4, d1->d2, `O-O-O`).pendingUntilFixed("Bug that will be fixed")
     "O-O-O for white after moving the king" in lastMoveNotAllowed(b1->c3, b8->c6, d2->d3, d7->d6, c1->g5, c8->g4, d1->d2, d8->d7, e1->d1, e8->d8, `O-O-O`)
     "O-O-O for black after moving the king" in lastMoveNotAllowed(b1->c3, b8->c6, d2->d3, d7->d6, c1->g5, c8->g4, d1->d2, d8->d7, e1->d1, e8->d8, d1->e1, `O-O-O`)
     "O-O-O for white after moving the rook" in lastMoveNotAllowed(b1->c3, b8->c6, d2->d3, d7->d6, c1->g5, c8->g4, d1->d2, d8->d7, a1->b1, a8->b8, b1->a1, b8->a8, `O-O-O`)
