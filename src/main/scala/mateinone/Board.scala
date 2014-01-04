@@ -94,68 +94,70 @@ import Board._
 
 trait Board {
 
-  protected val piecesToOccupiedPaths: Map[Piece, Set[OccupiedPath]]
-
   val turn: Side
+
+  protected val piecesToOccupiedPaths: Map[Piece, Set[OccupiedPath]]
 
   def pieces: Set[Piece] = piecesToOccupiedPaths.keySet
 
   def pieceAt(square: Square): Option[Piece] = pieces.find(square == _.square)
 
-  private def oneMove(move: Move): Option[Board] =
-    pieceAt(move.start).filter(_.side == turn).flatMap { piece =>
-      piecesToOccupiedPaths.get(piece).flatMap { occupiedPaths =>
-
-        def isValidEnd(end: Square): Boolean = occupiedPaths.find(_.contains(end)).fold(false)(_.isValidEnd(end))
-
-        def updateOccupiedOf(stationary: Set[Piece], moves: Set[Move]) =
-          stationary.map(p => (p, piecesToOccupiedPaths(p).map(_.vacate(moves.map(_.start)).occupy(moves.map(_.end))))).toMap
-
-        def updatePathsOf(movedBefore: Set[Piece], movedAfter: Set[Piece]) =
-          movedAfter.map(p => (p, occupiedPathsFor(p, pieces -- movedBefore))).toMap
-
-        def doMove(movesMade: Set[Move], movedBefore: Set[Piece], movedAfter: Set[Piece], stationary: Set[Piece]) = {
-          val nextTurn = if (turn == White) Black else White
-          Some(new Board {
-            val piecesToOccupiedPaths = updateOccupiedOf(stationary, movesMade) ++ updatePathsOf(movedBefore, movedAfter)
-            val turn = nextTurn
-          })
-        }
-
-        move match {
-          case SimpleMove(_, end) =>
-            if (isValidEnd(end) && !mustBeCastle(piece, end) && (!isTwoSquareAdvance(piece, end) || !piece.hasMoved) && !mustBePromotion(piece)) {
-              doMove(Set(move), Set(piece), Set(piece.atEnd(move)), pieces - piece)
-            }
-            else None
-          case Castle(start, end, rookMove) =>
-            pieceAt(rookMove.start).flatMap { rookPiece =>
-              if (!piece.hasMoved && !rookPiece.hasMoved && isValidEnd(end) && isValidEnd(rookMove.end))
-                doMove(Set(move, rookMove), Set(piece), Set(piece.atEnd(move), rookPiece.atEnd(rookMove)), pieces - piece - rookPiece)
-              else None
-            }
-          case Promotion(_, end, promotionType) =>
-            if (isValidEnd(end) && mustBePromotion(piece))
-              doMove(Set(move), Set(piece), Set(piece.atEnd(move).promotedTo(promotionType)), pieces - piece)
-            else None
-        }
-
-      }
-    }
-
   def move(moves: Either[Move, Side => Move]*): Option[Board] = {
+
+    def oneMove(move: Move): Option[Board] =
+      pieceAt(move.start).filter(_.side == turn).flatMap { piece =>
+        piecesToOccupiedPaths.get(piece).flatMap { occupiedPaths =>
+
+          def isValidEnd(end: Square): Boolean = occupiedPaths.find(_.contains(end)).fold(false)(_.isValidEnd(end))
+
+          def updateOccupiedOf(stationary: Set[Piece], moves: Set[Move]) =
+            stationary.map(p => (p, piecesToOccupiedPaths(p).map(_.vacate(moves.map(_.start)).occupy(moves.map(_.end))))).toMap
+
+          def updatePathsOf(movedBefore: Set[Piece], movedAfter: Set[Piece]) =
+            movedAfter.map(p => (p, occupiedPathsFor(p, pieces -- movedBefore))).toMap
+
+          def doMove(movesMade: Set[Move], movedBefore: Set[Piece], movedAfter: Set[Piece], stationary: Set[Piece]) = {
+            val nextTurn = if (turn == White) Black else White
+            Some(new Board {
+              val piecesToOccupiedPaths = updateOccupiedOf(stationary, movesMade) ++ updatePathsOf(movedBefore, movedAfter)
+              val turn = nextTurn
+            })
+          }
+
+          move match {
+            case SimpleMove(_, end) =>
+              if (isValidEnd(end) && !mustBeCastle(piece, end) && (!isTwoSquareAdvance(piece, end) || !piece.hasMoved) && !mustBePromotion(piece)) {
+                doMove(Set(move), Set(piece), Set(piece.atEnd(move)), pieces - piece)
+              }
+              else None
+            case Castle(start, end, rookMove) =>
+              pieceAt(rookMove.start).flatMap { rookPiece =>
+                if (!piece.hasMoved && !rookPiece.hasMoved && isValidEnd(end) && isValidEnd(rookMove.end))
+                  doMove(Set(move, rookMove), Set(piece), Set(piece.atEnd(move), rookPiece.atEnd(rookMove)), pieces - piece - rookPiece)
+                else None
+              }
+            case Promotion(_, end, promotionType) =>
+              if (isValidEnd(end) && mustBePromotion(piece))
+                doMove(Set(move), Set(piece), Set(piece.atEnd(move).promotedTo(promotionType)), pieces - piece)
+              else None
+          }
+
+        }
+      }
+
     moves.toList match {
-      case Nil =>
-        Some(this)
-      case head :: tail =>
-        oneMove(toMove(head, turn)).flatMap(_.move(tail :_*))
+      case head :: tail => oneMove(toMove(head, turn)).flatMap(_.move(tail :_*))
+      case Nil => Some(this)
     }
+
   }
 
   def moves: Set[Move] =
     piecesToOccupiedPaths.collect {
       case (piece, occupiedPaths) if piece.side == turn =>
+
         def canCastle(castle: Castle): Boolean = !piece.hasMoved && pieceAt(castle.rookMove.start).fold(false)(!_.hasMoved)
+
         occupiedPaths.map { occupiedPath =>
           occupiedPath.validEnds.map { end: Square =>
             if (mustBePromotion(piece)) {
@@ -173,6 +175,7 @@ trait Board {
             }
           }
         }
+
     }.toSet.flatten.flatten.flatten
 
 }
