@@ -22,12 +22,11 @@ Next steps ♗
 ------------
 
 * Capture
+* Checking
 * Scoring
 * Input/Ouput (PGN & FEN)
-* Computer Player
-* Documentation
 
 Design Principles ♘
 -------------------
 
-The code aims to be approachable and is not expected to perform particularly well. That trade-off may shift with time.
+The code aims to be approachable and is not expected to perform particularly well.

@@ -63,9 +63,11 @@ object Board {
     }
   }
 
-  // Checks if the piece is a Pawn and the move is offset by two ranks
-  private def isTwoSquareAdvance(piece: Piece, end: Square): Boolean =
-    piece.pieceType == Pawn && math.abs(Rank.offset(piece.square.rank, end.rank)) == 2
+  // Checks if the piece is a Pawn, the move is offset by two ranks and the pawn has moved
+  private def isInvalidTwoSquareAdvance(piece: Piece, end: Square): Boolean =
+    piece.pieceType == Pawn &&
+      math.abs(Rank.offset(piece.square.rank, end.rank)) == 2 &&
+      piece.hasMoved
 
   // Creates a chess board in the initial state
   def apply(): Board = {
@@ -129,7 +131,7 @@ trait Board {
 
         move match {
           case SimpleMove(_, end) =>
-            if (endsFor(piece).contains(end) && !mustBeCastle(piece, end) && (!isTwoSquareAdvance(piece, end) || !piece.hasMoved) && !mustBePromotion(piece)) {
+            if (endsFor(piece).contains(end) && !mustBeCastle(piece, end) && !isInvalidTwoSquareAdvance(piece, end) && !mustBePromotion(piece)) {
               doMove(Set(move), Set(piece), Set(piece.atEnd(move)), pieces - piece)
             }
             else None
@@ -176,7 +178,7 @@ trait Board {
             } else if (mustBeQueensideCastle(piece, end)) {
               val castle = `O-O-O`(turn)
               if (canCastle(castle)) Set(castle) else Set()
-            } else if (isTwoSquareAdvance(piece, end) && piece.hasMoved) {
+            } else if (isInvalidTwoSquareAdvance(piece, end)) {
               Set()
             } else {
               Set(SimpleMove(piece.square, end))
