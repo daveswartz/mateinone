@@ -60,6 +60,8 @@ class BoardSpec extends Specification {
     "O-O-O for both sides" in movesAllowed(b1->c3, b8->c6, d2->d3, d7->d6, c1->g5, c8->g4, d1->d2, d8->d7, `O-O-O`, `O-O-O`)(white = Set(Knight->c3, Pawn->d3, Bishop->g5, Queen->d2, Rook->d1, King->c1), black = Set(Knight->c6, Pawn->d6, Bishop->g4, Queen->d7, Rook->d8, King->c8))
     "pawn promotion" in movesAllowed(g2->g4, g4->g5, g5->g6, g6->g7, g7->g8 promote Queen)(white = Set(Queen->g8)).pendingUntilFixed("Failing as the moves are blocked by black pieces (cannot fix w/o promotion)")
 
+    "1. d4 e5 2. dxe5 d6 3. Bg5 dxe5 4. Bxe8" in movesAllowed(d2->d4, e7->e5, d4->e5, d7->d6, c1->g5, d6->e5, g5->d8)(white = Set(Bishop->e8), black = Set(Pawn->e5), nCaptured = 3).pendingUntilFixed("Requires capture")
+
     "white king to g1 without castling" in lastMoveNotAllowed(g1->f3, g8->f6, g2->g3, g7->g6, f1->h3, f8->h6, e1->g1)
     "black king to g8 without castling" in lastMoveNotAllowed(g1->f3, g8->f6, g2->g3, g7->g6, f1->h3, f8->h6, `O-O`, e8->g8)
     "white king to c1 without castling" in lastMoveNotAllowed(b1->c3, b8->c6, d2->d3, d7->d6, c1->g5, c8->g4, d1->d2, d8->d7, e1->c1)
@@ -78,14 +80,14 @@ class BoardSpec extends Specification {
   }
 
   // Checks each move is generated and allowed
-  def movesAllowed(moves: Either[Move, Side => Move]*)(white: Set[(PieceType, Square)] = Set(), black: Set[(PieceType, Square)] = Set()) = {
+  def movesAllowed(moves: Either[Move, Side => Move]*)(white: Set[(PieceType, Square)] = Set(), black: Set[(PieceType, Square)] = Set(), nCaptured: Int = 0) = {
     def recur(board: Option[Board], remaining: List[Either[Move, Side => Move]]): Result = {
       (board, remaining) match {
         case (Some(b), head :: tail) =>
           b.moves must contain(toMove(head, b.turn))
           recur(b.move(head), tail)
         case (Some(b), Nil) =>
-          onlyTheseMoved(white, black)(b)
+          onlyTheseMoved(white, black, nCaptured)(b)
         case (None, _) =>
           failure
       }
@@ -117,7 +119,8 @@ class BoardSpec extends Specification {
   def piece(side: Side, hasMoved: Boolean)(pieceTypeAndSquare: (PieceType, Square)): Piece =
     pieceTypeAndSquare match { case (pieceType, square) => Piece(side, pieceType, square, hasMoved) }
 
-  def onlyTheseMoved(white: Set[(PieceType, Square)] = Set(), black: Set[(PieceType, Square)] = Set()): Board => Result = {
+  // Only checks the number of captures as the actual pieces captured are determined by the initial board pieces and the moved pieces specified
+  def onlyTheseMoved(white: Set[(PieceType, Square)] = Set(), black: Set[(PieceType, Square)] = Set(), nCaptured: Int = 0): Board => Result = {
 
     val whiteMoved = piece(White, hasMoved = true) _
     val blackMoved = piece(Black, hasMoved = true) _
@@ -127,7 +130,7 @@ class BoardSpec extends Specification {
 
     (board) => {
       val stationaryPieces = board.pieces.filterNot(_.hasMoved)
-      stationaryPieces.size + movedPieces.size must beEqualTo(32)
+      stationaryPieces.size + movedPieces.size + nCaptured must beEqualTo(32)
       initialPieces must containAllOf(stationaryPieces.toSeq)
       board.pieces must containAllOf(movedPieces.toSeq)
     }
