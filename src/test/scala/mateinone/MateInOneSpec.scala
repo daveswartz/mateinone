@@ -142,7 +142,4 @@ class BoardSpec extends Specification {
   def moveAndCheckMoves(moves: Either[Move, Side => Move]*)(expectedMoves: Move*) =
     Board().move(moves :_*) must beSome.which(_.moves must containTheSameElementsAs(expectedMoves))
 
-  def moveAndCheckNotSomeMoves(moves: Either[Move, Side => Move]*)(expectedMoves: Move*) =
-    Board().move(moves :_*) must beSome.which(_.moves must containAllOf(expectedMoves) not)
-
 }
