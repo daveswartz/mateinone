@@ -47,5 +47,10 @@ val opening_moves = initial_board.moves
 
 // opening_moves: Set[mateinone.Move] = Set(SimpleMove(Square(G,2),Square(G,4)), SimpleMove(Square(H,2),Square(H,3)), SimpleMove(Square(F,2),Square(F,3)), SimpleMove(Square(B,2),Square(B,4)), SimpleMove(Square(E,2),Square(E,3)), SimpleMove(Square(G,1),Square(F,3)), SimpleMove(Square(B,1),Square(A,3)), SimpleMove(Square(A,2),Square(A,3)), SimpleMove(Square(B,1),Square(C,3)), SimpleMove(Square(H,2),Square(H,4)), SimpleMove(Square(F,2),Square(F,4)), SimpleMove(Square(C,2),Square(C,4)), SimpleMove(Square(E,2),Square(E,4)), SimpleMove(Square(C,2),Square(C,3)), SimpleMove(Square(D,2),Square(D,3)), SimpleMove(Square(B,2),Square(B,3)), SimpleMove(Square(G,1),Square(H,3)), SimpleMove(Square(A,2),Square(A,4)), SimpleMove(Square(G,2),Square(G,3)), SimpleMove(Square(D,2),Square(D,4)))
 
+// Find all opening moves for knights.
+val opening_moves_for_knights = opening_moves.filter(m => initial_board.pieceAt(m.start).get.pieceType == Knight)
+
+// opening_moves_for_knights: scala.collection.immutable.Set[mateinone.Move] = Set(SimpleMove(Square(G,1),Square(F,3)), SimpleMove(Square(B,1),Square(A,3)), SimpleMove(Square(B,1),Square(C,3)), SimpleMove(Square(G,1),Square(H,3)))
+
 // Make one of the generated opening moves.
 val after_some_move = initial_board.move(opening_moves.head).get
