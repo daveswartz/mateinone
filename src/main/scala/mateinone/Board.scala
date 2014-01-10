@@ -90,41 +90,34 @@ trait Board {
   // Returns true when the move is valid; otherwise, false.
   def isValid(move: Move): Boolean = {
 
-    def mustBeKingsideCastle(piece: Piece, end: Square): Boolean =
-      piece.pieceType == King && File.offset(piece.square.file, end.file) == 2
+    def isValidCastle(castle: Castle, piece: Piece) =
+      pieceAt(castle.rookMove.start).fold(false)(rookPiece => !piece.hasMoved && !rookPiece.hasMoved && endsFor(rookPiece).contains(castle.rookMove.end))
 
-    def mustBeQueensideCastle(piece: Piece, end: Square): Boolean =
-      piece.pieceType == King && File.offset(piece.square.file, end.file) == -2
+    def isValidPromotion(piece: Piece) =
+      piece.pieceType == Pawn && (piece.side == White && piece.square.rank == `7`) || (piece.side == Black && piece.square.rank == `2`)
 
-    def mustBeCastle(piece: Piece, end: Square): Boolean =
-      mustBeKingsideCastle(piece, end) || mustBeQueensideCastle(piece, end)
+    def isValidSimpleMove(simpleMove: SimpleMove, piece: Piece) = {
 
-    def mustBePromotedWhenMoved(piece: Piece): Boolean =
-      piece match {
-        case Piece(White, Pawn, Square(_, `7`), _) => true
-        case Piece(Black, Pawn, Square(_, `2`), _) => true
-        case _ => false
-      }
+      def mustBeCastle(piece: Piece, end: Square) =
+        piece.pieceType == King && math.abs(File.offset(piece.square.file, end.file)) == 2
 
-    def isInvalidTwoSquareAdvance(piece: Piece, end: Square): Boolean =
-      piece.pieceType == Pawn &&
-        math.abs(Rank.offset(piece.square.rank, end.rank)) == 2 &&
-        piece.hasMoved
+      def isInvalidTwoSquareAdvance(piece: Piece, end: Square) =
+        piece.pieceType == Pawn && math.abs(Rank.offset(piece.square.rank, end.rank)) == 2 && piece.hasMoved
+
+      !isValidPromotion(piece) && !mustBeCastle(piece, simpleMove.end) && !isInvalidTwoSquareAdvance(piece, simpleMove.end)
+
+    }
 
     pieceAt(move.start).fold(false) { piece =>
       piece.side == turn &&
         endsFor(piece).contains(move.end) &&
         (move match {
-          case SimpleMove(_, end) =>
-            !mustBeCastle(piece, end) && !isInvalidTwoSquareAdvance(piece, end) && !mustBePromotedWhenMoved(piece)
-          case Castle(_, _, rookMove @ SimpleMove(rookStart, rookEnd)) =>
-            pieceAt(rookStart).fold(false) { rookPiece =>
-              !piece.hasMoved && !rookPiece.hasMoved && endsFor(rookPiece).contains(rookEnd)
-            }
-          case Promotion(_, end, promotionType) =>
-            mustBePromotedWhenMoved(piece)
+          case castle: Castle => isValidCastle(castle, piece)
+          case promotion: Promotion => isValidPromotion(piece)
+          case simpleMove: SimpleMove => isValidSimpleMove(simpleMove, piece)
         })
     }
+
   }
 
   // Returns `Some[Board]` when the moves are valid; otherwise, `None`. The repeated parameter is either a `Move`
