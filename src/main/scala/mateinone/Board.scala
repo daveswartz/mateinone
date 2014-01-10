@@ -93,18 +93,18 @@ trait Board {
     def isValidCastle(castle: Castle, piece: Piece) =
       pieceAt(castle.rookMove.start).fold(false)(rookPiece => !piece.hasMoved && !rookPiece.hasMoved && endsFor(rookPiece).contains(castle.rookMove.end))
 
-    def isValidPromotion(piece: Piece) =
-      piece.pieceType == Pawn && (piece.side == White && piece.square.rank == `7`) || (piece.side == Black && piece.square.rank == `2`)
-
     def isValidSimpleMove(simpleMove: SimpleMove, piece: Piece) = {
 
       def mustBeCastle(piece: Piece, end: Square) =
         piece.pieceType == King && math.abs(File.offset(piece.square.file, end.file)) == 2
 
+      def mustBePromotion(piece: Piece) =
+        piece.pieceType == Pawn && (piece.side == White && piece.square.rank == `7`) || (piece.side == Black && piece.square.rank == `2`)
+
       def isInvalidTwoSquareAdvance(piece: Piece, end: Square) =
         piece.pieceType == Pawn && math.abs(Rank.offset(piece.square.rank, end.rank)) == 2 && piece.hasMoved
 
-      !isValidPromotion(piece) && !mustBeCastle(piece, simpleMove.end) && !isInvalidTwoSquareAdvance(piece, simpleMove.end)
+      !mustBePromotion(piece) && !mustBeCastle(piece, simpleMove.end) && !isInvalidTwoSquareAdvance(piece, simpleMove.end)
 
     }
 
@@ -113,7 +113,7 @@ trait Board {
         endsFor(piece).contains(move.end) &&
         (move match {
           case castle: Castle => isValidCastle(castle, piece)
-          case promotion: Promotion => isValidPromotion(piece)
+          case promotion: Promotion => true
           case simpleMove: SimpleMove => isValidSimpleMove(simpleMove, piece)
         })
     }
