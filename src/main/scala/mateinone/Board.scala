@@ -3,11 +3,11 @@ package mateinone
 import OccupiedPath._
 import Move._
 
-object Board {
+object Board { // TODO check if end of path is other side and then allow move and remove other piece, do not allow pawn to move like a capture unless there is a capture!
 
   // Generates an indexed sequence of squares for the specified piece corresponding to moves the piece can make if it is
-  // the only piece on the board in any square. I.e., castling, two square pawn advance, pawn capture and en passant
-  // are always generated.
+  // the only piece on the board in any square. I.e., castling, two square pawn advance and pawn capture are always
+  // generated.
   private def pathsFor(piece: Piece): Set[Path] = {
 
     def path(square: Square, fileOffset: Int, rankOffset: Int, remaining: Int): Path = {
@@ -25,8 +25,8 @@ object Board {
 
     val paths = piece match {
       case Piece(side, Pawn, square, hasMoved) =>
-        val dir = if (side == White) 1 else -1
-        Set(path(square, 0, dir, 2))
+        val fileOffset = if (side == White) 1 else -1
+        Set(path(square, 0, fileOffset, 2), path(square, fileOffset, 1, 1), path(square, fileOffset, -1, 1))
       case Piece(_, Rook, square, _) =>
         file(square) ++ rank(square)
       case Piece(_, Knight, square, _) =>
@@ -93,20 +93,23 @@ trait Board {
     def isValidCastle(castle: Castle, piece: Piece) =
       pieceAt(castle.rookMove.start).fold(false)(rookPiece => !piece.hasMoved && !rookPiece.hasMoved && endsFor(rookPiece).contains(castle.rookMove.end))
 
-    def isValidSimpleMove(simpleMove: SimpleMove, piece: Piece) = {
+    def isValidSimpleMove(simpleMove: SimpleMove, piece: Piece) =
+      simpleMove match { case SimpleMove(start: Square, end: Square) =>
+        piece match { case Piece(side, pieceType, Square(file, rank), hasMoved) =>
 
-      def mustBeCastle(piece: Piece, end: Square) =
-        piece.pieceType == King && math.abs(File.offset(piece.square.file, end.file)) == 2
+          val mustBeCastle = pieceType == King && math.abs(File.offset(file, end.file)) == 2
 
-      def mustBePromotion(piece: Piece) =
-        piece.pieceType == Pawn && (piece.side == White && piece.square.rank == `7`) || (piece.side == Black && piece.square.rank == `2`)
+          val isInvalidPawnMove = if (pieceType == Pawn) {
+            val invalidPromotion = (side == White && rank == `7`) || (side == Black && rank == `2`)
+            val invalidTwoSquareAdvance = math.abs(Rank.offset(rank, end.rank)) == 2 && hasMoved
+            val invalidCapture = math.abs(File.offset(file, end.file)) == 1 && pieceAt(end).fold(true)(_.side == side)
+            invalidPromotion || invalidTwoSquareAdvance || invalidCapture
+          } else false
 
-      def isInvalidTwoSquareAdvance(piece: Piece, end: Square) =
-        piece.pieceType == Pawn && math.abs(Rank.offset(piece.square.rank, end.rank)) == 2 && piece.hasMoved
+          !mustBeCastle && !isInvalidPawnMove
 
-      !mustBePromotion(piece) && !mustBeCastle(piece, simpleMove.end) && !isInvalidTwoSquareAdvance(piece, simpleMove.end)
-
-    }
+        }
+      }
 
     pieceAt(move.start).fold(false) { piece =>
       piece.side == turn &&
