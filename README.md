@@ -3,6 +3,20 @@ Mate in one ♔
 
 Chess library entirely written in Scala.
 
+Quick Example
+---------------
+
+Below a simple trap known as the Scholar's mate is played.
+
+1. e4 e5
+2. Qh5?! Nc6
+3. Bc4 Nf6??
+4. Qxf7# 1–0
+
+```scala
+Board().move(e2->e4, e7->e5, d1->h5, b8->c6, c1->c4, g8->f6, h5->f7)
+```
+
 Examples ♕
 ----------
 
