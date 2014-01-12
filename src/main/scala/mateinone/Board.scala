@@ -3,7 +3,7 @@ package mateinone
 import OccupiedPath._
 import Move._
 
-object Board { // TODO check if end of path is other side and then allow move and remove other piece, do not allow pawn to move like a capture unless there is a capture!
+object Board {
 
   // Generates an indexed sequence of squares for the specified piece corresponding to moves the piece can make if it is
   // the only piece on the board in any square. I.e., castling, two square pawn advance and pawn capture are always
@@ -25,8 +25,8 @@ object Board { // TODO check if end of path is other side and then allow move an
 
     val paths = piece match {
       case Piece(side, Pawn, square, hasMoved) =>
-        val fileOffset = if (side == White) 1 else -1
-        Set(path(square, 0, fileOffset, 2), path(square, fileOffset, 1, 1), path(square, fileOffset, -1, 1))
+        val rankOffset = if (side == White) 1 else -1
+        Set(path(square, 0, rankOffset, 2), path(square, 1, rankOffset, 1), path(square, -1, rankOffset, 1))
       case Piece(_, Rook, square, _) =>
         file(square) ++ rank(square)
       case Piece(_, Knight, square, _) =>
@@ -81,17 +81,20 @@ trait Board {
 
   protected val piecesToOccupiedPaths: Map[Piece, Set[OccupiedPath]]
 
-  private def endsFor(piece: Piece): Set[Square] = piecesToOccupiedPaths(piece).flatMap(_.validEnds)
-
   def pieces: Set[Piece] = piecesToOccupiedPaths.keySet
 
   def pieceAt(square: Square): Option[Piece] = pieces.find(_.square == square)
 
+  private def occupiedPathEnds(occupiedPath: OccupiedPath) =
+    occupiedPath.beforeFirstOccupied ++ occupiedPath.firstOccupiedAndAfter.headOption.filter(pieceAt(_).fold(false)(_.side != turn))
+
   // Returns true when the move is valid; otherwise, false.
   def isValid(move: Move): Boolean = {
 
+    def ends(piece: Piece): Set[Square] = piecesToOccupiedPaths(piece).flatMap(occupiedPathEnds)
+
     def isValidCastle(castle: Castle, piece: Piece) =
-      pieceAt(castle.rookMove.start).fold(false)(rookPiece => !piece.hasMoved && !rookPiece.hasMoved && endsFor(rookPiece).contains(castle.rookMove.end))
+      pieceAt(castle.rookMove.start).fold(false)(rookPiece => !piece.hasMoved && !rookPiece.hasMoved && ends(rookPiece).contains(castle.rookMove.end))
 
     def isValidSimpleMove(simpleMove: SimpleMove, piece: Piece) =
       simpleMove match { case SimpleMove(start: Square, end: Square) =>
@@ -102,7 +105,7 @@ trait Board {
           val isInvalidPawnMove = if (pieceType == Pawn) {
             val invalidPromotion = (side == White && rank == `7`) || (side == Black && rank == `2`)
             val invalidTwoSquareAdvance = math.abs(Rank.offset(rank, end.rank)) == 2 && hasMoved
-            val invalidCapture = math.abs(File.offset(file, end.file)) == 1 && pieceAt(end).fold(true)(_.side == side)
+            val invalidCapture = math.abs(File.offset(file, end.file)) == 1 && pieceAt(end).fold(true)(_.side == side) // TODO do not allow pawn capture except diagonally and test!
             invalidPromotion || invalidTwoSquareAdvance || invalidCapture
           } else false
 
@@ -113,7 +116,7 @@ trait Board {
 
     pieceAt(move.start).fold(false) { piece =>
       piece.side == turn &&
-        endsFor(piece).contains(move.end) &&
+        ends(piece).contains(move.end) &&
         (move match {
           case castle: Castle => isValidCastle(castle, piece)
           case promotion: Promotion => true
@@ -136,10 +139,13 @@ trait Board {
       def updatePathsOf(movedBefore: Set[Piece], movedAfter: Set[Piece]) =
         movedAfter.map(p => (p, occupiedPathsFor(p, pieces -- movedBefore))).toMap
 
+
       def doMove(movesMade: Set[Move], movedBefore: Set[Piece], movedAfter: Set[Piece], stationary: Set[Piece]) = {
+        val captured = movedAfter.map(_.square).flatMap(pieceAt)
+        val nextPiecesToOccupiedPaths = (updateOccupiedOf(stationary, movesMade) ++ updatePathsOf(movedBefore, movedAfter)).filterKeys(!captured.contains(_))
         val nextTurn = if (turn == White) Black else White
         Some(new Board {
-          val piecesToOccupiedPaths = updateOccupiedOf(stationary, movesMade) ++ updatePathsOf(movedBefore, movedAfter)
+          val piecesToOccupiedPaths = nextPiecesToOccupiedPaths
           val turn = nextTurn
         })
       }
@@ -169,23 +175,13 @@ trait Board {
 
   // Returns the set of valid moves.
   def moves: Set[Move] = {
-
     def movesFor(piece: Piece, end: Square): Set[Move] = {
-      val promotions: Set[Move] = PromotionType.all.flatMap(promotionType => Promotion.optionally(piece.square, end, promotionType))
+      val promotions: Set[Move] = PromotionType.all.flatMap(Promotion.optionally(piece.square, end, _))
       val castles: Set[Move] = Castle.all.map(_.rookMove).flatMap(Castle.optionally(piece.square, end, _))
       val simple: Move = SimpleMove(piece.square, end)
       promotions ++ castles + simple
     }
-
-    piecesToOccupiedPaths.flatMap {
-      case (piece, occupiedPaths) =>
-        occupiedPaths.flatMap { occupiedPath =>
-          occupiedPath.validEnds.flatMap { end: Square =>
-            movesFor(piece, end).filter(isValid)
-          }
-        }
-    }.toSet
-
+    piecesToOccupiedPaths.flatMap { case (k, v) => v.flatMap(occupiedPathEnds(_).flatMap(movesFor(k, _))) }.filter(isValid).toSet
   }
 
 }

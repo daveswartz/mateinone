@@ -19,12 +19,10 @@ case class SimpleMove(start: Square, end: Square) extends Move {
 
 object Promotion {
 
-  val all = {
-    Set(a7, b7, c7, d7, e7, f7, g7, h7, a2, b2, c2, d2, e2, f2, g2, h2)
-      .zip(Set(a8, b8, c8, d8, e8, f8, g8, h8, a1, b1, c1, d1, e1, f1, g1, h1))
-      .zip(PromotionType.all)
-      .map { case ((start, end), promotionType) => Promotion(start, end, promotionType) }
-  }
+  val all = for {
+    (start, end) <- List(a7, b7, c7, d7, e7, f7, g7, h7, a2, b2, c2, d2, e2, f2, g2, h2).zip(List(a8, b8, c8, d8, e8, f8, g8, h8, a1, b1, c1, d1, e1, f1, g1, h1))
+    promotionType <- PromotionType.all
+  } yield Promotion(start, end, promotionType)
 
   def optionally(start: Square, end: Square, promotionType: PromotionType): Option[Promotion] =
     Some(Promotion(start, end, promotionType)).filter(all.contains)

@@ -19,19 +19,23 @@ class SquareSpec extends Specification {
 
 class OccupiedPathSpec extends Specification {
 
-  val path = List(g2, h3)
-  val occupied = Set(g2)
-  val occupiedPath = OccupiedPath(path, occupied)
+  val f1_bishop_path = List(g2, h3)
+  val f1_bishop_occupied = Set(g2)
+  val f1_bishop_occupiedPath = OccupiedPath(f1_bishop_path, f1_bishop_occupied)
 
   "OccupiedPath" should {
     "vacate squares" in {
-      occupiedPath.vacate(Set(g2)) must beEqualTo(OccupiedPath(path, Set()))
+      f1_bishop_occupiedPath.vacate(Set(g2)) must beEqualTo(OccupiedPath(f1_bishop_path, Set()))
     }
     "occupy squares" in {
-      occupiedPath.occupy(Set(h3)) must beEqualTo(OccupiedPath(path, Set(g2, h3)))
+      f1_bishop_occupiedPath.occupy(Set(h3)) must beEqualTo(OccupiedPath(f1_bishop_path, Set(g2, h3)))
     }
-    "determine valid move squares" in {
-      occupiedPath.vacate(Set(g2)).validEnds must beEqualTo(Set(g2, h3))
+    "determine the squares before the first occupied square" in {
+      f1_bishop_occupiedPath.vacate(Set(g2)).beforeFirstOccupied must beEqualTo(List(g2, h3))
+    }
+    "determine the first occupied square" in {
+      f1_bishop_occupiedPath.firstOccupiedAndAfter must beEqualTo(List(g2, h3))
+      f1_bishop_occupiedPath.vacate(Set(g2)).firstOccupiedAndAfter must beEqualTo(List.empty[Square])
     }
   }
 }
@@ -68,16 +72,16 @@ class BoardSpec extends Specification {
     "Bh3" in movesAllowed(g2->g3, a7->a6, f1->h3)(white = Set(Pawn->g3, Bishop->h3), black = Set(Pawn->a6))
     "O-O for both sides" in movesAllowed(g1->f3, g8->f6, g2->g3, g7->g6, f1->h3, f8->h6, `O-O`, `O-O`)(white = Set(Knight->f3, Pawn->g3, Bishop->h3, King->g1, Rook->f1), black = Set(Knight->f6, Pawn->g6, Bishop->h6, King->g8, Rook->f8))
     "O-O-O for both sides" in movesAllowed(b1->c3, b8->c6, d2->d3, d7->d6, c1->g5, c8->g4, d1->d2, d8->d7, `O-O-O`, `O-O-O`)(white = Set(Knight->c3, Pawn->d3, Bishop->g5, Queen->d2, Rook->d1, King->c1), black = Set(Knight->c6, Pawn->d6, Bishop->g4, Queen->d7, Rook->d8, King->c8))
-    "pawn promotion" in movesAllowed(g2->g4, g4->g5, g5->g6, g6->g7, g7->g8 promote Queen)(white = Set(Queen->g8)).pendingUntilFixed("Failing as the moves are blocked by black pieces (cannot fix w/o promotion)")
+    "pawn promotion" in movesAllowed(g2->g4, h7->h5, h2->h4, h5->g4, h4->h5, h8->h6, f2->f3, h6->g6, h5->h6, g4->f3, h6->h7, f3->e2, h7->h8 promote Queen)(white = Set(Queen->h8), black = Set(Rook->g6, Pawn->e2), nCaptured = 3)
 
-    "1. d4 e5 2. dxe5 d6 3. Bg5 dxe5 4. Bxd8" in movesAllowed(d2->d4, e7->e5, d4->e5, d7->d6, c1->g5, d6->e5, g5->d8)(white = Set(Bishop->d8), black = Set(Pawn->e5), nCaptured = 3).pendingUntilFixed("Requires capture")
+    "1. d4 e5 2. dxe5 d6 3. Bg5 dxe5 4. Bxd8" in movesAllowed(d2->d4, e7->e5, d4->e5, d7->d6, c1->g5, d6->e5, g5->d8)(white = Set(Bishop->d8), black = Set(Pawn->e5), nCaptured = 3)
 
     "white king to g1 without castling" in lastMoveNotAllowed(g1->f3, g8->f6, g2->g3, g7->g6, f1->h3, f8->h6, e1->g1)
     "black king to g8 without castling" in lastMoveNotAllowed(g1->f3, g8->f6, g2->g3, g7->g6, f1->h3, f8->h6, `O-O`, e8->g8)
     "white king to c1 without castling" in lastMoveNotAllowed(b1->c3, b8->c6, d2->d3, d7->d6, c1->g5, c8->g4, d1->d2, d8->d7, e1->c1)
     "black king to c8 without castling" in lastMoveNotAllowed(b1->c3, b8->c6, d2->d3, d7->d6, c1->g5, c8->g4, d1->d2, d8->d7, `O-O-O`, e8->c8)
     "white pawn to g6 after pawn to g4" in lastMoveNotAllowed(g2->g4, a7->a6, g4->g6)
-    "white pawn to g8 without promotion" in lastMoveNotAllowed(g2->g4, g4->g5, g5->g6, g6->g7, g7->g8).pendingUntilFixed("Failing as the moves are blocked by black pieces, not because or the requirement (cannot fix w/o promotion)")
+    "white pawn to g8 without promotion" in lastMoveNotAllowed(g2->g4, h7->h5, h2->h4, h5->g4, h4->h5, h8->h6, f2->f3, h6->g6, h5->h6, g4->f3, h6->h7, f3->e2, h7->h8)
     "O-O for white after moving the king" in lastMoveNotAllowed(g1->f3, g8->f6, g2->g3, g7->g6, f1->h3, f8->h6, e1->f1, e8->f8, f1->e1, f8->e8, `O-O`)
     "O-O for black after moving the king" in lastMoveNotAllowed(g1->f3, g8->f6, g2->g3, g7->g6, f1->h3, f8->h6, e1->f1, e8->f8, f1->e1, f8->e8, e1->f1, `O-O`)
     "O-O for white after moving the rook" in lastMoveNotAllowed(g1->f3, g8->f6, g2->g3, g7->g6, f1->h3, f8->h6, h1->g1, h8->g8, g1->h1, g8->h8, `O-O`)
