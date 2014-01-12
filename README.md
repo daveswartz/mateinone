@@ -17,6 +17,17 @@ Below a simple trap known as the Scholar's mate is played.
 Board().move(e2->e4, e7->e5, d1->h5, b8->c6, c1->c4, g8->f6, h5->f7)
 ```
 
+Below both sides play to quickly castle kingside.
+
+1. Nf3 Nf6
+2. g3 g6
+3. Bh3 Bh6
+4. O-O O-O
+
+```scala
+Board().move(g1->f3, g8->f6, g2->g3, g7->g6, f1->h3, f8->h6, `O-O`, `O-O`)
+```
+
 Examples ♕
 ----------
 
