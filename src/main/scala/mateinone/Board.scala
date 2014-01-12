@@ -94,7 +94,7 @@ trait Board {
 
   def pieces: Set[Piece] = piecesToOccupiedPaths.keySet
 
-  private def pieceAt(square: Square): Option[Piece] = pieces.find(_.square == square)
+  def pieceAt(square: Square): Option[Piece] = pieces.find(_.square == square)
 
   private def occupiedPathEnds(occupiedPath: OccupiedPath): List[Square] =
     occupiedPath.beforeFirstOccupied ++ occupiedPath.firstOccupiedAndAfter.headOption.filter(pieceAt(_).fold(false)(_.side != turn))

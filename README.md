@@ -23,7 +23,7 @@ The [script](script) directory contains examples of how to use the library. The 
 Next steps ♗
 ------------
 
-* Checking
+* Check and mate
 * Scoring
 * Input/Ouput (PGN & FEN)
 
