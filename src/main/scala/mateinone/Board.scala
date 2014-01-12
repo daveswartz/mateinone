@@ -105,8 +105,10 @@ trait Board {
           val isInvalidPawnMove = if (pieceType == Pawn) {
             val invalidPromotion = (side == White && rank == `7`) || (side == Black && rank == `2`)
             val invalidTwoSquareAdvance = math.abs(Rank.offset(rank, end.rank)) == 2 && hasMoved
-            val invalidCapture = math.abs(File.offset(file, end.file)) == 1 && pieceAt(end).fold(true)(_.side == side) // TODO do not allow pawn capture except diagonally and test!
-            invalidPromotion || invalidTwoSquareAdvance || invalidCapture
+            val diagonal = math.abs(File.offset(file, end.file)) == 1
+            val diagonalWhenNotCapturing = diagonal && pieceAt(end).fold(true)(_.side == side)
+            val nonDiagonalCapture = !diagonal && pieceAt(end).isDefined
+            invalidPromotion || invalidTwoSquareAdvance || diagonalWhenNotCapturing || nonDiagonalCapture
           } else false
 
           !mustBeCastle && !isInvalidPawnMove

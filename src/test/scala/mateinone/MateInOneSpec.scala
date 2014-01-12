@@ -82,6 +82,8 @@ class BoardSpec extends Specification {
     "black king to c8 without castling" in lastMoveNotAllowed(b1->c3, b8->c6, d2->d3, d7->d6, c1->g5, c8->g4, d1->d2, d8->d7, `O-O-O`, e8->c8)
     "white pawn to g6 after pawn to g4" in lastMoveNotAllowed(g2->g4, a7->a6, g4->g6)
     "white pawn to g8 without promotion" in lastMoveNotAllowed(g2->g4, h7->h5, h2->h4, h5->g4, h4->h5, h8->h6, f2->f3, h6->g6, h5->h6, g4->f3, h6->h7, f3->e2, h7->h8)
+    "white pawn capture non-diagonal" in lastMoveNotAllowed(d2->d4, d7->d5, d4->d5)
+
     "O-O for white after moving the king" in lastMoveNotAllowed(g1->f3, g8->f6, g2->g3, g7->g6, f1->h3, f8->h6, e1->f1, e8->f8, f1->e1, f8->e8, `O-O`)
     "O-O for black after moving the king" in lastMoveNotAllowed(g1->f3, g8->f6, g2->g3, g7->g6, f1->h3, f8->h6, e1->f1, e8->f8, f1->e1, f8->e8, e1->f1, `O-O`)
     "O-O for white after moving the rook" in lastMoveNotAllowed(g1->f3, g8->f6, g2->g3, g7->g6, f1->h3, f8->h6, h1->g1, h8->g8, g1->h1, g8->h8, `O-O`)
