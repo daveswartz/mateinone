@@ -31,6 +31,8 @@ object Square {
   def offset(s: Square, f: Int, r: Int): Option[Square] =
     File.offset(s.file, f).flatMap(fo => Rank.offset(s.rank, r).map(ro => Square.get(fo, ro)))
 
+  def offset(a: Square, b: Square): (Int, Int) = (File.offset(a.file, b.file), Rank.offset(a.rank, b.rank))
+
 }
 
 case class Square private(file: File, rank: Rank)

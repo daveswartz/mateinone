@@ -16,7 +16,7 @@ sealed trait Side
 case object White extends Side
 case object Black extends Side
 
-case class Piece(side: Side, pieceType: PieceType, square: Square, hasMoved: Boolean) {
-  def atEnd(move: Move): Piece = copy(square = move.end, hasMoved = true)
+case class Piece(side: Side, pieceType: PieceType, square: Square) {
+  def atEnd(move: Move): Piece = copy(square = move.end)
   def promotedTo(promotionType: PromotionType): Piece = copy(pieceType = promotionType)
 }
