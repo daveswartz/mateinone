@@ -36,7 +36,7 @@ val black_pawn_a6 = board_after_a4.pieces.diff(board_after_a3.pieces).head
 val `board_after_both_sides_O-O` = initial_board.move(g1->f3, g8->f6, g2->g3, g7->g6, f1->h3, f8->h6, `O-O`, `O-O`).get
 
 // 1. d4 e5 2. dxe5 d6 3. Bg5 dxe5 4. Bxd8
-val `board_after_some_captures` = initial_board.move(d2->d4, e7->e5, d4->e5, d7->d6, c1->g5, d6->e5, g5->d8)
+val board_after_some_captures = initial_board.move(d2->d4, e7->e5, d4->e5, d7->d6, c1->g5, d6->e5, g5->d8)
 
 val opening_moves = initial_board.moves
 
