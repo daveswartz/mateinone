@@ -21,7 +21,7 @@ object Board {
 
     def file(s: Square) = Set(path(s, 1, 0, 7), path(s, -1, 0, 7))
     def rank(s: Square) = Set(path(s, 0, 1, 7), path(s, 0, -1, 7))
-    def diagonals(s: Square) = Set(path(s, 1, 1, 7), path(s, 1, -1, 7), path(s, -1, 1, 7), path(s, 1, -1, 7))
+    def diagonals(s: Square) = Set(path(s, 1, 1, 7), path(s, 1, -1, 7), path(s, -1, 1, 7), path(s, -1, -1, 7))
 
     val paths = piece match {
       case Piece(side, Pawn, square) =>
@@ -119,10 +119,14 @@ trait Board {
             val fileOffset = File.offset(file, end.file)
             val diagonal = math.abs(fileOffset) == 1
             val diagonalWhenNotCapturing = {
-              val enPassant = {
-                def target = pieceAt(Square.offset(start, fileOffset, 0).get)
-                def isValidEnPassantCapture(p: Piece) = p.pieceType == Pawn && lastMove(p).filter(history.last ==).fold(false)(_.offset == (if (p.side == White) (0, 2) else (0, -2)))
-                rank == (if (side == White) `5` else `4`) && target.fold(false)(isValidEnPassantCapture)
+              val enPassant = history.lastOption match {
+                case Some(SimpleMove(lastStart, lastEnd)) =>
+                  val lastPiece = pieceAt(lastEnd).get
+                  val isPawn = lastPiece.pieceType == Pawn
+                  val wasTwoSquareAdvance = Square.offset(lastStart, lastEnd) == (if (lastPiece.side == White) (0, 2) else (0, -2))
+                  val isInTargetSquare = lastEnd == Square.offset(start, fileOffset, 0).get
+                  isPawn && wasTwoSquareAdvance && isInTargetSquare
+                case _ => false
               }
               val otherCapture = pieceAt(end).fold(false)(_.side != side)
               diagonal && !enPassant && !otherCapture
