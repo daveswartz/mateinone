@@ -97,7 +97,7 @@ trait Board {
   def pieceAt(square: Square): Option[Piece] = pieces.find(_.square == square)
 
   private def occupiedPathEnds(occupiedPath: OccupiedPath): List[Square] =
-    occupiedPath.beforeFirstOccupied ++ occupiedPath.firstOccupiedAndAfter.headOption.filter(pieceAt(_).fold(false)(_.side != turn))
+    occupiedPath.beforeFirstOccupied ++ occupiedPath.firstOccupied.filter(pieceAt(_).fold(false)(_.side != turn))
 
   // Returns true when the move is valid; otherwise, false.
   def isValid(move: Move): Boolean = {
@@ -140,9 +140,17 @@ trait Board {
         }
       }
 
+    def isBlockingCheck = {
+      val kingSquare = pieces.find(p => p.pieceType == King && p.side == turn).get.square
+      val opposingOccupiedPaths = piecesToOccupiedPaths.filterKeys(_.side != turn).values.flatten.toSet
+      def accept(op: OccupiedPath) = op.firstOccupied.fold(false)(move.start ==) && op.secondOccupied.fold(false)(kingSquare ==)
+      opposingOccupiedPaths.exists(accept)
+    }
+
     pieceAt(move.start).fold(false) { piece =>
       piece.side == turn &&
         ends(piece).contains(move.end) &&
+        !isBlockingCheck &&
         (move match {
           case castle: Castle => isValidCastle(castle, piece)
           case promotion: Promotion => true
