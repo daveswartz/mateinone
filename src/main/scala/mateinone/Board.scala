@@ -5,18 +5,17 @@ import Move._
 
 object Board {
 
-  // Generates an indexed sequence of squares for the specified piece corresponding to moves the piece can make if it is
-  // the only piece on the board in any square. I.e., castling, two square pawn advance and pawn capture are always
-  // generated.
+  // Generates an indexed sequence of squares for the specified piece corresponding to all possible moves the piece can
+  // make.
   private def pathsFor(piece: Piece): Set[Path] = {
 
-    def path(square: Square, fileOffset: Int, rankOffset: Int, remaining: Int): Path = {
-      def step(fileOffset: Int, rankOffset: Int): Square => Option[Square] = Square.offset(_, fileOffset, rankOffset)
-      def pathRecur(current: Path, step: Square => Option[Square], remaining: Int): Path = step(current.last) match {
-        case Some(next) if remaining > 0 => pathRecur(current :+ next, step, remaining - 1)
-        case _ => current
-      }
-      pathRecur(List(square), step(fileOffset, rankOffset), remaining).tail
+    def path(square: Square, fileOffset: Int, rankOffset: Int, nSteps: Int): Path = {
+      def pathRecur(current: Path, remaining: Int): Path =
+        Square.offset(current.last, fileOffset, rankOffset) match {
+          case Some(next) if remaining > 0 => pathRecur(current :+ next, remaining - 1)
+          case _ => current
+        }
+      pathRecur(List(square), nSteps).tail
     }
 
     def file(s: Square) = Set(path(s, 1, 0, 7), path(s, -1, 0, 7))
@@ -24,9 +23,10 @@ object Board {
     def diagonals(s: Square) = Set(path(s, 1, 1, 7), path(s, 1, -1, 7), path(s, -1, 1, 7), path(s, -1, -1, 7))
 
     val paths = piece match {
-      case Piece(side, Pawn, square) =>
-        val rankOffset = if (side == White) 1 else -1
-        Set(path(square, 0, rankOffset, 2), path(square, 1, rankOffset, 1), path(square, -1, rankOffset, 1))
+      case Piece(White, Pawn, square) =>
+        Set(path(square, 0, 1, if (square.rank == `2`) 2 else 1), path(square, 1, 1, 1), path(square, -1, 1, 1))
+      case Piece(Black, Pawn, square) =>
+        Set(path(square, 0, -1, if (square.rank == `7`) 2 else 1), path(square, 1, -1, 1), path(square, -1, -1, 1))
       case Piece(_, Rook, square) =>
         file(square) ++ rank(square)
       case Piece(_, Knight, square) =>
@@ -115,7 +115,6 @@ trait Board {
 
           val isInvalidPawnMove = if (pieceType == Pawn) {
             val invalidPromotion = (side == White && rank == `7`) || (side == Black && rank == `2`)
-            val invalidTwoSquareAdvance = math.abs(Rank.offset(rank, end.rank)) == 2 && hasMoved(piece)
             val fileOffset = File.offset(file, end.file)
             val diagonal = math.abs(fileOffset) == 1
             val diagonalWhenNotCapturing = {
@@ -132,7 +131,7 @@ trait Board {
               diagonal && !enPassant && !otherCapture
             }
             val nonDiagonalCapture = !diagonal && pieceAt(end).isDefined
-            invalidPromotion || invalidTwoSquareAdvance || diagonalWhenNotCapturing || nonDiagonalCapture
+            invalidPromotion || diagonalWhenNotCapturing || nonDiagonalCapture
           } else false
 
           !mustBeCastle && !isInvalidPawnMove

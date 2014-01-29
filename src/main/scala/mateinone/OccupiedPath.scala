@@ -13,7 +13,7 @@ case class OccupiedPath(private val path: Path, private val occupied: Set[Square
     if (occupied.isEmpty) (path, None, None)
     else {
       val sorted = occupied.toList.sortWith((a, b) => path.indexOf(a) < path.indexOf(b))
-      val before = path.dropWhile(sorted.head ==)
+      val before = path.takeWhile(!occupied.contains(_))
       sorted match {
         case first :: second :: _ => (before, Some(first), Some(second))
         case first :: _ => (before, Some(first), None)

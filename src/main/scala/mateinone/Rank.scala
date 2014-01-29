@@ -17,6 +17,7 @@ object Rank {
   def offset(a: Rank, b: Rank): Int = b.n - a.n
 }
 sealed class Rank(val n: Int) extends Ordered[Rank] {
+  override def toString: String = n.toString
   def compare(that: Rank): Int = this.n.compare(that.n)
 }
 case object `1` extends Rank(1)

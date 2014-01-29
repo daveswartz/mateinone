@@ -31,7 +31,7 @@ class OccupiedPathSpec extends Specification {
       f1_bishop_occupiedPath.occupy(Set(h3)) must beEqualTo(OccupiedPath(f1_bishop_path, Set(g2, h3)))
     }
     "determine the squares before the first occupied square" in {
-      f1_bishop_occupiedPath.vacate(Set(g2)).beforeFirstOccupied must beEqualTo(List(g2, h3))
+      f1_bishop_occupiedPath.beforeFirstOccupied must beEqualTo(List())
     }
     "determine the first occupied square" in {
       f1_bishop_occupiedPath.firstOccupied must beEqualTo(Some(g2))

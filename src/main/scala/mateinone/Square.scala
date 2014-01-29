@@ -35,4 +35,6 @@ object Square {
 
 }
 
-case class Square private(file: File, rank: Rank)
+case class Square private(file: File, rank: Rank) {
+  override def toString: String = file.toString + rank.toString
+}

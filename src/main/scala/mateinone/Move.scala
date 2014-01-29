@@ -19,6 +19,7 @@ object SimpleMove {
 case class SimpleMove(start: Square, end: Square) extends Move {
   def promote(promotionType: PromotionType): Either[Move, Side => Move] =
     Left(Promotion.optionally(start, end, promotionType).get) // TODO unsafe get here can throw exception
+  override def toString: String = start.toString+"->"+end.toString
 }
 
 object Promotion {
@@ -37,23 +38,25 @@ object Promotion {
     Some(Promotion(start, end, promotionType)).filter(all.contains)
 
 }
-case class Promotion private(start: Square, end: Square, promotionType: PromotionType) extends Move
+case class Promotion private(start: Square, end: Square, promotionType: PromotionType) extends Move {
+  override def toString: String = start.toString+"->"+end.toString+"="+promotionType.toString
+}
 
 object Castle {
 
-  val whiteKingside = Castle(e1, g1, SimpleMove(h1, f1))
-  val whiteQueenside = Castle(e1, c1, SimpleMove(a1, d1))
-  val blackKingside = Castle(e8, g8, SimpleMove(h8, f8))
-  val blackQueenside = Castle(e8, c8, SimpleMove(a8, d8))
+  private val whiteKingside = Castle(e1, g1, SimpleMove(h1, f1))
+  private val whiteQueenside = Castle(e1, c1, SimpleMove(a1, d1))
+  private val blackKingside = Castle(e8, g8, SimpleMove(h8, f8))
+  private val blackQueenside = Castle(e8, c8, SimpleMove(a8, d8))
 
   val all = Set(whiteKingside, whiteQueenside, blackKingside, blackQueenside)
 
-  val `O-O` = (side: Side) => side match {
+  val `O-O` = (_: Side) match {
     case White => whiteKingside
     case Black => blackKingside
   }
 
-  val `O-O-O` = (side: Side) => side match {
+  val `O-O-O` = (_: Side) match {
     case White => whiteQueenside
     case Black => blackQueenside
   }
@@ -64,4 +67,6 @@ object Castle {
   implicit def castleToRightCastle(c: Side => Castle): Either[Move, Side => Move] = Right(c)
 
 }
-case class Castle private(start: Square, end: Square, rookMove: SimpleMove) extends Move
+case class Castle private(start: Square, end: Square, rookMove: SimpleMove) extends Move {
+  override def toString: String = if (end.file == G) "O-O" else "O-O-O"
+}
