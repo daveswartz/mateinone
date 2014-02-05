@@ -6,9 +6,9 @@ import Move._
 // TODO change to generate all possible moves, check if a move is valid by checking against the list of moves
 object Board {
 
-  // Generates an indexed sequence of squares (a path) for the specified piece corresponding to all possible moves the
-  // piece can make from its square.
-  private def pathsFor(piece: Piece): Set[Path] = { // TODO en passant only from 5 or 6 rank
+  // Generates moves for all configuration of the board constraining only the specified piece to its square.  Returns
+  // the union of the generated end squares for the piece's moves.
+  private def pathsFor(piece: Piece): Set[Path] = {
 
     def path(square: Square, fileOffset: Int, rankOffset: Int, nSteps: Int): Path = {
       def pathRecur(current: Path, remaining: Int): Path =
@@ -51,11 +51,10 @@ object Board {
   }
 
   // Marks the squares in the path which are occupied by other pieces.
-  // TODO add doc to occupied path and here that states the occupied paths are all possible paths the piece can move when the other pieces are in some state
-  private def occupiedPathsFor(piece: Piece, otherPieces: Set[Piece]): Set[OccupiedPath] = { // TODO move move logic here since we have all we need!
-    def occupied(path: Path) = otherPieces.map(_.square).filter(path.contains)  // TODO elim paths that are not allowed given other pieces, or move rel logic here (e.g., don't create a capture path until we see an occupier)
+  private def occupiedPathsFor(piece: Piece, otherPieces: Set[Piece]): Set[OccupiedPath] = {
+    def occupied(path: Path) = otherPieces.map(_.square).filter(path.contains)
     pathsFor(piece).map(path => OccupiedPath(path, occupied(path)))
-  } // TODO change to return a set of moves!
+  }
 
   // Creates a chess board in the initial state
   def apply(): Board = {
@@ -182,13 +181,10 @@ case class Board private(turn: Side, history: List[Move], pieces: Set[Piece]) {
 
   // Returns the set of valid moves.
   def moves: Set[Move] = {
-    def movesFor(piece: Piece, end: Square): Set[Move] = {
-      val promotions: Set[Move] = PromotionType.all.flatMap(Promotion.optionally(piece.square, end, _))
-      val castles: Set[Move] = Castle.all.map(_.rookMove).flatMap(Castle.optionally(piece.square, end, _))
-      val simple: Move = SimpleMove(piece.square, end)
-      promotions ++ castles + simple
-    }
-    pieces.flatMap(piece => occupiedPathsFor(piece, pieces - piece).flatMap(occupiedPathEnds(_).flatMap(movesFor(piece, _)))).filter(isValid)
+    def default(args: (Square, Square)): Set[SimpleMove] = Set(SimpleMove(args._1, args._2))
+    def movesFor(piece: Piece, end: Square): Set[_ <: Move] =
+      Promotion.promotion.orElse(Castle.castle).applyOrElse((piece.square, end), default)
+    pieces.flatMap(piece => occupiedPathsFor(piece, pieces - piece).flatMap(occupiedPathEnds(_).flatMap(movesFor(piece, _).iterator))).filter(isValid)
   }
 
 }

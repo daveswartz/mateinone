@@ -17,8 +17,7 @@ object SimpleMove {
   implicit def tupleToLeftSimpleMove(t: (Square, Square)): Either[Move, Side => Move] = t match { case (start, end) => Left(SimpleMove(start, end)) }
 }
 case class SimpleMove(start: Square, end: Square) extends Move {
-  def promote(promotionType: PromotionType): Either[Move, Side => Move] =
-    Left(Promotion.optionally(start, end, promotionType).get) // TODO unsafe get here can throw exception
+  def promote(promotionType: PromotionType): Option[Promotion] = Promotion.promotion.lift((start, end)).flatMap(_.find(p => p.promotionType == promotionType))
   override def toString: String = start.toString+"->"+end.toString
 }
 
@@ -32,10 +31,14 @@ object Promotion {
     if end.isDefined
   } yield Promotion(start, end.get, promotionType)
 
-  val all = promotions(List(a7, b7, c7, d7, e7, f7, g7, h7), 1) ++ promotions(List(a2, b2, c2, d2, e2, f2, g2, h2), -1)
+  private val all = promotions(List(a7, b7, c7, d7, e7, f7, g7, h7), 1) ++ promotions(List(a2, b2, c2, d2, e2, f2, g2, h2), -1)
 
-  def optionally(start: Square, end: Square, promotionType: PromotionType): Option[Promotion] =
-    Some(Promotion(start, end, promotionType)).filter(all.contains)
+  val promotion = new PartialFunction[(Square, Square), Set[Promotion]] {
+    override def isDefinedAt(args: (Square, Square)): Boolean = all.exists(p => args._1 == p.start && args._2 == p.end)
+    override def apply(args: (Square, Square)): Set[Promotion] = PromotionType.all.map(t => Promotion(args._1, args._2, t))
+  }
+
+  implicit def promotionToLeftPromotion(p: Promotion): Either[Promotion, Side => Promotion] = Left(p)
 
 }
 case class Promotion private(start: Square, end: Square, promotionType: PromotionType) extends Move {
@@ -51,6 +54,11 @@ object Castle {
 
   val all = Set(whiteKingside, whiteQueenside, blackKingside, blackQueenside)
 
+  val castle = new PartialFunction[(Square, Square), Set[Castle]] {
+    override def isDefinedAt(args: (Square, Square)): Boolean = all.exists(c => args._1 == c.start && args._2 == c.end)
+    override def apply(args: (Square, Square)): Set[Castle] = all.filter(c => args._1 == c.start && args._2 == c.end)
+  }
+
   val `O-O` = (_: Side) match {
     case White => whiteKingside
     case Black => blackKingside
@@ -61,10 +69,7 @@ object Castle {
     case Black => blackQueenside
   }
 
-  def optionally(start: Square, end: Square, rookMove: SimpleMove): Option[Castle] =
-    Some(Castle(start, end, rookMove)).filter(all.contains)
-
-  implicit def castleToRightCastle(c: Side => Castle): Either[Move, Side => Move] = Right(c)
+  implicit def castleToRightCastle(c: Side => Castle): Either[Castle, Side => Castle] = Right(c)
 
 }
 case class Castle private(start: Square, end: Square, rookMove: SimpleMove) extends Move {
