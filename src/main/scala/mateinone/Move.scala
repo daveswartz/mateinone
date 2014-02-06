@@ -3,8 +3,16 @@ package mateinone
 import Square._
 
 object Move {
+
   implicit def moveToEither(m: Move): Either[Move, Side => Move] = Left(m)
+
   def toMove(e: Either[Move, Side => Move], s: Side): Move = e match { case Left(l) => l case Right(r) => r(s)}
+
+  def moves(start: Square, end: Square): Set[_ <: Move] = {
+    def default(args: (Square, Square)) = Set(SimpleMove(args._1, args._2))
+    Promotion.promotion.orElse(Castle.castle).applyOrElse((start, end), default)
+  }
+
 }
 sealed trait Move {
   val start: Square

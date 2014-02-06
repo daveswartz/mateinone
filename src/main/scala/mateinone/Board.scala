@@ -180,11 +180,7 @@ case class Board private(turn: Side, history: List[Move], pieces: Set[Piece]) {
   }
 
   // Returns the set of valid moves.
-  def moves: Set[Move] = {
-    def default(args: (Square, Square)): Set[SimpleMove] = Set(SimpleMove(args._1, args._2))
-    def movesFor(piece: Piece, end: Square): Set[_ <: Move] =
-      Promotion.promotion.orElse(Castle.castle).applyOrElse((piece.square, end), default)
-    pieces.flatMap(piece => occupiedPathsFor(piece, pieces - piece).flatMap(occupiedPathEnds(_).flatMap(movesFor(piece, _).iterator))).filter(isValid)
-  }
+  def moves: Set[Move] =
+    pieces.flatMap(piece => occupiedPathsFor(piece, pieces - piece).flatMap(occupiedPathEnds(_).flatMap(Move.moves(piece.square, _).iterator))).filter(isValid)
 
 }
