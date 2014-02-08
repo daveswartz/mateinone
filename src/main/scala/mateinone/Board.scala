@@ -5,14 +5,7 @@ import Move._
 // TODO change to generate all possible moves, check if a move is valid by checking against the list of moves
 object Board {
 
-  // Returns the possible start pieces for the end square.
-  private def starts(end: Square, pieces: Set[Piece]): Set[Square] = {
-    // TODO
-    Set.empty[Square]
-  }
-
-  // Returns the possible end squares for the piece.
-  private def ends(piece: Piece, others: Set[Piece]): Set[Square] = { // TODO add lastMove: Option[Move] to each piece and val hasMoved and twoSquarePawnAdvance
+  private def paths(piece: Piece, others: Set[Piece]): Set[List[Square]] = { // TODO add lastMove: Option[Move] to each piece and val hasMoved and twoSquarePawnAdvance
 
     def path(fileOffset: Int, rankOffset: Int, nSteps: Int = 1): List[Square] = {
       def pathRecur(current: List[Square], remaining: Int): List[Square] =
@@ -59,11 +52,10 @@ object Board {
         file ++ rank ++ diagonals
     }
 
-    paths.filterNot(_.isEmpty).flatten.toSet
+    paths.filterNot(_.isEmpty)
 
   }
 
-  // Creates a chess board in the initial state
   def apply(): Board = {
     def piecesFor(side: Side, pawnRank: Rank, kingRank: Rank): Set[Piece] = {
       def piece(side: Side, pieceType: PieceType)(square: Square) = Piece(side, pieceType, square)
@@ -93,11 +85,10 @@ case class Board private(turn: Side, history: List[Move], pieces: Set[Piece]) {
 
   def hasMoved(piece: Piece): Boolean = lastMove(piece).isDefined
 
-  // Returns true when the move is valid; otherwise, false.
   def isValid(move: Move): Boolean = {
 
     def isValidCastle(castle: Castle, piece: Piece) = // TODO try to put all castling logic into pathsFor (dont gen path is not allowed)
-      pieceAt(castle.rookMove.start).fold(false)(rookPiece => !hasMoved(piece) && !hasMoved(rookPiece) && ends(rookPiece, pieces - rookPiece).contains(castle.rookMove.end))
+      pieceAt(castle.rookMove.start).fold(false)(rookPiece => !hasMoved(piece) && !hasMoved(rookPiece) && paths(rookPiece, pieces - rookPiece).flatten.contains(castle.rookMove.end))
 
     def isValidSimpleMove(simpleMove: SimpleMove, piece: Piece) =
       simpleMove match { case SimpleMove(start @ Square(file, rank), end) =>
@@ -131,15 +122,15 @@ case class Board private(turn: Side, history: List[Move], pieces: Set[Piece]) {
         }
       }
 
-    def isBlockingCheck = {
-      val kingSquare = pieces.find(p => p.pieceType == King && p.side == turn).get.square
-      starts(kingSquare, pieces).exists(start => pieces.exists(_.square == start))
+    def isBlockingCheck(piece: Piece) = {
+      val king = pieces.find(p => p.pieceType == King && p.side == turn).get.square
+      pieces.filter(_.side != turn).exists(other => paths(other, pieces - piece).exists(path => path.contains(king) && path.takeWhile(king !=).contains(piece.square)))
     }
 
     pieceAt(move.start).fold(false) { piece =>
       piece.side == turn &&
-        ends(piece, pieces - piece).contains(move.end) &&
-        !isBlockingCheck &&
+        paths(piece, pieces - piece).flatten.contains(move.end) &&
+        !isBlockingCheck(piece) &&
         (move match {
           case castle: Castle => isValidCastle(castle, piece)
           case promotion: Promotion => true
@@ -179,7 +170,6 @@ case class Board private(turn: Side, history: List[Move], pieces: Set[Piece]) {
 
   }
 
-  // Returns the set of valid moves.
-  def moves: Set[Move] = pieces.flatMap(piece => ends(piece, pieces - piece).flatMap(Move.moves(piece.square, _).iterator)).filter(isValid)
+  def moves: Set[Move] = pieces.flatMap(piece => paths(piece, pieces - piece).flatten.flatMap(Move.moves(piece.square, _).iterator)).filter(isValid)
 
 }
