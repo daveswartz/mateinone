@@ -123,19 +123,17 @@ case class Board private(turn: Side, pieces: Set[Piece], lastMove: Option[Move] 
 
     def oneMove(move: Move): Option[Board] =
       if (isValid(move)) {
-        val nextTurn = if (turn == White) Black else White
-        pieceAt(move.start).flatMap { piece =>
-          move match {
-            case SimpleMove(_, end) =>
-              Some(Board(nextTurn, pieces.filterNot(_.square == end) - piece + piece.copy(square = end, hasMoved = true), Some(move)))
-            case Castle(_, end, SimpleMove(rookStart, rookEnd)) =>
-              pieceAt(rookStart).flatMap { rookPiece =>
-                Some(Board(nextTurn, pieces - piece - rookPiece + piece.copy(square = end, hasMoved = true) + rookPiece.copy(square = rookEnd, hasMoved = true), Some(move)))
-              }
-            case Promotion(_, end, promotionType) =>
-              Some(Board(nextTurn, pieces.filterNot(_.square == end) - piece + piece.copy(square = end, hasMoved = true).promotedTo(promotionType), Some(move)))
-          }
+        val piece = pieceAt(move.start).get
+        val nextPieces = move match {
+          case SimpleMove(_, end) =>
+            pieces.filterNot(_.square == end) - piece + piece.movedTo(end)
+          case Castle(_, end, SimpleMove(rookStart, rookEnd)) =>
+            val rookPiece = pieceAt(rookStart).get
+            pieces - piece - rookPiece + piece.movedTo(end) + rookPiece.movedTo(rookEnd)
+          case Promotion(_, end, promotionType) =>
+            pieces.filterNot(_.square == end) - piece + piece.movedTo(end).promotedTo(promotionType)
         }
+        Some(new Board(turn.other, nextPieces, Some(move)))
       } else None
 
     moves.toList match {
