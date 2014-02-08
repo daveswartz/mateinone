@@ -87,7 +87,7 @@ case class Board private(turn: Side, pieces: Set[Piece], lastMove: Option[Move] 
 
     // TODO try to put all castling logic into paths (dont gen path if it is not allowed)
     def isValidCastle(castle: Castle, piece: Piece) =
-      pieceAt(castle.rookMove.start).fold(false)(rookPiece => !piece.hasMoved && !rookPiece.hasMoved && paths(rookPiece, pieces - rookPiece, lastMove).flatten.contains(castle.rookMove.end))
+      pieceAt(castle.rookMove.start).fold(false)(rookPiece => !rookPiece.hasMoved && paths(rookPiece, pieces - rookPiece, lastMove).flatten.contains(castle.rookMove.end))
 
     def isValidSimpleMove(simpleMove: SimpleMove, piece: Piece) =
       simpleMove match { case SimpleMove(start @ Square(file, rank), end) =>
