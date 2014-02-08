@@ -6,10 +6,11 @@ object Board {
 
   private def paths(piece: Piece, others: Set[Piece], lastOption: Option[Move]): Set[List[Square]] = {
 
+    def findOther(side: Side, square: Square): Option[Piece] = others.find(o => o.side == side && o.square == square)
+
     def path(stepOffset: (Int, Int), nSteps: Int = 1, stepOnCapture: Boolean = true, stepOnEmpty: Boolean = true): List[Square] = {
       def pathRecur(current: List[Square], remaining: Int): List[Square] = {
         val nextOption = current.last.offset(stepOffset)
-        def findOther(side: Side, square: Square): Option[Piece] = others.find(o => o.side == side && o.square == square)
         def isCapture(next: Square): Boolean = findOther(piece.side.other, next).isDefined
         nextOption match {
           case Some(next) if findOther(piece.side, next).isDefined => current
@@ -25,14 +26,20 @@ object Board {
     def rank = Set(path((0, 1), 7), path((0, -1), 7))
     def diagonals = Set(path((1, 1), 7), path((1, -1), 7), path((-1, 1), 7), path((-1, -1), 7))
     def adjacent = Set(path((0, 1)), path((1, 1)), path((1, 0)), path((1, -1)), path((0, -1)), path((-1, -1)), path((-1, 0)), path((-1, 1)))
-    val pawnAdvance = path(_: (Int, Int), _: Int, stepOnCapture = false)
-    val pawnCapture = path(_: (Int, Int), 1, stepOnEmpty = false)
+    def pawnAdvance = path(_: (Int, Int), _: Int, stepOnCapture = false)
+    def pawnCapture = path(_: (Int, Int), 1, stepOnEmpty = false)
     def enPassant(stepOffset: (Int, Int)) = lastOption match {
       case Some(SimpleMove(start, end)) if piece.square.offset(stepOffset._1, 0) == Some(end) && Square.offset(start, end) == (if (piece.side == White) (0, -2) else (0, 2)) =>
         path(stepOffset)
       case _ =>
         List()
     }
+    def canCastle(side: Side, rook: Square, between: Set[Square]): Boolean =
+      findOther(side, rook).filter(_.hasMoved == false).isDefined && between.forall(b => findOther(side, b).isEmpty)
+    def castleWhiteKingside = if (canCastle(White, Square.h1, Set(Square.f1, Square.g1))) path((2, 0)) else List()
+    def castleWhiteQueenside = if (canCastle(White, Square.a1, Set(Square.b1, Square.c1, Square.d1))) path((-2, 0)) else List()
+    def castleBlackKingside = if (canCastle(Black, Square.h8, Set(Square.f8, Square.g8))) path((2, 0)) else List()
+    def castleBlackQueenside = if (canCastle(Black, Square.a8, Set(Square.b8, Square.c8, Square.d8))) path((-2, 0)) else List()
 
     piece match {
       case Piece(White, Pawn, Square(_, `2`), false) =>
@@ -50,9 +57,9 @@ object Board {
       case Piece(_, Bishop, _, _) =>
         diagonals
       case Piece(White, King, Square.e1, false) =>
-        adjacent ++ Set(path((2, 0)), path((-2, 0)))
+        adjacent + castleWhiteKingside + castleWhiteQueenside
       case Piece(Black, King, Square.e8, false) =>
-        adjacent ++ Set(path((2, 0)), path((-2, 0)))
+        adjacent + castleBlackKingside + castleBlackQueenside
       case Piece(_, King, _, _) =>
         adjacent
       case Piece(_, Queen, _, _) =>
@@ -110,30 +117,11 @@ case class Board private(turn: Side, pieces: Set[Piece], lastMove: Option[Move] 
   }
 
   def moves: Set[Move] = {
-    def isValid(move: Move): Boolean = {
-
-      def isValidCastle(castle: Castle, piece: Piece) =
-        pieceAt(castle.rookMove.start).fold(false)(rookPiece => !rookPiece.hasMoved && paths(rookPiece, pieces - rookPiece, lastMove).flatten.contains(castle.rookMove.end))
-
-      def isBlockingCheck(piece: Piece) = {
-        val king = pieces.find(p => p.pieceType == King && p.side == turn).get.square
-        pieces.filter(_.side != turn).exists(other => paths(other, pieces - piece, lastMove).exists(path => path.contains(king) && path.takeWhile(king !=).contains(piece.square)))
-      }
-
-      pieceAt(move.start).fold(false) { piece =>
-        piece.side == turn &&
-          paths(piece, pieces - piece, lastMove).flatten.contains(move.end) &&
-          !isBlockingCheck(piece) &&
-          (move match {
-            case castle: Castle => isValidCastle(castle, piece)
-            case promotion: Promotion => true
-            case simpleMove: SimpleMove => true
-          })
-      }
-
+    def isBlockingCheck(piece: Piece) = {
+      val king = pieces.find(p => p.pieceType == King && p.side == turn).get.square
+      pieces.filter(_.side != turn).exists(other => paths(other, pieces - piece, lastMove).exists(path => path.contains(king) && path.takeWhile(king !=).contains(piece.square)))
     }
-
-    pieces.flatMap(piece => paths(piece, pieces - piece, lastMove).flatten.flatMap(Move.moves(piece.square, _).iterator)).filter(isValid)
+    pieces.filter(_.side == turn).filterNot(isBlockingCheck).flatMap(piece => paths(piece, pieces - piece, lastMove).flatten.flatMap(Move.moves(piece.square, _).iterator))
   }
 
 }
