@@ -28,13 +28,11 @@ object Square {
 
   def get(file: File, rank: Rank): Square = all((file.n - 1) * 8 + rank.n - 1)
 
-  def offset(s: Square, o: (Int, Int)): Option[Square] =
-    File.offset(s.file, o._1).flatMap(fo => Rank.offset(s.rank, o._2).map(ro => Square.get(fo, ro)))
-
   def offset(a: Square, b: Square): (Int, Int) = (File.offset(a.file, b.file), Rank.offset(a.rank, b.rank))
 
 }
 
 case class Square private(file: File, rank: Rank) {
+  def offset(offset: (Int, Int)): Option[Square] = File.offset(file, offset._1).flatMap(fo => Rank.offset(rank, offset._2).map(ro => Square.get(fo, ro)))
   override def toString: String = file.toString + rank.toString
 }

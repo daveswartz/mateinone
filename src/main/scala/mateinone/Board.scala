@@ -9,7 +9,7 @@ object Board {
 
     def path(stepOffset: (Int, Int), nSteps: Int = 1, stepOnCapture: Boolean = true, stepOnEmpty: Boolean = true): List[Square] = {
       def pathRecur(current: List[Square], remaining: Int): List[Square] = {
-        val nextOption = Square.offset(current.last, stepOffset)
+        val nextOption = current.last.offset(stepOffset)
         def findOther(side: Side, square: Square): Option[Piece] = others.find(o => o.side == side && o.square == square)
         def isCapture(next: Square): Boolean = findOther(piece.side.other, next).isDefined
         nextOption match {
@@ -29,7 +29,7 @@ object Board {
     val pawnAdvance = path(_: (Int, Int), _: Int, stepOnCapture = false)
     val pawnCapture = path(_: (Int, Int), 1, stepOnEmpty = false)
     def enPassant(stepOffset: (Int, Int)) = lastOption match {
-      case Some(SimpleMove(start, end)) if Square.offset(piece.square, (stepOffset._1, 0)) == Some(end) && Square.offset(start, end) == (if (piece.side == White) (0, -2) else (0, 2)) =>
+      case Some(SimpleMove(start, end)) if piece.square.offset(stepOffset._1, 0) == Some(end) && Square.offset(start, end) == (if (piece.side == White) (0, -2) else (0, 2)) =>
         path(stepOffset)
       case _ =>
         List()
