@@ -16,6 +16,6 @@ sealed trait Side { val other: Side }
 case object White extends Side { val other: Side = Black }
 case object Black extends Side { val other: Side = White }
 
-case class Piece(side: Side, pieceType: PieceType, square: Square, last: Option[SimpleMove] = None) {
+case class Piece(side: Side, pieceType: PieceType, square: Square, hasMoved: Boolean = false) {
   def promotedTo(promotionType: PromotionType): Piece = copy(pieceType = promotionType)
 }

@@ -3,7 +3,6 @@ package mateinone
 import Move._
 
 // TODO change to generate all possible moves, check if a move is valid by checking against the list of moves
-// TODO add lastMove: Option[Move] to each piece and val hasMoved and twoSquarePawnAdvance
 object Board {
 
   private def paths(piece: Piece, others: Set[Piece], lastOption: Option[Move]): Set[List[Square]] = { // TODO 1. generate moves and check against, keep pulling in
@@ -29,17 +28,19 @@ object Board {
     def adjacent = Set(path((0, 1)), path((1, 1)), path((1, 0)), path((1, -1)), path((0, -1)), path((-1, -1)), path((-1, 0)), path((-1, 1)))
     val pawnAdvance = path(_: (Int, Int), _: Int, stepOnCapture = false)
     val pawnCapture = path(_: (Int, Int), 1, stepOnEmpty = false)
-    def enPassant(stepOffset: (Int, Int)) = lastOption match { case Some(last) =>
-      if (Square.offset(piece.square, (stepOffset._1, 0)) == Some(last.end) && Square.offset(last.start, last.end) == (if (piece.side == White) (0, -2) else (0, 2))) path(stepOffset)
-      else List()
+    def enPassant(stepOffset: (Int, Int)) = lastOption match {
+      case Some(SimpleMove(start, end)) if Square.offset(piece.square, (stepOffset._1, 0)) == Some(end) && Square.offset(start, end) == (if (piece.side == White) (0, -2) else (0, 2)) =>
+        path(stepOffset)
+      case _ =>
+        List()
     }
 
     piece match {
-      case Piece(White, Pawn, Square(_, `2`), None) =>
+      case Piece(White, Pawn, Square(_, `2`), false) =>
         Set(pawnAdvance((0, 1), 2), pawnCapture(1, 1), pawnCapture(-1, 1))
       case Piece(White, Pawn, _, _) =>
         Set(pawnAdvance((0, 1), 1), pawnCapture(1, 1), pawnCapture(-1, 1), enPassant((1, 1)), enPassant((-1, 1)))
-      case Piece(Black, Pawn, Square(_, `7`), None) =>
+      case Piece(Black, Pawn, Square(_, `7`), false) =>
         Set(pawnAdvance((0, -1), 2), pawnCapture(1, -1), pawnCapture(-1, -1))
       case Piece(Black, Pawn, _, _) =>
         Set(pawnAdvance((0, -1), 1), pawnCapture(1, -1), pawnCapture(-1, -1), enPassant((1, -1)), enPassant((-1, -1)))
@@ -49,9 +50,9 @@ object Board {
         Set(path((2, 1)), path((2, -1)), path((1, 2)), path((1, -2)), path((-2, 1)), path((-2, -1)), path((-1, 2)), path((-1, -2)))
       case Piece(_, Bishop, _, _) =>
         diagonals
-      case Piece(White, King, Square.e1, None) =>
+      case Piece(White, King, Square.e1, false) =>
         adjacent ++ Set(path((2, 0)), path((-2, 0)))
-      case Piece(Black, King, Square.e8, None) =>
+      case Piece(Black, King, Square.e8, false) =>
         adjacent ++ Set(path((2, 0)), path((-2, 0)))
       case Piece(_, King, _, _) =>
         adjacent
@@ -72,29 +73,21 @@ object Board {
       val queen = piece(side, Queen)(Square.get(D, kingRank))
       pawns ++ rooks ++ knights ++ bishops + king + queen
     }
-    Board(White, Nil, piecesFor(White, `2`, `1`) ++ piecesFor(Black, `7`, `8`))
+    Board(White, piecesFor(White, `2`, `1`) ++ piecesFor(Black, `7`, `8`))
   }
 
 }
 import Board._
 
-case class Board private(turn: Side, history: List[Move], pieces: Set[Piece]) {
+case class Board private(turn: Side, pieces: Set[Piece], lastMove: Option[Move] = None) {
 
   def pieceAt(square: Square): Option[Piece] = pieces.find(_.square == square)
-
-  private def lastMove(piece: Piece): Option[Move] = history.find {
-    case SimpleMove(_, end) => end == piece.square
-    case Promotion(_, end, _) => end == piece.square
-    case Castle(_, end, SimpleMove(_, rookEnd)) => end == piece.square || rookEnd == piece.square
-  }
-
-  def hasMoved(piece: Piece): Boolean = lastMove(piece).isDefined
 
   def isValid(move: Move): Boolean = { // TODO this become true once logic in paths
 
     // TODO try to put all castling logic into paths (dont gen path if it is not allowed)
     def isValidCastle(castle: Castle, piece: Piece) =
-      pieceAt(castle.rookMove.start).fold(false)(rookPiece => !hasMoved(piece) && !hasMoved(rookPiece) && paths(rookPiece, pieces - rookPiece, history.lastOption).flatten.contains(castle.rookMove.end))
+      pieceAt(castle.rookMove.start).fold(false)(rookPiece => !piece.hasMoved && !rookPiece.hasMoved && paths(rookPiece, pieces - rookPiece, lastMove).flatten.contains(castle.rookMove.end))
 
     def isValidSimpleMove(simpleMove: SimpleMove, piece: Piece) =
       simpleMove match { case SimpleMove(start @ Square(file, rank), end) =>
@@ -107,12 +100,12 @@ case class Board private(turn: Side, history: List[Move], pieces: Set[Piece]) {
 
     def isBlockingCheck(piece: Piece) = {
       val king = pieces.find(p => p.pieceType == King && p.side == turn).get.square
-      pieces.filter(_.side != turn).exists(other => paths(other, pieces - piece, history.lastOption).exists(path => path.contains(king) && path.takeWhile(king !=).contains(piece.square)))
+      pieces.filter(_.side != turn).exists(other => paths(other, pieces - piece, lastMove).exists(path => path.contains(king) && path.takeWhile(king !=).contains(piece.square)))
     }
 
     pieceAt(move.start).fold(false) { piece =>
       piece.side == turn &&
-        paths(piece, pieces - piece, history.lastOption).flatten.contains(move.end) &&
+        paths(piece, pieces - piece, lastMove).flatten.contains(move.end) &&
         !isBlockingCheck(piece) &&
         (move match {
           case castle: Castle => isValidCastle(castle, piece)
@@ -131,17 +124,16 @@ case class Board private(turn: Side, history: List[Move], pieces: Set[Piece]) {
     def oneMove(move: Move): Option[Board] =
       if (isValid(move)) {
         val nextTurn = if (turn == White) Black else White
-        val nextHistory = history :+ move
         pieceAt(move.start).flatMap { piece =>
           move match {
             case SimpleMove(_, end) =>
-              Some(Board(nextTurn, nextHistory, pieces.filterNot(_.square == end) - piece + piece.copy(square = end)))
+              Some(Board(nextTurn, pieces.filterNot(_.square == end) - piece + piece.copy(square = end, hasMoved = true), Some(move)))
             case Castle(_, end, SimpleMove(rookStart, rookEnd)) =>
               pieceAt(rookStart).flatMap { rookPiece =>
-                Some(Board(nextTurn, nextHistory, pieces - piece - rookPiece + piece.copy(square = end) + rookPiece.copy(square = rookEnd)))
+                Some(Board(nextTurn, pieces - piece - rookPiece + piece.copy(square = end, hasMoved = true) + rookPiece.copy(square = rookEnd, hasMoved = true), Some(move)))
               }
             case Promotion(_, end, promotionType) =>
-              Some(Board(nextTurn, nextHistory, pieces.filterNot(_.square == end) - piece + piece.copy(square = end).promotedTo(promotionType)))
+              Some(Board(nextTurn, pieces.filterNot(_.square == end) - piece + piece.copy(square = end, hasMoved = true).promotedTo(promotionType), Some(move)))
           }
         }
       } else None
@@ -154,6 +146,6 @@ case class Board private(turn: Side, history: List[Move], pieces: Set[Piece]) {
   }
 
   // TODO 1. make moves a member of this function, have mvoe is value just check if moves contains the move
-  def moves: Set[Move] = pieces.flatMap(piece => paths(piece, pieces - piece, history.lastOption).flatten.flatMap(Move.moves(piece.square, _).iterator)).filter(isValid)
+  def moves: Set[Move] = pieces.flatMap(piece => paths(piece, pieces - piece, lastMove).flatten.flatMap(Move.moves(piece.square, _).iterator)).filter(isValid)
 
 }
