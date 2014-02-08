@@ -35,7 +35,7 @@ object Promotion {
     start <- starts
     fileOffset <- List(-1, 0, 1)
     promotionType <- PromotionType.all
-    end = Square.offset(start, fileOffset, rankOffset)
+    end = Square.offset(start, (fileOffset, rankOffset))
     if end.isDefined
   } yield Promotion(start, end.get, promotionType)
 
