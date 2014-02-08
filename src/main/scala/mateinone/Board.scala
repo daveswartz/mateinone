@@ -3,22 +3,25 @@ package mateinone
 import Move._
 
 // TODO change to generate all possible moves, check if a move is valid by checking against the list of moves
+// TODO add lastMove: Option[Move] to each piece and val hasMoved and twoSquarePawnAdvance
 object Board {
 
-  private def paths(piece: Piece, others: Set[Piece]): Set[List[Square]] = { // TODO add lastMove: Option[Move] to each piece and val hasMoved and twoSquarePawnAdvance
+  private def paths(piece: Piece, others: Set[Piece]): Set[List[Square]] = {
 
     def path(fileOffset: Int, rankOffset: Int, nSteps: Int = 1): List[Square] = {
-      def pathRecur(current: List[Square], remaining: Int): List[Square] =
+      def pathRecur(current: List[Square], remaining: Int): List[Square] = {
+        def otherWith(side: Side, square: Square) = others.exists(o => o.side == side && o.square == square)
         Square.offset(current.last, fileOffset, rankOffset) match {
-          case Some(next) if others.exists(o => next == o.square && piece.side == o.side) =>
+          case Some(next) if otherWith(piece.side, next) =>
             current
-          case Some(next) if others.exists(o => next == o.square && piece.side != o.side) =>
+          case Some(next) if otherWith(piece.side.other, next) =>
             current :+ next
           case Some(next) if remaining > 0 =>
             pathRecur(current :+ next, remaining - 1)
           case _ =>
             current
         }
+      }
       pathRecur(List(piece.square), nSteps).tail
     }
 
@@ -27,7 +30,7 @@ object Board {
     def diagonals = Set(path(1, 1, 7), path(1, -1, 7), path(-1, 1, 7), path(-1, -1, 7))
     def adjacent = Set(path(0, 1), path(1, 1), path(1, 0), path(1, -1), path(0, -1), path(-1, -1), path(-1, 0), path(-1, 1))
 
-    val paths = piece match {
+    piece match {
       case Piece(White, Pawn, Square(_, `2`)) =>
         Set(path(0, 1, 2), path(1, 1, 1), path(-1, 1, 1))
       case Piece(White, Pawn, _) =>
@@ -51,8 +54,6 @@ object Board {
       case Piece(_, Queen, _) =>
         file ++ rank ++ diagonals
     }
-
-    paths.filterNot(_.isEmpty)
 
   }
 
@@ -87,7 +88,8 @@ case class Board private(turn: Side, history: List[Move], pieces: Set[Piece]) {
 
   def isValid(move: Move): Boolean = {
 
-    def isValidCastle(castle: Castle, piece: Piece) = // TODO try to put all castling logic into pathsFor (dont gen path is not allowed)
+    // TODO try to put all castling logic into pathsFor (dont gen path is not allowed)
+    def isValidCastle(castle: Castle, piece: Piece) =
       pieceAt(castle.rookMove.start).fold(false)(rookPiece => !hasMoved(piece) && !hasMoved(rookPiece) && paths(rookPiece, pieces - rookPiece).flatten.contains(castle.rookMove.end))
 
     def isValidSimpleMove(simpleMove: SimpleMove, piece: Piece) =

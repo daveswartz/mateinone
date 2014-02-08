@@ -12,9 +12,9 @@ case object Rook extends PromotionType { override def toString: String = "♖" }
 case object Bishop extends PromotionType { override def toString: String = "♗" }
 case object Queen extends PromotionType { override def toString: String = "♕" }
 
-sealed trait Side
-case object White extends Side
-case object Black extends Side
+sealed trait Side { val other: Side }
+case object White extends Side { val other: Side = Black }
+case object Black extends Side { val other: Side = White }
 
 case class Piece(side: Side, pieceType: PieceType, square: Square) {
   def promotedTo(promotionType: PromotionType): Piece = copy(pieceType = promotionType)
