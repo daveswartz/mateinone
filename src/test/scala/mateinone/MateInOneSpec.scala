@@ -17,33 +17,6 @@ class SquareSpec extends Specification {
 
 }
 
-class OccupiedPathSpec extends Specification {
-
-  val f1_bishop_path = List(g2, h3)
-  val f1_bishop_occupied = Set(g2)
-  val f1_bishop_occupiedPath = OccupiedPath(f1_bishop_path, f1_bishop_occupied)
-
-  "OccupiedPath" should {
-    "vacate squares" in {
-      f1_bishop_occupiedPath.vacate(Set(g2)) must beEqualTo(OccupiedPath(f1_bishop_path, Set()))
-    }
-    "occupy squares" in {
-      f1_bishop_occupiedPath.occupy(Set(h3)) must beEqualTo(OccupiedPath(f1_bishop_path, Set(g2, h3)))
-    }
-    "determine the squares before the first occupied square" in {
-      f1_bishop_occupiedPath.beforeFirstOccupied must beEqualTo(List())
-    }
-    "determine the first occupied square" in {
-      f1_bishop_occupiedPath.firstOccupied must beEqualTo(Some(g2))
-      f1_bishop_occupiedPath.vacate(Set(g2)).firstOccupied must beEqualTo(None)
-    }
-    "determine the second occupied square" in {
-      f1_bishop_occupiedPath.secondOccupied must beEqualTo(None)
-      f1_bishop_occupiedPath.occupy(Set(h3)).secondOccupied must beEqualTo(Some(h3))
-    }
-  }
-}
-
 class BoardSpec extends Specification {
 
   "Board" should {
