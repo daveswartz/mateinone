@@ -95,10 +95,11 @@ case class Board private(turn: Side, pieces: Set[Piece], lastMove: Option[Move] 
     }
 
     val king = withPieceType(sameSide, King).head.square
-    val otherSidePaths = otherSide.map(paths(_, endOnPiece = false)).flatten
-    def isBlockingCheck(piece: Piece) = otherSidePaths.exists(path => path.contains(king) && path.takeWhile(king !=).contains(piece.square))
-
-    sameSide.filterNot(isBlockingCheck).flatMap(piece => paths(piece).flatten.flatMap(Move.moves(piece.square, _).iterator))
+    val potentialChecks = otherSide.map(paths(_, endOnPiece = false).filter(_.contains(king))).flatten
+    def isBlockingCheck(p: List[Square], s: Square) = p.takeWhile(king !=).contains(s)
+    val notBlockingCheck = sameSide.filterNot(s => potentialChecks.exists(c => isBlockingCheck(c, s.square))).flatMap(s => paths(s).flatten.map((s.square, _)))
+    val checkOption = otherSide.map(paths(_).filter(_.lastOption == Some(king))).flatten.headOption
+    checkOption.fold(notBlockingCheck)(c => notBlockingCheck.filter(t => isBlockingCheck(c, t._2))).flatMap(t => Move.moves(t._1, t._2).iterator)
 
   }
 
