@@ -1,73 +1,8 @@
 package mateinone
 
-import Move._
+import language.postfixOps
 
 object Board {
-
-  private def paths(piece: Piece, others: Set[Piece], lastOption: Option[Move]): Set[List[Square]] = {
-
-    def findOther(side: Side, square: Square): Option[Piece] = others.find(o => o.side == side && o.square == square)
-
-    def path(stepOffset: (Int, Int), nSteps: Int = 1, stepOnCapture: Boolean = true, stepOnEmpty: Boolean = true): List[Square] = {
-      def pathRecur(current: List[Square], remaining: Int): List[Square] = {
-        val nextOption = current.last.offset(stepOffset)
-        def isCapture(next: Square): Boolean = findOther(piece.side.other, next).isDefined
-        nextOption match {
-          case Some(next) if findOther(piece.side, next).isDefined => current
-          case Some(next) if stepOnCapture && isCapture(next) => current :+ next
-          case Some(next) if !isCapture(next) && stepOnEmpty && remaining > 0 => pathRecur(current :+ next, remaining - 1)
-          case _ => current
-        }
-      }
-      pathRecur(List(piece.square), nSteps).tail
-    }
-
-    def file = Set(path((1, 0), 7), path((-1, 0), 7))
-    def rank = Set(path((0, 1), 7), path((0, -1), 7))
-    def diagonals = Set(path((1, 1), 7), path((1, -1), 7), path((-1, 1), 7), path((-1, -1), 7))
-    def adjacent = Set(path((0, 1)), path((1, 1)), path((1, 0)), path((1, -1)), path((0, -1)), path((-1, -1)), path((-1, 0)), path((-1, 1)))
-    def pawnAdvance = path(_: (Int, Int), _: Int, stepOnCapture = false)
-    def pawnCapture = path(_: (Int, Int), 1, stepOnEmpty = false)
-    def enPassant(stepOffset: (Int, Int)) = lastOption match {
-      case Some(SimpleMove(start, end)) if piece.square.offset(stepOffset._1, 0) == Some(end) && Square.offset(start, end) == (if (piece.side == White) (0, -2) else (0, 2)) =>
-        path(stepOffset)
-      case _ =>
-        List()
-    }
-    def canCastle(side: Side, rook: Square, between: Set[Square]): Boolean =
-      findOther(side, rook).filter(_.hasMoved == false).isDefined && between.forall(b => findOther(side, b).isEmpty)
-    def castleWhiteKingside = if (canCastle(White, Square.h1, Set(Square.f1, Square.g1))) path((2, 0)) else List()
-    def castleWhiteQueenside = if (canCastle(White, Square.a1, Set(Square.b1, Square.c1, Square.d1))) path((-2, 0)) else List()
-    def castleBlackKingside = if (canCastle(Black, Square.h8, Set(Square.f8, Square.g8))) path((2, 0)) else List()
-    def castleBlackQueenside = if (canCastle(Black, Square.a8, Set(Square.b8, Square.c8, Square.d8))) path((-2, 0)) else List()
-
-    piece match {
-      case Piece(White, Pawn, Square(_, `2`), false) =>
-        Set(pawnAdvance((0, 1), 2), pawnCapture(1, 1), pawnCapture(-1, 1))
-      case Piece(White, Pawn, _, _) =>
-        Set(pawnAdvance((0, 1), 1), pawnCapture(1, 1), pawnCapture(-1, 1), enPassant((1, 1)), enPassant((-1, 1)))
-      case Piece(Black, Pawn, Square(_, `7`), false) =>
-        Set(pawnAdvance((0, -1), 2), pawnCapture(1, -1), pawnCapture(-1, -1))
-      case Piece(Black, Pawn, _, _) =>
-        Set(pawnAdvance((0, -1), 1), pawnCapture(1, -1), pawnCapture(-1, -1), enPassant((1, -1)), enPassant((-1, -1)))
-      case Piece(_, Rook, _, _) =>
-        file ++ rank
-      case Piece(_, Knight, _, _) =>
-        Set(path((2, 1)), path((2, -1)), path((1, 2)), path((1, -2)), path((-2, 1)), path((-2, -1)), path((-1, 2)), path((-1, -2)))
-      case Piece(_, Bishop, _, _) =>
-        diagonals
-      case Piece(White, King, Square.e1, false) =>
-        adjacent + castleWhiteKingside + castleWhiteQueenside
-      case Piece(Black, King, Square.e8, false) =>
-        adjacent + castleBlackKingside + castleBlackQueenside
-      case Piece(_, King, _, _) =>
-        adjacent
-      case Piece(_, Queen, _, _) =>
-        file ++ rank ++ diagonals
-    }
-
-  }
-
   def apply(): Board = {
     def piecesFor(side: Side, pawnRank: Rank, kingRank: Rank): Set[Piece] = {
       def piece(side: Side, pieceType: PieceType)(square: Square) = Piece(side, pieceType, square)
@@ -81,13 +16,91 @@ object Board {
     }
     Board(White, piecesFor(White, `2`, `1`) ++ piecesFor(Black, `7`, `8`))
   }
-
 }
-import Board._
 
 case class Board private(turn: Side, pieces: Set[Piece], lastMove: Option[Move] = None) {
+  import Piece._
+  import Square._
 
-  def pieceAt(square: Square): Option[Piece] = pieces.find(_.square == square)
+  val moves: Set[Move] = {
+
+    val sameSide = withSide(pieces, turn)
+    val otherSide = withSide(pieces, turn.other)
+
+    def paths(piece: Piece, endOnPiece: Boolean = true): Set[List[Square]] = {
+
+      def path(stepOffset: (Int, Int), nSteps: Int = 1, stepOnOther: Boolean = true, stepOnSame: Boolean = false, stepOnEmpty: Boolean = true): List[Square] = {
+        def pathRecur(current: List[Square], remaining: Int): List[Square] = {
+          def hasSame(s: Square) = withSquare(sameSide, s).size > 0
+          def hasOther(s: Square) = withSquare(otherSide, s).size > 0
+          if (remaining == 0) current
+          else {
+            current.last.offset(stepOffset) match {
+              case None =>
+                current
+              case Some(next) if hasOther(next) =>
+                if (endOnPiece) if (stepOnOther) current :+ next else current else pathRecur(current :+ next, remaining - 1)
+              case Some(next) if hasSame(next) =>
+                if (endOnPiece) if (stepOnSame) current :+ next else current else pathRecur(current :+ next, remaining - 1)
+              case Some(next) =>
+                if (stepOnEmpty) pathRecur(current :+ next, remaining - 1) else current
+            }
+          }
+        }
+        pathRecur(List(piece.square), nSteps).tail
+      }
+
+      def file = Set(path((1, 0), 7), path((-1, 0), 7))
+      def rank = Set(path((0, 1), 7), path((0, -1), 7))
+      def diagonals = Set(path((1, 1), 7), path((1, -1), 7), path((-1, 1), 7), path((-1, -1), 7))
+      def adjacent = Set(path((0, 1)), path((1, 1)), path((1, 0)), path((1, -1)), path((0, -1)), path((-1, -1)), path((-1, 0)), path((-1, 1)))
+      def pawnAdvance = path(_: (Int, Int), _: Int, stepOnOther = false)
+      def pawnCaptures(side: Side) = {
+        val one = path(_: (Int, Int), 1, stepOnEmpty = false)
+        if (side == White) Set(one(1, 1), one(-1, 1)) else Set(one(1, -1), one(-1, -1))
+      }
+      def enPassants(side: Side) = {
+        def one(stepOffset: (Int, Int)) = {
+          val target: Option[Square] = piece.square.offset(stepOffset._1, 0)
+          new PartialFunction[Option[Move], List[Square]] {
+            def isDefinedAt(x: Option[Move]): Boolean = x.fold(false)(m => target == Some(m.end) && Set((0, -2), (0, 2)).contains(m.offset))
+            def apply(x: Option[Move]): List[Square] = path(stepOffset)
+          }.applyOrElse(lastMove, (_: Option[Move]) => List())
+        }
+        if (side == White) Set(one(1, 1), one(-1, 1)) else Set(one(1, -1), one(-1, -1))
+      }
+      def canCastle(side: Side, rook: Square, between: Set[Square]): Boolean =
+        thatHaveNotMoved(withSquare(sameSide, rook)).size > 0 && between.forall(b => withSquare(sameSide, b).isEmpty)
+      def castleWhiteKingside = if (canCastle(White, h1, Set(f1, g1))) path((2, 0)) else List()
+      def castleWhiteQueenside = if (canCastle(White, a1, Set(b1, c1, d1))) path((-2, 0)) else List()
+      def castleBlackKingside = if (canCastle(Black, h8, Set(f8, g8))) path((2, 0)) else List()
+      def castleBlackQueenside = if (canCastle(Black, a8, Set(b8, c8, d8))) path((-2, 0)) else List()
+
+      piece match {
+        case Piece(White, Pawn,   Square(_, `2`), false) => pawnCaptures(White) + pawnAdvance((0, 1), 2)
+        case Piece(White, Pawn,   Square(_, `5`), true ) => pawnCaptures(White) + pawnAdvance((0, 1), 1) ++ enPassants(White)
+        case Piece(White, Pawn,   _,              true ) => pawnCaptures(White) + pawnAdvance((0, 1), 1)
+        case Piece(Black, Pawn,   Square(_, `7`), false) => pawnCaptures(Black) + pawnAdvance((0, -1), 2)
+        case Piece(Black, Pawn,   Square(_, `4`), true ) => pawnCaptures(Black) + pawnAdvance((0, -1), 1) ++ enPassants(Black)
+        case Piece(Black, Pawn,   _,              true ) => pawnCaptures(Black) + pawnAdvance((0, -1), 1)
+        case Piece(_,     Rook,   _,              _    ) => file ++ rank
+        case Piece(_,     Knight, _,              _    ) => Set(path((2, 1)), path((2, -1)), path((1, 2)), path((1, -2)), path((-2, 1)), path((-2, -1)), path((-1, 2)), path((-1, -2)))
+        case Piece(_,     Bishop, _,              _    ) => diagonals
+        case Piece(White, King,   Square(E, `1`), false) => adjacent + castleWhiteKingside + castleWhiteQueenside
+        case Piece(Black, King,   Square(E, `8`), false) => adjacent + castleBlackKingside + castleBlackQueenside
+        case Piece(_,     King,   _,              _    ) => adjacent
+        case Piece(_,     Queen,  _,              _    ) => file ++ rank ++ diagonals
+      }
+
+    }
+
+    val king = withPieceType(sameSide, King).head.square
+    val otherSidePaths = otherSide.map(paths(_, endOnPiece = false)).flatten
+    def isBlockingCheck(piece: Piece) = otherSidePaths.exists(path => path.contains(king) && path.takeWhile(king !=).contains(piece.square))
+
+    sameSide.filterNot(isBlockingCheck).flatMap(piece => paths(piece).flatten.flatMap(Move.moves(piece.square, _).iterator))
+
+  }
 
   // Returns `Some[Board]` when the moves are valid; otherwise, `None`. The repeated parameter is either a `Move`
   // instance or a function that takes a `Side` and returns a `Move`. The reason for using an `Either` is to allow
@@ -96,12 +109,12 @@ case class Board private(turn: Side, pieces: Set[Piece], lastMove: Option[Move] 
 
     def oneMove(move: Move): Option[Board] =
       if (moves.contains(move)) {
-        val piece = pieceAt(move.start).get
+        val piece = withSquare(pieces, move.start).head
         val nextPieces = move match {
           case SimpleMove(_, end) =>
             pieces.filterNot(_.square == end) - piece + piece.movedTo(end)
           case Castle(_, end, SimpleMove(rookStart, rookEnd)) =>
-            val rookPiece = pieceAt(rookStart).get
+            val rookPiece = withSquare(pieces, rookStart).head
             pieces - piece - rookPiece + piece.movedTo(end) + rookPiece.movedTo(rookEnd)
           case Promotion(_, end, promotionType) =>
             pieces.filterNot(_.square == end) - piece + piece.movedTo(end).promotedTo(promotionType)
@@ -110,18 +123,10 @@ case class Board private(turn: Side, pieces: Set[Piece], lastMove: Option[Move] 
       } else None
 
     movesToMake.toList match {
-      case head :: tail => oneMove(toMove(head, turn)).flatMap(_.move(tail :_*))
+      case head :: tail => oneMove(Move.toMove(head, turn)).flatMap(_.move(tail :_*))
       case Nil => Some(this)
     }
 
-  }
-
-  def moves: Set[Move] = {
-    def isBlockingCheck(piece: Piece) = {
-      val king = pieces.find(p => p.pieceType == King && p.side == turn).get.square
-      pieces.filter(_.side != turn).exists(other => paths(other, pieces - piece, lastMove).exists(path => path.contains(king) && path.takeWhile(king !=).contains(piece.square)))
-    }
-    pieces.filter(_.side == turn).filterNot(isBlockingCheck).flatMap(piece => paths(piece, pieces - piece, lastMove).flatten.flatMap(Move.moves(piece.square, _).iterator))
   }
 
 }
