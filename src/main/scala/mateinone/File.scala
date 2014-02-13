@@ -1,39 +1,13 @@
 package mateinone
 
 object File {
-  def allFiles: List[File] = List(A, B, C, D, E, F, G, H)
-  def fromInt(n: Int): Option[File] = n match {
-    case 1 => Some(A)
-    case 2 => Some(B)
-    case 3 => Some(C)
-    case 4 => Some(D)
-    case 5 => Some(E)
-    case 6 => Some(F)
-    case 7 => Some(G)
-    case 8 => Some(H)
-    case _ => None
-  }
-  def offset(f: File, o: Int): Option[File] = fromInt(f.n + o)
-  def offset(a: File, b: File): Int = b.n - a.n
+  val all: Vector[File] = Vector("a", "b", "c", "d", "e", "f", "g", "h").zipWithIndex.map { case (s, i) => new File(i, s) }
+  val Vector(a, b, c, d, e, f, g, h) = all
+  val fromInt = all.lift
 }
-sealed class File(val n: Int) extends Ordered[File] {
-  override def toString: String = n match {
-    case 1 => "a"
-    case 2 => "b"
-    case 3 => "c"
-    case 4 => "d"
-    case 5 => "e"
-    case 6 => "f"
-    case 7 => "g"
-    case 8 => "h"
-  }
-  def compare(that: File): Int = this.n.compare(that.n)
+case class File(n: Int, s: String) extends Ordered[File] {
+  def +(rhs: Int): Option[File] = File.fromInt(n + rhs)
+  def -(rhs: File): Int = n - rhs.n
+  override def toString: String = s
+  def compare(that: File): Int = n.compare(that.n)
 }
-case object A extends File(1)
-case object B extends File(2)
-case object C extends File(3)
-case object D extends File(4)
-case object E extends File(5)
-case object F extends File(6)
-case object G extends File(7)
-case object H extends File(8)

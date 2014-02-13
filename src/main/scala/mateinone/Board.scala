@@ -1,26 +1,28 @@
 package mateinone
 
 import language.postfixOps
+import Square._
+import File._
+import Rank._
 
 object Board {
   def apply(): Board = {
-    def piecesFor(side: Side, pawnRank: Rank, kingRank: Rank): Set[Piece] = {
+    def piecesForSide(side: Side, pawnRank: Rank, kingRank: Rank): Set[Piece] = {
       def piece(side: Side, pieceType: PieceType)(square: Square) = Piece(side, pieceType, square)
-      val pawns = File.allFiles.map(Square.get(_, pawnRank)).toSet.map(piece(side, Pawn))
-      val rooks = Set(A, H).map(Square.get(_, kingRank)).map(piece(side, Rook))
-      val knights = Set(B, G).map(Square.get(_, kingRank)).map(piece(side, Knight))
-      val bishops = Set(C, F).map(Square.get(_, kingRank)).map(piece(side, Bishop))
-      val king = piece(side, King)(Square.get(E, kingRank))
-      val queen = piece(side, Queen)(Square.get(D, kingRank))
+      val pawns = File.all.map(Square(_, pawnRank)).toSet.map(piece(side, Pawn))
+      val rooks = Set(a, h).map(Square(_, kingRank)).map(piece(side, Rook))
+      val knights = Set(b, g).map(Square(_, kingRank)).map(piece(side, Knight))
+      val bishops = Set(c, f).map(Square(_, kingRank)).map(piece(side, Bishop))
+      val king = piece(side, King)(Square(e, kingRank))
+      val queen = piece(side, Queen)(Square(d, kingRank))
       pawns ++ rooks ++ knights ++ bishops + king + queen
     }
-    Board(White, piecesFor(White, `2`, `1`) ++ piecesFor(Black, `7`, `8`))
+    Board(White, piecesForSide(White, _2, _1) ++ piecesForSide(Black, _7, _8))
   }
 }
 
 case class Board private(turn: Side, pieces: Set[Piece], lastMove: Option[Move] = None) {
   import Piece._
-  import Square._
 
   val moves: Set[Move] = {
 
@@ -35,7 +37,7 @@ case class Board private(turn: Side, pieces: Set[Piece], lastMove: Option[Move] 
           def hasOther(s: Square) = withSquare(otherSide, s).size > 0
           if (remaining == 0) current
           else {
-            current.last.offset(stepOffset) match {
+            current.last + stepOffset match {
               case None =>
                 current
               case Some(next) if hasOther(next) =>
@@ -61,7 +63,7 @@ case class Board private(turn: Side, pieces: Set[Piece], lastMove: Option[Move] 
       }
       def enPassants(side: Side) = {
         def one(stepOffset: (Int, Int)) = {
-          val target: Option[Square] = piece.square.offset(stepOffset._1, 0)
+          val target: Option[Square] = piece.square + (stepOffset._1, 0)
           new PartialFunction[Option[Move], List[Square]] {
             def isDefinedAt(x: Option[Move]): Boolean = x.fold(false)(m => target == Some(m.end) && Set((0, -2), (0, 2)).contains(m.offset))
             def apply(x: Option[Move]): List[Square] = path(stepOffset)
@@ -69,27 +71,28 @@ case class Board private(turn: Side, pieces: Set[Piece], lastMove: Option[Move] 
         }
         if (side == White) Set(one(1, 1), one(-1, 1)) else Set(one(1, -1), one(-1, -1))
       }
-      def canCastle(side: Side, rook: Square, between: Set[Square]): Boolean =
-        thatHaveNotMoved(withSquare(sameSide, rook)).size > 0 && between.forall(b => withSquare(sameSide, b).isEmpty)
-      def castleWhiteKingside = if (canCastle(White, h1, Set(f1, g1))) path((2, 0)) else List()
-      def castleWhiteQueenside = if (canCastle(White, a1, Set(b1, c1, d1))) path((-2, 0)) else List()
-      def castleBlackKingside = if (canCastle(Black, h8, Set(f8, g8))) path((2, 0)) else List()
-      def castleBlackQueenside = if (canCastle(Black, a8, Set(b8, c8, d8))) path((-2, 0)) else List()
+      def castles(side: Side, rank: Rank) = {
+        def canCastle(side: Side, rook: Square, between: Vector[Square]): Boolean =
+          thatHaveNotMoved(withSquare(sameSide, rook)).size > 0 && between.forall(b => withSquare(sameSide, b).isEmpty)
+        val kingside = canCastle(side, Square(h, rank), forRank(rank)(f, g))
+        val queenside = canCastle(side, Square(a, rank), forRank(rank)(b, c, d))
+        Some(path((2, 0))).filter(_ => kingside) ++  Some(path((-2, 0))).filter(_ => queenside)
+      }
 
       piece match {
-        case Piece(White, Pawn,   Square(_, `2`), false) => pawnCaptures(White) + pawnAdvance((0, 1), 2)
-        case Piece(White, Pawn,   Square(_, `5`), true ) => pawnCaptures(White) + pawnAdvance((0, 1), 1) ++ enPassants(White)
-        case Piece(White, Pawn,   _,              true ) => pawnCaptures(White) + pawnAdvance((0, 1), 1)
-        case Piece(Black, Pawn,   Square(_, `7`), false) => pawnCaptures(Black) + pawnAdvance((0, -1), 2)
-        case Piece(Black, Pawn,   Square(_, `4`), true ) => pawnCaptures(Black) + pawnAdvance((0, -1), 1) ++ enPassants(Black)
-        case Piece(Black, Pawn,   _,              true ) => pawnCaptures(Black) + pawnAdvance((0, -1), 1)
-        case Piece(_,     Rook,   _,              _    ) => file ++ rank
-        case Piece(_,     Knight, _,              _    ) => Set(path((2, 1)), path((2, -1)), path((1, 2)), path((1, -2)), path((-2, 1)), path((-2, -1)), path((-1, 2)), path((-1, -2)))
-        case Piece(_,     Bishop, _,              _    ) => diagonals
-        case Piece(White, King,   Square(E, `1`), false) => adjacent + castleWhiteKingside + castleWhiteQueenside
-        case Piece(Black, King,   Square(E, `8`), false) => adjacent + castleBlackKingside + castleBlackQueenside
-        case Piece(_,     King,   _,              _    ) => adjacent
-        case Piece(_,     Queen,  _,              _    ) => file ++ rank ++ diagonals
+        case Piece(White, Pawn,   Square(_, `_2`), false) => pawnCaptures(White) + pawnAdvance((0, 1), 2)
+        case Piece(White, Pawn,   Square(_, `_5`), true ) => pawnCaptures(White) + pawnAdvance((0, 1), 1) ++ enPassants(White)
+        case Piece(White, Pawn,   _,               true ) => pawnCaptures(White) + pawnAdvance((0, 1), 1)
+        case Piece(Black, Pawn,   Square(_, `_7`), false) => pawnCaptures(Black) + pawnAdvance((0, -1), 2)
+        case Piece(Black, Pawn,   Square(_, `_4`), true ) => pawnCaptures(Black) + pawnAdvance((0, -1), 1) ++ enPassants(Black)
+        case Piece(Black, Pawn,   _,               true ) => pawnCaptures(Black) + pawnAdvance((0, -1), 1)
+        case Piece(_,     Rook,   _,               _    ) => file ++ rank
+        case Piece(_,     Knight, _,               _    ) => Set(path((2, 1)), path((2, -1)), path((1, 2)), path((1, -2)), path((-2, 1)), path((-2, -1)), path((-1, 2)), path((-1, -2)))
+        case Piece(_,     Bishop, _,               _    ) => diagonals
+        case Piece(White, King,   `e1`,            false) => adjacent ++ castles(White, _1)
+        case Piece(Black, King,   `e8`,            false) => adjacent ++ castles(Black, _8)
+        case Piece(_,     King,   _,               _    ) => adjacent
+        case Piece(_,     Queen,  _,               _    ) => file ++ rank ++ diagonals
       }
 
     }

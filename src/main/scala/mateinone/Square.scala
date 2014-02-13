@@ -1,38 +1,21 @@
 package mateinone
 
+import File._
+
 object Square {
-
-  private def forFile(file: File): List[Square] = Rank.allRanks.map(Square(file, _))
-
-  val aFile = forFile(A)
-  val bFile = forFile(B)
-  val cFile = forFile(C)
-  val dFile = forFile(D)
-  val eFile = forFile(E)
-  val fFile = forFile(F)
-  val gFile = forFile(G)
-  val hFile = forFile(H)
-
-  val List(a1, a2, a3, a4, a5, a6, a7, a8) = aFile
-  val List(b1, b2, b3, b4, b5, b6, b7, b8) = bFile
-  val List(c1, c2, c3, c4, c5, c6, c7, c8) = cFile
-  val List(d1, d2, d3, d4, d5, d6, d7, d8) = dFile
-  val List(e1, e2, e3, e4, e5, e6, e7, e8) = eFile
-  val List(f1, f2, f3, f4, f5, f6, f7, f8) = fFile
-  val List(g1, g2, g3, g4, g5, g6, g7, g8) = gFile
-  val List(h1, h2, h3, h4, h5, h6, h7, h8) = hFile
-
-  val fileRank: List[List[Square]] = List(aFile, bFile, cFile, dFile, eFile, fFile, gFile, hFile)
-
-  private val all: Vector[Square] = fileRank.flatten.toVector
-
-  def get(file: File, rank: Rank): Square = all((file.n - 1) * 8 + rank.n - 1)
-
-  def offset(a: Square, b: Square): (Int, Int) = (File.offset(a.file, b.file), Rank.offset(a.rank, b.rank))
-
+  def forRank(r: Rank)(fs: File*): Vector[Square] = fs.map(f => Square(f, r)).toVector
+  def forFile(f: File)(rs: Rank*): Vector[Square] = rs.map(r => Square(f, r)).toVector
+  val Vector(a1, a2, a3, a4, a5, a6, a7, a8) = forFile(a)(Rank.all:_*)
+  val Vector(b1, b2, b3, b4, b5, b6, b7, b8) = forFile(b)(Rank.all:_*)
+  val Vector(c1, c2, c3, c4, c5, c6, c7, c8) = forFile(c)(Rank.all:_*)
+  val Vector(d1, d2, d3, d4, d5, d6, d7, d8) = forFile(d)(Rank.all:_*)
+  val Vector(e1, e2, e3, e4, e5, e6, e7, e8) = forFile(e)(Rank.all:_*)
+  val Vector(f1, f2, f3, f4, f5, f6, f7, f8) = forFile(f)(Rank.all:_*)
+  val Vector(g1, g2, g3, g4, g5, g6, g7, g8) = forFile(g)(Rank.all:_*)
+  val Vector(h1, h2, h3, h4, h5, h6, h7, h8) = forFile(h)(Rank.all:_*)
 }
-
-case class Square private(file: File, rank: Rank) {
-  def offset(offset: (Int, Int)): Option[Square] = File.offset(file, offset._1).flatMap(fo => Rank.offset(rank, offset._2).map(ro => Square.get(fo, ro)))
+case class Square(file: File, rank: Rank) {
+  def +(rhs: (Int, Int)): Option[Square] = (file + rhs._1).flatMap(fo => (rank + rhs._2).map(ro => Square(fo, ro)))
+  def -(rhs: Square): (Int, Int) = (file - rhs.file, rank - rhs.rank)
   override def toString: String = file.toString + rank.toString
 }

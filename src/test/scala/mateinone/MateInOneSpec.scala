@@ -7,16 +7,6 @@ import Castle._
 import Move._
 import org.specs2.execute.Result
 
-class SquareSpec extends Specification {
-
-  "Square" should {
-    "get squares" in {
-      Square.get(A, `1`) must beEqualTo(a1)
-    }
-  }
-
-}
-
 class BoardSpec extends Specification {
 
   "Board" should {
