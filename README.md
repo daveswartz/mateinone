@@ -6,7 +6,7 @@ Chess library entirely written in Scala.
 Examples ♕
 ----------
 
-Create a board in the initial position.
+Create a board in the **initial position**.
 
 ```scala
 println(Board())
@@ -23,7 +23,7 @@ println(Board())
  ♙ | ♙ | ♙ | ♙ | ♙ | ♙ | ♙ | ♙ | **2**
  ♖ | ♘ | ♗ | ♕ | ♔ | ♗ | ♘ | ♖ | **1**
 
-Play a simple trap known as the Scholar's mate.
+Play a simple trap known as the **Scholar's mate**.
 
 1. e4 e5
 2. Qh5 Nc6
@@ -31,10 +31,21 @@ Play a simple trap known as the Scholar's mate.
 4. Qxf7# 1–0
 
 ```scala
-println(Board().move(e2->e4, e7->e5, d1->h5, b8->c6, c1->c4, g8->f6, h5->f7).get)
+println(Board().move(e2->e4, e7->e5, d1->h5, b8->c6, f1->c4, g8->f6, h5->f7).get)
 ```
 
-Both sides play to quickly castle kingside.
+ a | b | c | d | e | f | g | h | ∙
+:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:
+ ♜ |   | ♝ | ♛ | ♚ | ♝ |   | ♜ | **8**
+ ♟ | ♟ | ♟ | ♟ |   | ♕ | ♟ | ♟ | **7**
+   |   | ♞ |   |   | ♞ |   |   | **6**
+   |   |   |   | ♟ |   |   |   | **5**
+   |   | ♗ |   | ♙ |   |   |   | **4**
+   |   |   |   |   |   |   |   | **3**
+ ♙ | ♙ | ♙ | ♙ |   | ♙ | ♙ | ♙ | **2**
+ ♖ | ♘ | ♗ |   | ♔ |   | ♘ | ♖ | **1**
+
+Both sides play to quickly **castle kingside**.
 
 1. Nf3 Nf6
 2. g3 g6
@@ -56,7 +67,7 @@ println(Board().move(g1->f3, g8->f6, g2->g3, g7->g6, f1->h3, f8->h6, `O-O`, `O-O
  ♙ | ♙ | ♙ | ♙ | ♙ | ♙ |   | ♙ | **2**
  ♖ | ♘ | ♗ | ♕ |   | ♖ | ♔ |   | **1**
 
-Make some exchanges.
+Make some **exchanges**.
 
 1. d4 e5
 2. dxe5 d6
@@ -78,7 +89,7 @@ println(Board().move(d2->d4, e7->e5, d4->e5, d7->d6, c1->g5, d6->e5, g5->d8).get
  ♙ | ♙ | ♙ |   | ♙ | ♙ | ♙ | ♙ | **2**
  ♖ | ♘ |   | ♕ | ♔ | ♗ | ♘ | ♖ | **1**
 
-Generate the opening moves.
+Generate the **opening moves**.
 
 ```scala
 println(Board().moves)
