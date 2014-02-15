@@ -86,9 +86,8 @@ println(Board().moves)
 
     Set(c2->c3, f2->f3, f2->f4, b2->b4, a2->a3, c2->c4, d2->d3, b2->b3, g2->g4, h2->h3, b1->c3, e2->e4, d2->d4, g2->g3, a2->a4, h2->h4, g1->h3, b1->a3, g1->f3, e2->e3)
 
-The [script](script) directory contains more examples of how to use the library.
 
-* [random-game.scala](script/random-game.scala) plays both sides in a random game that continues until one side wins;
+The script directory contains a longer example, **[random-game.scala](script/random-game.scala)**. The script plays both sides in a random game that continues until one side wins.
 
 Developing Locally ♖
 --------------------
