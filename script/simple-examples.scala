@@ -11,15 +11,11 @@ val initial_turn = initial_board.turn
 
 val some_piece = initial_board.pieces.head
 
-// some_piece: mateinone.Piece = Piece(Black,Pawn,Square(G,7),false)
+// some_piece: mateinone.Piece = Piece(White,♙,c2,false)
 
 val white_pawn_squares = initial_board.pieces.filter(_.side == White).filter(_.pieceType == Pawn).map(_.square)
 
-// white_pawn_squares: scala.collection.immutable.Set[mateinone.Square] = Set(Square(H,2), Square(E,2), Square(F,2), Square(B,2), Square(G,2), Square(A,2), Square(C,2), Square(D,2))
-
-val piece_at_a2 = initial_board.pieceAt(a2).get
-
-// piece_at_a2: mateinone.Piece = Piece(White,Pawn,Square(A,2),false)
+// white_pawn_squares: scala.collection.immutable.Set[mateinone.Square] = Set(b2, f2, g2, h2, c2, a2, e2, d2)
 
 val board_after_a3 = initial_board.move(a2->a3).get
 
@@ -28,7 +24,7 @@ val board_after_a4 = board_after_a3.move(a7->a6).get
 // Find the piece that changed as a result of the last move.
 val black_pawn_a6 = board_after_a4.pieces.diff(board_after_a3.pieces).head
 
-// black_pawn_a6: mateinone.Piece = Piece(Black,Pawn,Square(A,6),true)
+// black_pawn_a6: mateinone.Piece = Piece(Black,♙,a6,true)
 
 // The `move` method takes one repeated parameter; therefore, one can specify any number of moves.
 
@@ -40,10 +36,6 @@ val board_after_some_captures = initial_board.move(d2->d4, e7->e5, d4->e5, d7->d
 
 val opening_moves = initial_board.moves
 
-// opening_moves: Set[mateinone.Move] = Set(SimpleMove(Square(G,2),Square(G,4)), SimpleMove(Square(H,2),Square(H,3)), SimpleMove(Square(F,2),Square(F,3)), SimpleMove(Square(B,2),Square(B,4)), SimpleMove(Square(E,2),Square(E,3)), SimpleMove(Square(G,1),Square(F,3)), SimpleMove(Square(B,1),Square(A,3)), SimpleMove(Square(A,2),Square(A,3)), SimpleMove(Square(B,1),Square(C,3)), SimpleMove(Square(H,2),Square(H,4)), SimpleMove(Square(F,2),Square(F,4)), SimpleMove(Square(C,2),Square(C,4)), SimpleMove(Square(E,2),Square(E,4)), SimpleMove(Square(C,2),Square(C,3)), SimpleMove(Square(D,2),Square(D,3)), SimpleMove(Square(B,2),Square(B,3)), SimpleMove(Square(G,1),Square(H,3)), SimpleMove(Square(A,2),Square(A,4)), SimpleMove(Square(G,2),Square(G,3)), SimpleMove(Square(D,2),Square(D,4)))
-
-val opening_moves_for_knights = opening_moves.filter(m => initial_board.pieceAt(m.start).get.pieceType == Knight)
-
-// opening_moves_for_knights: scala.collection.immutable.Set[mateinone.Move] = Set(SimpleMove(Square(G,1),Square(F,3)), SimpleMove(Square(B,1),Square(A,3)), SimpleMove(Square(B,1),Square(C,3)), SimpleMove(Square(G,1),Square(H,3)))
+// opening_moves: Set[mateinone.Move] = Set(c2->c3, f2->f3, f2->f4, b2->b4, a2->a3, c2->c4, d2->d3, b2->b3, g2->g4, h2->h3, b1->c3, e2->e4, d2->d4, g2->g3, a2->a4, h2->h4, g1->h3, b1->a3, g1->f3, e2->e3)
 
 val after_some_move = initial_board.move(opening_moves.head).get

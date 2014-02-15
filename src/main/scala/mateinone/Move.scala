@@ -10,9 +10,9 @@ object Move {
 
   def toMove(e: Either[Move, Side => Move], s: Side): Move = e match { case Left(l) => l case Right(r) => r(s)}
 
-  def moves(start: Square, end: Square): Set[_ <: Move] = {
-    def default(args: (Square, Square)) = Set(SimpleMove(args._1, args._2))
-    Promotion.promotion.orElse(Castle.castle).applyOrElse((start, end), default)
+  def moves(start: Square, end: Square, pieceType: PieceType): Set[_ <: Move] = {
+    def default(args: (Square, Square, PieceType)) = Set(SimpleMove(args._1, args._2))
+    Promotion.promotion.orElse(Castle.castle).applyOrElse((start, end, pieceType), default)
   }
 
 }
@@ -27,7 +27,7 @@ object SimpleMove {
   implicit def tupleToLeftSimpleMove(t: (Square, Square)): Either[Move, Side => Move] = t match { case (start, end) => Left(SimpleMove(start, end)) }
 }
 case class SimpleMove(start: Square, end: Square) extends Move {
-  def promote(promotionType: PromotionType): Option[Promotion] = Promotion.promotion.lift((start, end)).flatMap(_.find(p => p.promotionType == promotionType))
+  def promote(promotionType: PromotionType): Option[Promotion] = Promotion.promotion.lift((start, end, Pawn)).flatMap(_.find(p => p.promotionType == promotionType))
   override def toString: String = start.toString+"->"+end.toString
 }
 
@@ -43,9 +43,9 @@ object Promotion {
 
   private val all = promotions(List(a, b, c, d, e, f, g, h).map(square(_,_7)), 1) ++ promotions(List(a, b, c, d, e, f, g, h).map(square(_,_2)), -1)
 
-  val promotion = new PartialFunction[(Square, Square), Set[Promotion]] {
-    override def isDefinedAt(args: (Square, Square)): Boolean = all.exists(p => args._1 == p.start && args._2 == p.end)
-    override def apply(args: (Square, Square)): Set[Promotion] = PromotionType.all.map(t => Promotion(args._1, args._2, t))
+  val promotion = new PartialFunction[(Square, Square, PieceType), Set[Promotion]] {
+    override def isDefinedAt(args: (Square, Square, PieceType)): Boolean = args._3 == Pawn && all.exists(p => args._1 == p.start && args._2 == p.end)
+    override def apply(args: (Square, Square, PieceType)): Set[Promotion] = PromotionType.all.map(t => Promotion(args._1, args._2, t))
   }
 
   implicit def promotionToLeftPromotion(p: Promotion): Either[Promotion, Side => Promotion] = Left(p)
@@ -64,9 +64,9 @@ object Castle {
 
   val all = Set(whiteKingside, whiteQueenside, blackKingside, blackQueenside)
 
-  val castle = new PartialFunction[(Square, Square), Set[Castle]] {
-    override def isDefinedAt(args: (Square, Square)): Boolean = all.exists(c => args._1 == c.start && args._2 == c.end)
-    override def apply(args: (Square, Square)): Set[Castle] = all.filter(c => args._1 == c.start && args._2 == c.end)
+  val castle = new PartialFunction[(Square, Square, PieceType), Set[Castle]] {
+    override def isDefinedAt(args: (Square, Square, PieceType)): Boolean = args._3 == King && all.exists(c => args._1 == c.start && args._2 == c.end)
+    override def apply(args: (Square, Square, PieceType)): Set[Castle] = all.filter(c => args._1 == c.start && args._2 == c.end)
   }
 
   val `O-O` = (_: Side) match {
