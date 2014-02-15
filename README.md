@@ -6,11 +6,21 @@ Chess library entirely written in Scala.
 Examples ♕
 ----------
 
-Create a board.
+Create a board in the initial position.
 
 ```scala
-Board()
+println(Board())
 ```
+
+    ♜♞♝♛♚♝♞♜ 8
+    ♟♟♟♟♟♟♟♟ 7
+    ∙∙∙∙∙∙∙∙ 6
+    ∙∙∙∙∙∙∙∙ 5
+    ∙∙∙∙∙∙∙∙ 4
+    ∙∙∙∙∙∙∙∙ 3
+    ♙♙♙♙♙♙♙♙ 2
+    ♖♘♗♕♔♗♘♖ 1
+    abcdefgh
 
 Play a simple trap known as the Scholar's mate.
 
@@ -20,7 +30,7 @@ Play a simple trap known as the Scholar's mate.
 4. Qxf7# 1–0
 
 ```scala
-Board().move(e2->e4, e7->e5, d1->h5, b8->c6, c1->c4, g8->f6, h5->f7)
+println(Board().move(e2->e4, e7->e5, d1->h5, b8->c6, c1->c4, g8->f6, h5->f7).get)
 ```
 
 Both sides play to quickly castle kingside.
@@ -31,8 +41,20 @@ Both sides play to quickly castle kingside.
 4. O-O O-O
 
 ```scala
-Board().move(g1->f3, g8->f6, g2->g3, g7->g6, f1->h3, f8->h6, `O-O`, `O-O`)
+println(Board().move(g1->f3, g8->f6, g2->g3, g7->g6, f1->h3, f8->h6, `O-O`, `O-O`).get)
 ```
+
+    ♜♞♝♛∙♜♚∙ 8
+    ♟♟♟♟♟♟∙♟ 7
+    ∙∙∙∙∙♞♟♝ 6
+    ∙∙∙∙∙∙∙∙ 5
+    ∙∙∙∙∙∙∙∙ 4
+    ∙∙∙∙∙♘♙♗ 3
+    ♙♙♙♙♙♙∙♙ 2
+    ♖♘♗♕∙♖♔∙ 1
+    abcdefgh
+
+Make some exchanges.
 
 1. d4 e5
 2. dxe5 d6
@@ -40,14 +62,26 @@ Board().move(g1->f3, g8->f6, g2->g3, g7->g6, f1->h3, f8->h6, `O-O`, `O-O`)
 4. Bxd8
 
 ```scala
-Board().move(d2->d4, e7->e5, d4->e5, d7->d6, c1->g5, d6->e5, g5->d8)
+println(Board().move(d2->d4, e7->e5, d4->e5, d7->d6, c1->g5, d6->e5, g5->d8).get)
 ```
+
+    ♜♞♝♗♚♝♞♜ 8
+    ♟♟♟∙∙♟♟♟ 7
+    ∙∙∙∙∙∙∙∙ 6
+    ∙∙∙∙♟∙∙∙ 5
+    ∙∙∙∙∙∙∙∙ 4
+    ∙∙∙∙∙∙∙∙ 3
+    ♙♙♙∙♙♙♙♙ 2
+    ♖♘∙♕♔♗♘♖ 1
+    abcdefgh
 
 Generate the opening moves.
 
 ```scala
-val opening_moves = Board().moves
+println(Board().moves)
 ```
+
+    Set(c2->c3, f2->f3, f2->f4, b2->b4, a2->a3, c2->c4, d2->d3, b2->b3, g2->g4, h2->h3, b1->c3, e2->e4, d2->d4, g2->g3, a2->a4, h2->h4, g1->h3, b1->a3, g1->f3, e2->e3)
 
 The [script](script) directory contains more examples of how to use the library.
 
