@@ -1,23 +1,23 @@
 import mateinone._
+import Square._
 import scala.annotation.tailrec
 import scala.util.Random
 
-def writeBoard(board: Board): String = Square.fileRank
-  .map(_.reverse).transpose
-  .map(_.map(board.pieceAt))
+def writeBoard(board: Board): String = squares.grouped(8).toVector.transpose.reverse
+  .map(_.map(square => board.pieces.find(_.square == square)))
   .map(_.map {
-    case Some(Piece(White, Pawn, _)) => "♙"
-    case Some(Piece(White, Rook, _)) => "♖"
-    case Some(Piece(White, Knight, _)) => "♘"
-    case Some(Piece(White, Bishop, _)) => "♗"
-    case Some(Piece(White, Queen, _)) => "♕"
-    case Some(Piece(White, King, _)) => "♔"
-    case Some(Piece(Black, Pawn, _)) => "♟"
-    case Some(Piece(Black, Rook, _)) => "♜"
-    case Some(Piece(Black, Knight, _)) => "♞"
-    case Some(Piece(Black, Bishop, _)) => "♝"
-    case Some(Piece(Black, Queen, _)) => "♛"
-    case Some(Piece(Black, King, _)) => "♚"
+    case Some(Piece(White, Pawn, _, _)) => "♙"
+    case Some(Piece(White, Rook, _, _)) => "♖"
+    case Some(Piece(White, Knight, _, _)) => "♘"
+    case Some(Piece(White, Bishop, _, _)) => "♗"
+    case Some(Piece(White, Queen, _, _)) => "♕"
+    case Some(Piece(White, King, _, _)) => "♔"
+    case Some(Piece(Black, Pawn, _, _)) => "♟"
+    case Some(Piece(Black, Rook, _, _)) => "♜"
+    case Some(Piece(Black, Knight, _, _)) => "♞"
+    case Some(Piece(Black, Bishop, _, _)) => "♝"
+    case Some(Piece(Black, Queen, _, _)) => "♛"
+    case Some(Piece(Black, King, _, _)) => "♚"
     case None => "∙"
   }).zip(8.to(1, -1)).map { case (rank, i) => rank.reduce(_+_)+" "+i }.reduce(_+"\n"+_)+"\nabcdefgh"
 
