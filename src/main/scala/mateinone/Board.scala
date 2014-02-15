@@ -133,23 +133,23 @@ case class Board private(turn: Side, pieces: Set[Piece], lastMove: Option[Move] 
 
   }
 
-  override def toString: String =
+  override def toString: String = " a | b | c | d | e | f | g | h | ∙\n:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:\n" +
     squares.grouped(8).toVector.transpose.reverse
       .map(_.map(square => pieces.find(_.square == square)))
       .map(_.map {
-      case Some(Piece(White, Pawn, _, _)) => "♙"
-      case Some(Piece(White, Rook, _, _)) => "♖"
-      case Some(Piece(White, Knight, _, _)) => "♘"
-      case Some(Piece(White, Bishop, _, _)) => "♗"
-      case Some(Piece(White, Queen, _, _)) => "♕"
-      case Some(Piece(White, King, _, _)) => "♔"
-      case Some(Piece(Black, Pawn, _, _)) => "♟"
-      case Some(Piece(Black, Rook, _, _)) => "♜"
-      case Some(Piece(Black, Knight, _, _)) => "♞"
-      case Some(Piece(Black, Bishop, _, _)) => "♝"
-      case Some(Piece(Black, Queen, _, _)) => "♛"
-      case Some(Piece(Black, King, _, _)) => "♚"
-      case None => "∙"
-    }).zip(8.to(1, -1)).map { case (rank, i) => rank.reduce(_+_)+" "+i }.reduce(_+"\n"+_)+"\nabcdefgh"
+      case Some(Piece(White, Pawn, _, _)) => " ♙ |"
+      case Some(Piece(White, Rook, _, _)) => " ♖ |"
+      case Some(Piece(White, Knight, _, _)) => " ♘ |"
+      case Some(Piece(White, Bishop, _, _)) => " ♗ |"
+      case Some(Piece(White, Queen, _, _)) => " ♕ |"
+      case Some(Piece(White, King, _, _)) => " ♔ |"
+      case Some(Piece(Black, Pawn, _, _)) => " ♟ |"
+      case Some(Piece(Black, Rook, _, _)) => " ♜ |"
+      case Some(Piece(Black, Knight, _, _)) => " ♞ |"
+      case Some(Piece(Black, Bishop, _, _)) => " ♝ |"
+      case Some(Piece(Black, Queen, _, _)) => " ♛ |"
+      case Some(Piece(Black, King, _, _)) => " ♚ |"
+      case None => "   |"
+    }).zip(8.to(1, -1)).map { case (rank, i) => rank.reduce(_+_)+" **"+i+"**" }.reduce(_+"\n"+_)
 
 }
