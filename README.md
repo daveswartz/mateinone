@@ -6,8 +6,6 @@ Chess library entirely written in Scala.
 Examples ♕
 ----------
 
-Note: the boards do not display correctly in Github's m
-
 Create a board in the initial position.
 
 ```scala
