@@ -8,13 +8,13 @@ import Rank._
 object Board {
   def apply(): Board = {
     def piecesForSide(side: Side, pawnRank: Rank, kingRank: Rank): Set[Piece] = {
-      def piece(side: Side, pieceType: PieceType)(square: Square) = Piece(side, pieceType, square)
-      val pawns = File.all.map(Square(_, pawnRank)).toSet.map(piece(side, Pawn))
-      val rooks = Set(a, h).map(Square(_, kingRank)).map(piece(side, Rook))
-      val knights = Set(b, g).map(Square(_, kingRank)).map(piece(side, Knight))
-      val bishops = Set(c, f).map(Square(_, kingRank)).map(piece(side, Bishop))
-      val king = piece(side, King)(Square(e, kingRank))
-      val queen = piece(side, Queen)(Square(d, kingRank))
+      def piece(pieceType: PieceType)(square: Square) = Piece(side, pieceType, square)
+      val pawns = files.map(square(_, pawnRank)).toSet.map(piece(Pawn))
+      val rooks = Set(a, h).map(square(_, kingRank)).map(piece(Rook))
+      val knights = Set(b, g).map(square(_, kingRank)).map(piece(Knight))
+      val bishops = Set(c, f).map(square(_, kingRank)).map(piece(Bishop))
+      val king = piece(King)(square(e, kingRank))
+      val queen = piece(Queen)(square(d, kingRank))
       pawns ++ rooks ++ knights ++ bishops + king + queen
     }
     Board(White, piecesForSide(White, _2, _1) ++ piecesForSide(Black, _7, _8))
@@ -74,8 +74,8 @@ case class Board private(turn: Side, pieces: Set[Piece], lastMove: Option[Move] 
       def castles(side: Side, rank: Rank) = {
         def canCastle(side: Side, rook: Square, between: Vector[Square]): Boolean =
           thatHaveNotMoved(withSquare(sameSide, rook)).size > 0 && between.forall(b => withSquare(sameSide, b).isEmpty)
-        val kingside = canCastle(side, Square(h, rank), forRank(rank)(f, g))
-        val queenside = canCastle(side, Square(a, rank), forRank(rank)(b, c, d))
+        val kingside = canCastle(side, square(h, rank), Vector(f, g).map(square(_, rank)))
+        val queenside = canCastle(side, square(a, rank), Vector(b, c, d).map(square(_, rank)))
         Some(path((2, 0))).filter(_ => kingside) ++  Some(path((-2, 0))).filter(_ => queenside)
       }
 

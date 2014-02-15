@@ -41,7 +41,7 @@ object Promotion {
     if end.isDefined
   } yield Promotion(start, end.get, promotionType)
 
-  private val all = promotions(forRank(_7)(a, b, c, d, e, f, g, h).toList, 1) ++ promotions(forRank(_2)(a, b, c, d, e, f, g, h).toList, -1)
+  private val all = promotions(List(a, b, c, d, e, f, g, h).map(square(_,_7)), 1) ++ promotions(List(a, b, c, d, e, f, g, h).map(square(_,_2)), -1)
 
   val promotion = new PartialFunction[(Square, Square), Set[Promotion]] {
     override def isDefinedAt(args: (Square, Square)): Boolean = all.exists(p => args._1 == p.start && args._2 == p.end)
@@ -57,10 +57,10 @@ case class Promotion private(start: Square, end: Square, promotionType: Promotio
 
 object Castle {
 
-  private val whiteKingside = Castle(Square(e, _1), Square(g, _1), SimpleMove(Square(h, _1), Square(f, _1)))
-  private val whiteQueenside = Castle(Square(e, _1), Square(c, _1), SimpleMove(Square(a, _1), Square(d, _1)))
-  private val blackKingside = Castle(Square(e, _8), Square(g, _8), SimpleMove(Square(h, _8), Square(f, _8)))
-  private val blackQueenside = Castle(Square(e, _8), Square(c, _8), SimpleMove(Square(a, _8), Square(d, _8)))
+  private val whiteKingside = Castle(e1, g1, SimpleMove(h1, f1))
+  private val whiteQueenside = Castle(e1, c1, SimpleMove(a1, d1))
+  private val blackKingside = Castle(e8, g8, SimpleMove(h8, f8))
+  private val blackQueenside = Castle(e8, c8, SimpleMove(a8, d8))
 
   val all = Set(whiteKingside, whiteQueenside, blackKingside, blackQueenside)
 

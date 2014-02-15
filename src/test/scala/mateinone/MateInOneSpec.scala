@@ -2,12 +2,57 @@ package mateinone
 
 import org.specs2.mutable._
 import Square._
+import File._
+import Rank._
 import SimpleMove._
 import Castle._
 import Move._
 import org.specs2.execute.Result
 
-class BoardSpec extends Specification {
+class MateInOneSpec extends Specification {
+
+  "Square" should {
+    "square" in { e3 must beEqualTo(square(e,_3)) }
+    "+" in {
+      a1 + (-1, 1) must beNone
+      a1 + (1, -1) must beNone
+      h8 + (0, 1) must beNone
+      h8 + (1, 0) must beNone
+      a1 + (2, 2) must beEqualTo(Some(c3))
+    }
+    "-" in { c3 - a1 must beEqualTo((2, 2)) }
+    "toString" in { b5.toString must beEqualTo("b5") }
+  }
+
+  "File" should {
+    "+" in {
+      a + -1 must beNone
+      h + 1 must beNone
+      a + 2 must beEqualTo(Some(c))
+    }
+    "-" in { h - a must beEqualTo(7) }
+    "toString" in { b.toString must beEqualTo("b") }
+    "compareTo" in {
+      a.compare(b) must beEqualTo(-1)
+      b.compare(a) must beEqualTo(1)
+      a.compare(a) must beEqualTo(0)
+    }
+  }
+
+  "Rank" should {
+    "+" in {
+      _1 + -1 must beNone
+      _8 + 1 must beNone
+      _1 + 2 must beEqualTo(Some(_3))
+    }
+    "-" in { _8 - _1 must beEqualTo(7) }
+    "toString" in { _2.toString must beEqualTo("2") }
+    "compareTo" in {
+      _1.compare(_2) must beEqualTo(-1)
+      _2.compare(_1) must beEqualTo(1)
+      _1.compare(_1) must beEqualTo(0)
+    }
+  }
 
   "Board" should {
 
