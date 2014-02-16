@@ -1,15 +1,5 @@
 package mateinone
 
-sealed trait NextLine {
-  protected def next[T <: Line[T]](create: (Int) => T) = {
-    val createAndInc = {
-      var i = 0
-      () => { val v = create(i); i = i + 1; v }
-    }
-    createAndInc
-  }
-}
-
 sealed trait Line[T <: Line[T]] extends Ordered[T] {
   val n: Int
   protected def lineOption: Int => Option[T]
@@ -18,10 +8,10 @@ sealed trait Line[T <: Line[T]] extends Ordered[T] {
   def compare(that: T): Int = n.compare(that.n)
 }
 
-object File extends NextLine {
-  private val nextFile = next(File.apply)
-  val A, B, C, D, E, F, G, H = nextFile()
-  val files: Vector[File] = Vector(A, B, C, D, E, F, G, H)
+object File {
+  val files: Vector[File] = Vector.range(0, 8).map(File.apply)
+  private val fileIter = files.iterator
+  val A, B, C, D, E, F, G, H = fileIter.next()
   private val strings = Vector("a", "b", "c", "d", "e", "f", "g", "h")
 }
 case class File private(n: Int) extends Line[File] {
@@ -29,10 +19,10 @@ case class File private(n: Int) extends Line[File] {
   override def toString: String = File.strings(n)
 }
 
-object Rank extends NextLine {
-  private val nextRank = next(Rank.apply)
-  val _1, _2, _3, _4, _5, _6, _7, _8 = nextRank()
-  val ranks: Vector[Rank] = Vector(_1, _2, _3, _4, _5, _6, _7, _8)
+object Rank {
+  val ranks: Vector[Rank] = Vector.range(0, 8).map(Rank.apply)
+  private val rankIter = ranks.iterator
+  val _1, _2, _3, _4, _5, _6, _7, _8 = rankIter.next()
 }
 case class Rank private(n: Int) extends Line[Rank] {
   override protected def lineOption = Rank.ranks.lift
@@ -40,6 +30,7 @@ case class Rank private(n: Int) extends Line[Rank] {
 }
 
 object Square {
+  // TODO get rid of fileSquares, change 8 tuple initializers to a1, a2 .. h8 = next(Square.apply)
   import File._
   import Rank._
   private def fileSquares(f: File) = (Square(f,_1), Square(f,_2), Square(f,_3), Square(f,_4), Square(f,_5), Square(f,_6), Square(f,_7), Square(f,_8))
