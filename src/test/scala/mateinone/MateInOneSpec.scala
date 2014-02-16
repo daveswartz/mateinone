@@ -11,31 +11,18 @@ import org.specs2.execute.Result
 
 class MateInOneSpec extends Specification {
 
-  "Square" should {
-    "square" in { e3 must beEqualTo(square(e,_3)) }
-    "+" in {
-      a1 + (-1, 1) must beNone
-      a1 + (1, -1) must beNone
-      h8 + (0, 1) must beNone
-      h8 + (1, 0) must beNone
-      a1 + (2, 2) must beEqualTo(Some(c3))
-    }
-    "-" in { c3 - a1 must beEqualTo((2, 2)) }
-    "toString" in { b5.toString must beEqualTo("b5") }
-  }
-
   "File" should {
     "+" in {
-      a + -1 must beNone
-      h + 1 must beNone
-      a + 2 must beEqualTo(Some(c))
+      A + -1 must beNone
+      H + 1 must beNone
+      A + 2 must beEqualTo(Some(C))
     }
-    "-" in { h - a must beEqualTo(7) }
-    "toString" in { b.toString must beEqualTo("b") }
+    "-" in { H - A must beEqualTo(7) }
+    "toString" in { B.toString must beEqualTo("b") }
     "compareTo" in {
-      a.compare(b) must beEqualTo(-1)
-      b.compare(a) must beEqualTo(1)
-      a.compare(a) must beEqualTo(0)
+      A.compare(B) must beEqualTo(-1)
+      B.compare(A) must beEqualTo(1)
+      A.compare(A) must beEqualTo(0)
     }
   }
 
@@ -52,6 +39,19 @@ class MateInOneSpec extends Specification {
       _2.compare(_1) must beEqualTo(1)
       _1.compare(_1) must beEqualTo(0)
     }
+  }
+
+  "Square" should {
+    "square" in { e3 must beEqualTo(square(E,_3)) }
+    "+" in {
+      a1 + (-1, 1) must beNone
+      a1 + (1, -1) must beNone
+      h8 + (0, 1) must beNone
+      h8 + (1, 0) must beNone
+      a1 + (2, 2) must beEqualTo(Some(c3))
+    }
+    "-" in { c3 - a1 must beEqualTo((2, 2)) }
+    "toString" in { b5.toString must beEqualTo("b5") }
   }
 
   "Board" should {

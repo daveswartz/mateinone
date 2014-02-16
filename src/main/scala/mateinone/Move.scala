@@ -41,7 +41,7 @@ object Promotion {
     if end.isDefined
   } yield Promotion(start, end.get, promotionType)
 
-  private val all = promotions(List(a, b, c, d, e, f, g, h).map(square(_,_7)), 1) ++ promotions(List(a, b, c, d, e, f, g, h).map(square(_,_2)), -1)
+  private val all = promotions(files.toList.map(square(_,_7)), 1) ++ promotions(files.toList.map(square(_,_2)), -1)
 
   val promotion = new PartialFunction[(Square, Square, PieceType), Set[Promotion]] {
     override def isDefinedAt(args: (Square, Square, PieceType)): Boolean = args._3 == Pawn && all.exists(p => args._1 == p.start && args._2 == p.end)
@@ -83,5 +83,5 @@ object Castle {
 
 }
 case class Castle private(start: Square, end: Square, rookMove: SimpleMove) extends Move {
-  override def toString: String = if (end.file == File.g) "O-O" else "O-O-O"
+  override def toString: String = if (end.file == G) "O-O" else "O-O-O"
 }

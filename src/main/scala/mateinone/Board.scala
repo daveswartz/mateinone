@@ -10,11 +10,11 @@ object Board {
     def piecesForSide(side: Side, pawnRank: Rank, kingRank: Rank): Set[Piece] = {
       def piece(pieceType: PieceType)(square: Square) = Piece(side, pieceType, square)
       val pawns = files.map(square(_, pawnRank)).toSet.map(piece(Pawn))
-      val rooks = Set(a, h).map(square(_, kingRank)).map(piece(Rook))
-      val knights = Set(b, g).map(square(_, kingRank)).map(piece(Knight))
-      val bishops = Set(c, f).map(square(_, kingRank)).map(piece(Bishop))
-      val king = piece(King)(square(e, kingRank))
-      val queen = piece(Queen)(square(d, kingRank))
+      val rooks = Set(A, H).map(square(_, kingRank)).map(piece(Rook))
+      val knights = Set(B, G).map(square(_, kingRank)).map(piece(Knight))
+      val bishops = Set(C, F).map(square(_, kingRank)).map(piece(Bishop))
+      val king = piece(King)(square(E, kingRank))
+      val queen = piece(Queen)(square(D, kingRank))
       pawns ++ rooks ++ knights ++ bishops + king + queen
     }
     Board(White, piecesForSide(White, _2, _1) ++ piecesForSide(Black, _7, _8))
@@ -74,8 +74,8 @@ case class Board private(turn: Side, pieces: Set[Piece], lastMove: Option[Move] 
       def castles(side: Side, rank: Rank) = {
         def canCastle(side: Side, rook: Square, between: Vector[Square]): Boolean =
           thatHaveNotMoved(withSquare(sameSide, rook)).size > 0 && between.forall(b => withSquare(sameSide, b).isEmpty)
-        val kingside = canCastle(side, square(h, rank), Vector(f, g).map(square(_, rank)))
-        val queenside = canCastle(side, square(a, rank), Vector(b, c, d).map(square(_, rank)))
+        val kingside = canCastle(side, square(H, rank), Vector(F, G).map(square(_, rank)))
+        val queenside = canCastle(side, square(A, rank), Vector(B, C, D).map(square(_, rank)))
         Some(path((2, 0))).filter(_ => kingside) ++  Some(path((-2, 0))).filter(_ => queenside)
       }
 
