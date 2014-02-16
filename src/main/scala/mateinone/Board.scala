@@ -89,8 +89,8 @@ case class Board private(turn: Side, pieces: Set[Piece], lastMove: Option[Move] 
         case Piece(_,     Rook,   _,               _    ) => file ++ rank
         case Piece(_,     Knight, _,               _    ) => Set(path((2, 1)), path((2, -1)), path((1, 2)), path((1, -2)), path((-2, 1)), path((-2, -1)), path((-1, 2)), path((-1, -2)))
         case Piece(_,     Bishop, _,               _    ) => diagonals
-        case Piece(White, King,   `e1`,            false) => adjacent ++ castles(White, _1)
-        case Piece(Black, King,   `e8`,            false) => adjacent ++ castles(Black, _8)
+        case Piece(White, King,   E1,              false) => adjacent ++ castles(White, _1)
+        case Piece(Black, King,   E8,              false) => adjacent ++ castles(Black, _8)
         case Piece(_,     King,   _,               _    ) => adjacent
         case Piece(_,     Queen,  _,               _    ) => file ++ rank ++ diagonals
       }

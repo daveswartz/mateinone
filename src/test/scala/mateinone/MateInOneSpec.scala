@@ -42,16 +42,16 @@ class MateInOneSpec extends Specification {
   }
 
   "Square" should {
-    "square" in { e3 must beEqualTo(square(E,_3)) }
+    "square" in { E3 must beEqualTo(square(E,_3)) }
     "+" in {
-      a1 + (-1, 1) must beNone
-      a1 + (1, -1) must beNone
-      h8 + (0, 1) must beNone
-      h8 + (1, 0) must beNone
-      a1 + (2, 2) must beEqualTo(Some(c3))
+      A1 + (-1, 1) must beNone
+      A1 + (1, -1) must beNone
+      H8 + (0, 1) must beNone
+      H8 + (1, 0) must beNone
+      A1 + (2, 2) must beEqualTo(Some(C3))
     }
-    "-" in { c3 - a1 must beEqualTo((2, 2)) }
-    "toString" in { b5.toString must beEqualTo("b5") }
+    "-" in { C3 - A1 must beEqualTo((2, 2)) }
+    "toString" in { B5.toString must beEqualTo("b5") }
   }
 
   "Board" should {
@@ -59,61 +59,61 @@ class MateInOneSpec extends Specification {
     "have the correct initial pieces" in {
       val expectedPieces: Seq[Piece] =
         Seq(
-          Rook->a1, Pawn->a2, Knight->b1, Pawn->b2, Bishop->c1, Pawn->c2, Queen->d1, Pawn->d2,
-          King->e1, Pawn->e2, Bishop->f1, Pawn->f2, Knight->g1, Pawn->g2, Rook->h1, Pawn->h2
+          Rook->A1, Pawn->A2, Knight->B1, Pawn->B2, Bishop->C1, Pawn->C2, Queen->D1, Pawn->D2,
+          King->E1, Pawn->E2, Bishop->F1, Pawn->F2, Knight->G1, Pawn->G2, Rook->H1, Pawn->H2
         ).map { case (side, square) => Piece(White, side, square) } ++
         Seq(
-          Rook->a8, Pawn->a7, Knight->b8, Pawn->b7, Bishop->c8, Pawn->c7, Queen->d8, Pawn->d7,
-          King->e8, Pawn->e7, Bishop->f8, Pawn->f7, Knight->g8, Pawn->g7, Rook->h8, Pawn->h7
+          Rook->A8, Pawn->A7, Knight->B8, Pawn->B7, Bishop->C8, Pawn->C7, Queen->D8, Pawn->D7,
+          King->E8, Pawn->E7, Bishop->F8, Pawn->F7, Knight->G8, Pawn->G7, Rook->H8, Pawn->H7
         ).map { case (side, square) => Piece(Black, side, square) }
       Board().pieces must containTheSameElementsAs(expectedPieces)
     }
 
-    "have the correct initial moves for white" in moveAndCheckMoves()(a2->a3, a2->a4, b1->a3, b1->c3, b2->b3, b2->b4, c2->c3, c2->c4, d2->d3, d2->d4, e2->e3, e2->e4, f2->f3, f2->f4, g1->f3, g1->h3, g2->g3, g2->g4, h2->h3, h2->h4)
-    "have the correct initial moves for black" in moveAndCheckMoves(g2->g3)(a7->a6, a7->a5, b8->a6, b8->c6, b7->b6, b7->b5, c7->c6, c7->c5, d7->d6, d7->d5, e7->e6, e7->e5, f7->f6, f7->f5, g8->f6, g8->h6, g7->g6, g7->g5, h7->h6, h7->h5)
+    "have the correct initial moves for white" in moveAndCheckMoves()(A2->A3, A2->A4, B1->A3, B1->C3, B2->B3, B2->B4, C2->C3, C2->C4, D2->D3, D2->D4, E2->E3, E2->E4, F2->F3, F2->F4, G1->F3, G1->H3, G2->G3, G2->G4, H2->H3, H2->H4)
+    "have the correct initial moves for black" in moveAndCheckMoves(G2->G3)(A7->A6, A7->A5, B8->A6, B8->C6, B7->B6, B7->B5, C7->C6, C7->C5, D7->D6, D7->D5, E7->E6, E7->E5, F7->F6, F7->F5, G8->F6, G8->H6, G7->G6, G7->G5, H7->H6, H7->H5)
 
     "be immutable" in {
-      Board().move(g2->g3) must beSome.which { b =>
-        b.move(g3->g4)
-        onlyTheseMoved(Set(Piece(White, Pawn, g3, hasMoved = true)))(b)
+      Board().move(G2->G3) must beSome.which { b =>
+        b.move(G3->G4)
+        onlyTheseMoved(Set(Piece(White, Pawn, G3, hasMoved = true)))(b)
       }
     }
 
-    "1. g3" in movesAllowed(g2->g3)(Set(Piece(White, Pawn, g3, hasMoved = true)))
-    "1. Nf3" in movesAllowed(g1->f3)(Set(Piece(White, Knight, f3, hasMoved = true)))
-    "1. g3 a6 2. Bh3" in movesAllowed(g2->g3, a7->a6, f1->h3)(Set(Piece(White, Pawn, g3, hasMoved = true), Piece(White, Bishop, h3, hasMoved = true), Piece(Black, Pawn, a6, hasMoved = true)))
-    "1. d4 e5 2. dxe5 d6 3. Bg5 dxe5 4. Bxd8" in movesAllowed(d2->d4, e7->e5, d4->e5, d7->d6, c1->g5, d6->e5, g5->d8)(Set(Piece(White, Bishop, d8, hasMoved = true), Piece(Black, Pawn, e5, hasMoved = true)), nCaptured = 3)
+    "1. g3" in movesAllowed(G2->G3)(Set(Piece(White, Pawn, G3, hasMoved = true)))
+    "1. Nf3" in movesAllowed(G1->F3)(Set(Piece(White, Knight, F3, hasMoved = true)))
+    "1. g3 a6 2. Bh3" in movesAllowed(G2->G3, A7->A6, F1->H3)(Set(Piece(White, Pawn, G3, hasMoved = true), Piece(White, Bishop, H3, hasMoved = true), Piece(Black, Pawn, A6, hasMoved = true)))
+    "1. d4 e5 2. dxe5 d6 3. Bg5 dxe5 4. Bxd8" in movesAllowed(D2->D4, E7->E5, D4->E5, D7->D6, C1->G5, D6->E5, G5->D8)(Set(Piece(White, Bishop, D8, hasMoved = true), Piece(Black, Pawn, E5, hasMoved = true)), nCaptured = 3)
 
     // Check
-    "1. e4 e5 2. f4 Bb4 d3; The last move puts White's own king in check" in lastMoveNotAllowed(e2->e4, e7->e5, f2->f4, f8->b4, d2->d3)
+    "1. e4 e5 2. f4 Bb4 d3; The last move puts White's own king in check" in lastMoveNotAllowed(E2->E4, E7->E5, F2->F4, F8->B4, D2->D3)
 
     // Pawn moves (two-square advance, capture, promotion, en passant)
-    "white pawn to g6 after pawn to g4" in lastMoveNotAllowed(g2->g4, a7->a6, g4->g6)
-    "white pawn capture non-diagonal" in lastMoveNotAllowed(d2->d4, d7->d5, d4->d5)
-    "pawn promotion" in movesAllowed(g2->g4, h7->h5, h2->h4, h5->g4, h4->h5, h8->h6, f2->f3, h6->g6, h5->h6, g4->f3, h6->h7, f3->e2, (h7->h8 promote Queen).get)(Set(Piece(White, Queen, h8, hasMoved = true), Piece(Black, Rook, g6, hasMoved = true), Piece(Black, Pawn, e2, hasMoved = true)), nCaptured = 3)
-    "pawn promotion on capture" in movesAllowed(g2->g4, h7->h5, h2->h4, h5->g4, h4->h5, h8->h6, f2->f3, h6->g6, h5->h6, g4->f3, h6->h7, f3->e2, (h7->g8 promote Queen).get)(Set(Piece(White, Queen, g8, hasMoved = true), Piece(Black, Rook, g6, hasMoved = true), Piece(Black, Pawn, e2, hasMoved = true)), nCaptured = 4)
-    "white pawn to g8 without promotion" in lastMoveNotAllowed(g2->g4, h7->h5, h2->h4, h5->g4, h4->h5, h8->h6, f2->f3, h6->g6, h5->h6, g4->f3, h6->h7, f3->e2, h7->h8)
-    "en passant" in movesAllowed(e2->e4, e7->e6, e4->e5, d7->d5, e5->d6)(Set(Piece(White, Pawn, d6, hasMoved = true), Piece(Black, Pawn, e6, hasMoved = true)), nCaptured = 1)
-    "en passant when pawn did not advance on the last move" in lastMoveNotAllowed(e2->e4, d7->d5, e4->e5, e7->e6, e5->d6)
-    "en passant when pawn advanced one move" in lastMoveNotAllowed(e2->e4, d7->d6, e4->e5, d6->d5, e5->d6)
+    "white pawn to g6 after pawn to g4" in lastMoveNotAllowed(G2->G4, A7->A6, G4->G6)
+    "white pawn capture non-diagonal" in lastMoveNotAllowed(D2->D4, D7->D5, D4->D5)
+    "pawn promotion" in movesAllowed(G2->G4, H7->H5, H2->H4, H5->G4, H4->H5, H8->H6, F2->F3, H6->G6, H5->H6, G4->F3, H6->H7, F3->E2, (H7->H8 promote Queen).get)(Set(Piece(White, Queen, H8, hasMoved = true), Piece(Black, Rook, G6, hasMoved = true), Piece(Black, Pawn, E2, hasMoved = true)), nCaptured = 3)
+    "pawn promotion on capture" in movesAllowed(G2->G4, H7->H5, H2->H4, H5->G4, H4->H5, H8->H6, F2->F3, H6->G6, H5->H6, G4->F3, H6->H7, F3->E2, (H7->G8 promote Queen).get)(Set(Piece(White, Queen, G8, hasMoved = true), Piece(Black, Rook, G6, hasMoved = true), Piece(Black, Pawn, E2, hasMoved = true)), nCaptured = 4)
+    "white pawn to g8 without promotion" in lastMoveNotAllowed(G2->G4, H7->H5, H2->H4, H5->G4, H4->H5, H8->H6, F2->F3, H6->G6, H5->H6, G4->F3, H6->H7, F3->E2, H7->H8)
+    "en passant" in movesAllowed(E2->E4, E7->E6, E4->E5, D7->D5, E5->D6)(Set(Piece(White, Pawn, D6, hasMoved = true), Piece(Black, Pawn, E6, hasMoved = true)), nCaptured = 1)
+    "en passant when pawn did not advance on the last move" in lastMoveNotAllowed(E2->E4, D7->D5, E4->E5, E7->E6, E5->D6)
+    "en passant when pawn advanced one move" in lastMoveNotAllowed(E2->E4, D7->D6, E4->E5, D6->D5, E5->D6)
 
     // Castling
-    "O-O for both sides" in movesAllowed(g1->f3, g8->f6, g2->g3, g7->g6, f1->h3, f8->h6, `O-O`, `O-O`)(Set(Piece(White, Knight, f3, hasMoved = true),  Piece(White, Pawn, g3, hasMoved = true),  Piece(White, Bishop, h3, hasMoved = true),  Piece(White, King, g1, hasMoved = true),  Piece(White, Rook, f1, hasMoved = true),  Piece(Black, Knight, f6, hasMoved = true),  Piece(Black, Pawn, g6, hasMoved = true),  Piece(Black, Bishop, h6, hasMoved = true),  Piece(Black, King, g8, hasMoved = true),  Piece(Black, Rook, f8, hasMoved = true)))
-    "O-O-O for both sides" in movesAllowed(b1->c3, b8->c6, d2->d3, d7->d6, c1->g5, c8->g4, d1->d2, d8->d7, `O-O-O`, `O-O-O`)(Set(Piece(White, Knight, c3, hasMoved = true),  Piece(White, Pawn, d3, hasMoved = true),  Piece(White, Bishop, g5, hasMoved = true),  Piece(White, Queen, d2, hasMoved = true),  Piece(White, Rook, d1, hasMoved = true),  Piece(White, King, c1, hasMoved = true),  Piece(Black, Knight, c6, hasMoved = true),  Piece(Black, Pawn, d6, hasMoved = true),  Piece(Black, Bishop, g4, hasMoved = true),  Piece(Black, Queen, d7, hasMoved = true),  Piece(Black, Rook, d8, hasMoved = true),  Piece(Black, King, c8, hasMoved = true)))
-    "O-O for white after moving the king" in lastMoveNotAllowed(g1->f3, g8->f6, g2->g3, g7->g6, f1->h3, f8->h6, e1->f1, e8->f8, f1->e1, f8->e8, `O-O`)
-    "O-O for black after moving the king" in lastMoveNotAllowed(g1->f3, g8->f6, g2->g3, g7->g6, f1->h3, f8->h6, e1->f1, e8->f8, f1->e1, f8->e8, e1->f1, `O-O`)
-    "O-O for white after moving the rook" in lastMoveNotAllowed(g1->f3, g8->f6, g2->g3, g7->g6, f1->h3, f8->h6, h1->g1, h8->g8, g1->h1, g8->h8, `O-O`)
-    "O-O for black after moving the rook" in lastMoveNotAllowed(g1->f3, g8->f6, g2->g3, g7->g6, f1->h3, f8->h6, h1->g1, h8->g8, g1->h1, g8->h8, h1->g1, `O-O`)
-    "O-O-O for white before moving the queen" in lastMoveNotAllowed(b1->c3, b8->c6, d2->d3, d7->d6, c1->g5, c8->g4, `O-O-O`)
-    "O-O-O for black before moving the queen" in lastMoveNotAllowed(b1->c3, b8->c6, d2->d3, d7->d6, c1->g5, c8->g4, d1->d2, `O-O-O`)
-    "O-O-O for white after moving the king" in lastMoveNotAllowed(b1->c3, b8->c6, d2->d3, d7->d6, c1->g5, c8->g4, d1->d2, d8->d7, e1->d1, e8->d8, `O-O-O`)
-    "O-O-O for black after moving the king" in lastMoveNotAllowed(b1->c3, b8->c6, d2->d3, d7->d6, c1->g5, c8->g4, d1->d2, d8->d7, e1->d1, e8->d8, d1->e1, `O-O-O`)
-    "O-O-O for white after moving the rook" in lastMoveNotAllowed(b1->c3, b8->c6, d2->d3, d7->d6, c1->g5, c8->g4, d1->d2, d8->d7, a1->b1, a8->b8, b1->a1, b8->a8, `O-O-O`)
-    "O-O-O for black after moving the rook" in lastMoveNotAllowed(b1->c3, b8->c6, d2->d3, d7->d6, c1->g5, c8->g4, d1->d2, d8->d7, a1->b1, a8->b8, b1->a1, b8->a8, a1->b1, `O-O-O`)
-    "white king to g1 without castling" in lastMoveNotAllowed(g1->f3, g8->f6, g2->g3, g7->g6, f1->h3, f8->h6, e1->g1)
-    "black king to g8 without castling" in lastMoveNotAllowed(g1->f3, g8->f6, g2->g3, g7->g6, f1->h3, f8->h6, `O-O`, e8->g8)
-    "white king to c1 without castling" in lastMoveNotAllowed(b1->c3, b8->c6, d2->d3, d7->d6, c1->g5, c8->g4, d1->d2, d8->d7, e1->c1)
-    "black king to c8 without castling" in lastMoveNotAllowed(b1->c3, b8->c6, d2->d3, d7->d6, c1->g5, c8->g4, d1->d2, d8->d7, `O-O-O`, e8->c8)
+    "O-O for both sides" in movesAllowed(G1->F3, G8->F6, G2->G3, G7->G6, F1->H3, F8->H6, `O-O`, `O-O`)(Set(Piece(White, Knight, F3, hasMoved = true),  Piece(White, Pawn, G3, hasMoved = true),  Piece(White, Bishop, H3, hasMoved = true),  Piece(White, King, G1, hasMoved = true),  Piece(White, Rook, F1, hasMoved = true),  Piece(Black, Knight, F6, hasMoved = true),  Piece(Black, Pawn, G6, hasMoved = true),  Piece(Black, Bishop, H6, hasMoved = true),  Piece(Black, King, G8, hasMoved = true),  Piece(Black, Rook, F8, hasMoved = true)))
+    "O-O-O for both sides" in movesAllowed(B1->C3, B8->C6, D2->D3, D7->D6, C1->G5, C8->G4, D1->D2, D8->D7, `O-O-O`, `O-O-O`)(Set(Piece(White, Knight, C3, hasMoved = true),  Piece(White, Pawn, D3, hasMoved = true),  Piece(White, Bishop, G5, hasMoved = true),  Piece(White, Queen, D2, hasMoved = true),  Piece(White, Rook, D1, hasMoved = true),  Piece(White, King, C1, hasMoved = true),  Piece(Black, Knight, C6, hasMoved = true),  Piece(Black, Pawn, D6, hasMoved = true),  Piece(Black, Bishop, G4, hasMoved = true),  Piece(Black, Queen, D7, hasMoved = true),  Piece(Black, Rook, D8, hasMoved = true),  Piece(Black, King, C8, hasMoved = true)))
+    "O-O for white after moving the king" in lastMoveNotAllowed(G1->F3, G8->F6, G2->G3, G7->G6, F1->H3, F8->H6, E1->F1, E8->F8, F1->E1, F8->E8, `O-O`)
+    "O-O for black after moving the king" in lastMoveNotAllowed(G1->F3, G8->F6, G2->G3, G7->G6, F1->H3, F8->H6, E1->F1, E8->F8, F1->E1, F8->E8, E1->F1, `O-O`)
+    "O-O for white after moving the rook" in lastMoveNotAllowed(G1->F3, G8->F6, G2->G3, G7->G6, F1->H3, F8->H6, H1->G1, H8->G8, G1->H1, G8->H8, `O-O`)
+    "O-O for black after moving the rook" in lastMoveNotAllowed(G1->F3, G8->F6, G2->G3, G7->G6, F1->H3, F8->H6, H1->G1, H8->G8, G1->H1, G8->H8, H1->G1, `O-O`)
+    "O-O-O for white before moving the queen" in lastMoveNotAllowed(B1->C3, B8->C6, D2->D3, D7->D6, C1->G5, C8->G4, `O-O-O`)
+    "O-O-O for black before moving the queen" in lastMoveNotAllowed(B1->C3, B8->C6, D2->D3, D7->D6, C1->G5, C8->G4, D1->D2, `O-O-O`)
+    "O-O-O for white after moving the king" in lastMoveNotAllowed(B1->C3, B8->C6, D2->D3, D7->D6, C1->G5, C8->G4, D1->D2, D8->D7, E1->D1, E8->D8, `O-O-O`)
+    "O-O-O for black after moving the king" in lastMoveNotAllowed(B1->C3, B8->C6, D2->D3, D7->D6, C1->G5, C8->G4, D1->D2, D8->D7, E1->D1, E8->D8, D1->E1, `O-O-O`)
+    "O-O-O for white after moving the rook" in lastMoveNotAllowed(B1->C3, B8->C6, D2->D3, D7->D6, C1->G5, C8->G4, D1->D2, D8->D7, A1->B1, A8->B8, B1->A1, B8->A8, `O-O-O`)
+    "O-O-O for black after moving the rook" in lastMoveNotAllowed(B1->C3, B8->C6, D2->D3, D7->D6, C1->G5, C8->G4, D1->D2, D8->D7, A1->B1, A8->B8, B1->A1, B8->A8, A1->B1, `O-O-O`)
+    "white king to g1 without castling" in lastMoveNotAllowed(G1->F3, G8->F6, G2->G3, G7->G6, F1->H3, F8->H6, E1->G1)
+    "black king to g8 without castling" in lastMoveNotAllowed(G1->F3, G8->F6, G2->G3, G7->G6, F1->H3, F8->H6, `O-O`, E8->G8)
+    "white king to c1 without castling" in lastMoveNotAllowed(B1->C3, B8->C6, D2->D3, D7->D6, C1->G5, C8->G4, D1->D2, D8->D7, E1->C1)
+    "black king to c8 without castling" in lastMoveNotAllowed(B1->C3, B8->C6, D2->D3, D7->D6, C1->G5, C8->G4, D1->D2, D8->D7, `O-O-O`, E8->C8)
 
   }
 

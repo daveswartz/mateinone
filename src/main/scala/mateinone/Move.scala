@@ -57,10 +57,10 @@ case class Promotion private(start: Square, end: Square, promotionType: Promotio
 
 object Castle {
 
-  private val whiteKingside = Castle(e1, g1, SimpleMove(h1, f1))
-  private val whiteQueenside = Castle(e1, c1, SimpleMove(a1, d1))
-  private val blackKingside = Castle(e8, g8, SimpleMove(h8, f8))
-  private val blackQueenside = Castle(e8, c8, SimpleMove(a8, d8))
+  private val whiteKingside = Castle(E1, G1, SimpleMove(H1, F1))
+  private val whiteQueenside = Castle(E1, C1, SimpleMove(A1, D1))
+  private val blackKingside = Castle(E8, G8, SimpleMove(H8, F8))
+  private val blackQueenside = Castle(E8, C8, SimpleMove(A8, D8))
 
   val all = Set(whiteKingside, whiteQueenside, blackKingside, blackQueenside)
 
