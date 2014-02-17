@@ -8,7 +8,7 @@ import Rank._
 object Board {
   def apply(): Board = {
     def piecesForSide(side: Side, pawnRank: Rank, kingRank: Rank): Set[Piece] = {
-      def piece(pieceType: PieceType)(square: Square) = Piece(side, pieceType, square)
+      def piece(pieceType: PieceType)(square: Square) = Piece(side, pieceType, square, hasMoved = false)
       val pawns = files.map(square(_, pawnRank)).toSet.map(piece(Pawn))
       val rooks = Set(A, H).map(square(_, kingRank)).map(piece(Rook))
       val knights = Set(B, G).map(square(_, kingRank)).map(piece(Knight))

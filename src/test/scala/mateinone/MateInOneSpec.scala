@@ -58,11 +58,11 @@ class MateInOneSpec extends Specification {
         Seq(
           Rook->A1, Pawn->A2, Knight->B1, Pawn->B2, Bishop->C1, Pawn->C2, Queen->D1, Pawn->D2,
           King->E1, Pawn->E2, Bishop->F1, Pawn->F2, Knight->G1, Pawn->G2, Rook->H1, Pawn->H2
-        ).map { case (side, square) => Piece(White, side, square) } ++
+        ).map { case (side, square) => Piece(White, side, square, hasMoved = false) } ++
         Seq(
           Rook->A8, Pawn->A7, Knight->B8, Pawn->B7, Bishop->C8, Pawn->C7, Queen->D8, Pawn->D7,
           King->E8, Pawn->E7, Bishop->F8, Pawn->F7, Knight->G8, Pawn->G7, Rook->H8, Pawn->H7
-        ).map { case (side, square) => Piece(Black, side, square) }
+        ).map { case (side, square) => Piece(Black, side, square, hasMoved = false) }
       Board().pieces must containTheSameElementsAs(expectedPieces)
     }
 
