@@ -1,14 +1,11 @@
 package mateinone
 
-import Square._
-import File._
-
 object GithubFlavoredMarkdownPrinter {
 
   class MarkdownBoard(b: Board) {
     def print: String = {
       " a | b | c | d | e | f | g | h | ∙\n:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:\n" +
-        squares.transpose.reverse
+        Square.squares.transpose.reverse
           .map(_.map(square => b.pieces.find(_.square == square)))
           .map(_.map {
             case Some(Piece(White, Pawn, _, _)) => " ♙ |"
@@ -42,9 +39,9 @@ object GithubFlavoredMarkdownPrinter {
       case Queen => "♕"
     }
     def print: String = m match {
-      case _: SimpleMove => print(m.start)+"->"+print(m.end)
+      case s: SimpleMove => print(s.start)+"->"+print(s.end)
       case p: Promotion => print(p.start)+"->"+print(p.end)+"="+print(p.promotionType)
-      case c: Castle => if (c.end.file == G) "O-O" else "O-O-O"
+      case c: Castle => if (c == `O-O`) "O-O" else "O-O-O"
     }
   }
   implicit def moveToMarkdownMove(m: Move) = new MarkdownMove(m)

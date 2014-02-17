@@ -1,5 +1,4 @@
 import mateinone._
-import Move._
 import GithubFlavoredMarkdownPrinter._
 import scala.annotation.tailrec
 import scala.util.Random

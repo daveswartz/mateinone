@@ -4,9 +4,7 @@ import org.specs2.mutable._
 import Square._
 import File._
 import Rank._
-import SimpleMove._
-import Castle._
-import Move._
+import MoveImplicits._
 import org.specs2.execute.Result
 
 class MateInOneSpec extends Specification {
@@ -87,8 +85,8 @@ class MateInOneSpec extends Specification {
     // Pawn moves (two-square advance, capture, promotion, en passant)
     "white pawn to g6 after pawn to g4" in lastMoveNotAllowed(G2->G4, A7->A6, G4->G6)
     "white pawn capture non-diagonal" in lastMoveNotAllowed(D2->D4, D7->D5, D4->D5)
-    "pawn promotion" in movesAllowed(G2->G4, H7->H5, H2->H4, H5->G4, H4->H5, H8->H6, F2->F3, H6->G6, H5->H6, G4->F3, H6->H7, F3->E2, (H7->H8 promote Queen).get)(Set(Piece(White, Queen, H8, hasMoved = true), Piece(Black, Rook, G6, hasMoved = true), Piece(Black, Pawn, E2, hasMoved = true)), nCaptured = 3)
-    "pawn promotion on capture" in movesAllowed(G2->G4, H7->H5, H2->H4, H5->G4, H4->H5, H8->H6, F2->F3, H6->G6, H5->H6, G4->F3, H6->H7, F3->E2, (H7->G8 promote Queen).get)(Set(Piece(White, Queen, G8, hasMoved = true), Piece(Black, Rook, G6, hasMoved = true), Piece(Black, Pawn, E2, hasMoved = true)), nCaptured = 4)
+    "pawn promotion" in movesAllowed(G2->G4, H7->H5, H2->H4, H5->G4, H4->H5, H8->H6, F2->F3, H6->G6, H5->H6, G4->F3, H6->H7, F3->E2, H7->H8->Queen)(Set(Piece(White, Queen, H8, hasMoved = true), Piece(Black, Rook, G6, hasMoved = true), Piece(Black, Pawn, E2, hasMoved = true)), nCaptured = 3)
+    "pawn promotion on capture" in movesAllowed(G2->G4, H7->H5, H2->H4, H5->G4, H4->H5, H8->H6, F2->F3, H6->G6, H5->H6, G4->F3, H6->H7, F3->E2, H7->G8->Queen)(Set(Piece(White, Queen, G8, hasMoved = true), Piece(Black, Rook, G6, hasMoved = true), Piece(Black, Pawn, E2, hasMoved = true)), nCaptured = 4)
     "white pawn to g8 without promotion" in lastMoveNotAllowed(G2->G4, H7->H5, H2->H4, H5->G4, H4->H5, H8->H6, F2->F3, H6->G6, H5->H6, G4->F3, H6->H7, F3->E2, H7->H8)
     "en passant" in movesAllowed(E2->E4, E7->E6, E4->E5, D7->D5, E5->D6)(Set(Piece(White, Pawn, D6, hasMoved = true), Piece(Black, Pawn, E6, hasMoved = true)), nCaptured = 1)
     "en passant when pawn did not advance on the last move" in lastMoveNotAllowed(E2->E4, D7->D5, E4->E5, E7->E6, E5->D6)
@@ -115,11 +113,11 @@ class MateInOneSpec extends Specification {
   }
 
   // Checks each move is generated and allowed
-  def movesAllowed(moves: Either[Move, Side => Move]*)(movedPieces: Set[Piece] = Set(), nCaptured: Int = 0) = {
-    def recur(board: Option[Board], remaining: List[Either[Move, Side => Move]]): Result = {
+  def movesAllowed(moves: Move*)(movedPieces: Set[Piece] = Set(), nCaptured: Int = 0) = {
+    def recur(board: Option[Board], remaining: List[Move]): Result = {
       (board, remaining) match {
         case (Some(b), head :: tail) =>
-          b.moves must contain(toMove(head, b.turn))
+          b.moves must contain(head)
           recur(b.move(head), tail)
         case (Some(b), Nil) =>
           onlyTheseMoved(movedPieces, nCaptured)(b)
@@ -131,14 +129,14 @@ class MateInOneSpec extends Specification {
   }
 
   // Checks each move except the last is generated and allowed
-  def lastMoveNotAllowed(moves: Either[Move, Side => Move]*) = {
-    def recur(board: Option[Board], remaining: List[Either[Move, Side => Move]]): Result = {
+  def lastMoveNotAllowed(moves: Move*) = {
+    def recur(board: Option[Board], remaining: List[Move]): Result = {
       (board, remaining) match {
         case (Some(b), last :: Nil) =>
-          b.moves must not contain(toMove(last, b.turn))
+          b.moves must not contain(last)
           recur(b.move(last), Nil)
         case (Some(b), head :: tail) =>
-          b.moves must contain(toMove(head, b.turn))
+          b.moves must contain(head)
           recur(b.move(head), tail)
         case (Some(b), Nil) =>
           failure
@@ -162,7 +160,7 @@ class MateInOneSpec extends Specification {
     }
   }
 
-  def moveAndCheckMoves(moves: Either[Move, Side => Move]*)(expectedMoves: Move*) =
+  def moveAndCheckMoves(moves: Move*)(expectedMoves: Move*) =
     Board().move(moves :_*) must beSome.which(_.moves must containTheSameElementsAs(expectedMoves))
 
 }

@@ -28,6 +28,15 @@ case class Board private(turn: Side, pieces: Set[Piece], enPassantEnd: Option[Fi
   private def pieceExists(s: Square, f: Piece => Boolean = _ => true) = pieceAt(s, f).isDefined
   private def sameSide(p: Piece) = p.side == turn
   private def otherSide(p: Piece) = p.side != turn
+  private val whiteKingside = CastleConcrete(E1, G1, SimpleMove(H1, F1), `O-O`)
+  private val whiteQueenside = CastleConcrete(E1, C1, SimpleMove(A1, D1), `O-O-O`)
+  private val blackKingside = CastleConcrete(E8, G8, SimpleMove(H8, F8), `O-O`)
+  private val blackQueenside = CastleConcrete(E8, C8, SimpleMove(A8, D8), `O-O-O`)
+  private object CastleConcrete {
+    def apply(c: Castle): CastleConcrete =
+      if (turn == White) if (c == `O-O`) whiteKingside else whiteQueenside else if (c == `O-O`) blackKingside else blackQueenside
+  }
+  private case class CastleConcrete(start: Square, end: Square, rookMove: SimpleMove, castle: Castle)
 
   val moves: Set[Move] = {
 
@@ -88,37 +97,64 @@ case class Board private(turn: Side, pieces: Set[Piece], enPassantEnd: Option[Fi
 
     }
 
+    def moves(start: Square, end: Square, pieceType: PieceType): Set[_ <: Move] = {
+
+      def promotions(starts: List[Square], rankOffset: Int) = for {
+        start <- starts
+        fileOffset <- List(-1, 0, 1)
+        promotionType <- PromotionType.all
+        end = start + (fileOffset, rankOffset)
+        if end.isDefined
+      } yield Promotion(start, end.get, promotionType)
+      val allPromotions = promotions(files.toList.map(square(_,_7)), 1) ++ promotions(files.toList.map(square(_,_2)), -1)
+      val promotion = new PartialFunction[(Square, Square, PieceType), Set[Promotion]] {
+        override def isDefinedAt(args: (Square, Square, PieceType)): Boolean = args._3 == Pawn && allPromotions.exists(p => args._1 == p.start && args._2 == p.end)
+        override def apply(args: (Square, Square, PieceType)): Set[Promotion] = PromotionType.all.map(t => Promotion(args._1, args._2, t))
+      }
+
+      val allCastles = Set(whiteKingside, whiteQueenside, blackKingside, blackQueenside)
+      val castle = new PartialFunction[(Square, Square, PieceType), Set[Castle]] {
+        override def isDefinedAt(args: (Square, Square, PieceType)): Boolean = args._3 == King && allCastles.exists(c => args._1 == c.start && args._2 == c.end)
+        override def apply(args: (Square, Square, PieceType)): Set[Castle] = allCastles.filter(c => args._1 == c.start && args._2 == c.end).map(_.castle)
+      }
+
+      def simple(args: (Square, Square, PieceType)) = Set(SimpleMove(args._1, args._2))
+
+      promotion.orElse(castle).applyOrElse((start, end, pieceType), simple)
+
+    }
+
     val king = pieces.find(p => sameSide(p) && p.pieceType == King).get.square
     def isBlockingCheck(p: List[Square], s: Square) = p.takeWhile(king !=).contains(s)
     val notBlockingCheck = {
       val potentialChecks = pieces.filter(otherSide).map(paths(_, endOnPiece = false).filter(_.contains(king))).flatten
-      pieces.filter(sameSide).filterNot(s => potentialChecks.exists(c => isBlockingCheck(c, s.square))).flatMap(s => paths(s).flatten.map((s.square, _)))
+      pieces.filter(sameSide).filterNot(p => potentialChecks.exists(c => isBlockingCheck(c, p.square))).flatMap(p => paths(p).flatten.map((p.square, _)))
     }
     val checkOption = pieces.filter(otherSide).map(paths(_).filter(_.lastOption == Some(king))).flatten.headOption
-    checkOption.fold(notBlockingCheck)(c => notBlockingCheck.filter(t => isBlockingCheck(c, t._2))).flatMap(t => Move.moves(t._1, t._2, pieceAt(t._1).get.pieceType).iterator)
+    checkOption.fold(notBlockingCheck)(c => notBlockingCheck.filter(t => isBlockingCheck(c, t._2))).flatMap(t => moves(t._1, t._2, pieceAt(t._1).get.pieceType).iterator)
 
   }
 
-  private def oneMove(nextTurn: Side, m: Move, movePiece: Piece => Piece) = {
-    val piece = pieceAt(m.start).get
+  private def oneMove(nextTurn: Side, start: Square, end: Square, movePiece: Piece => Piece) = {
+    val piece = pieceAt(start).get
     val enPassantTarget = piece match {
-      case Piece(White, Pawn, Square(f, `_2`), _) if m.end == square(f, `_4`) => Some(f)
-      case Piece(Black, Pawn, Square(f, `_7`), _) if m.end == square(f, `_5`) => Some(f)
+      case Piece(White, Pawn, Square(f, `_2`), _) if end == square(f, `_4`) => Some(f)
+      case Piece(Black, Pawn, Square(f, `_7`), _) if end == square(f, `_5`) => Some(f)
       case _ => None
     }
-    Some(Board(nextTurn, pieces.filterNot(_.square == m.end) - piece + movePiece(piece), enPassantTarget))
+    Some(Board(nextTurn, pieces.filterNot(_.square == end) - piece + movePiece(piece), enPassantTarget))
   }
   private def moveTo(p: Piece, end: Square): Piece = p.copy(square = end, hasMoved = true)
-  private val oneSimpleMove: PartialFunction[Move, Option[Board]] = { case m : SimpleMove if moves.contains(m) => oneMove(turn.other, m, (p: Piece) => moveTo(p, m.end)) }
-  private val onePromotion: PartialFunction[Move, Option[Board]] = { case m: Promotion if moves.contains(m) => oneMove(turn.other, m, (p: Piece) => moveTo(p, m.end).copy(pieceType = m.promotionType)) }
-  private val oneCastle: PartialFunction[Move, Option[Board]] = { case m: Castle if moves.contains(m) => oneMove(turn, m, (p: Piece) => moveTo(p, m.end)).flatMap(_.oneMove(turn.other, m.rookMove, (p: Piece) => moveTo(p, m.rookMove.end))) }
+  private val oneSimpleMove: PartialFunction[Move, Option[Board]] = { case m : SimpleMove if moves.contains(m) => oneMove(turn.other, m.start, m.end, (p: Piece) => moveTo(p, m.end)) }
+  private val onePromotion: PartialFunction[Move, Option[Board]] = { case m: Promotion if moves.contains(m) => oneMove(turn.other, m.start, m.end, (p: Piece) => moveTo(p, m.end).copy(pieceType = m.promotionType)) }
+  private val oneCastle: PartialFunction[Move, Option[Board]] = { case c: Castle if moves.contains(c) =>
+    val m = CastleConcrete(c)
+    oneMove(turn, m.start, m.end, (p: Piece) => moveTo(p, m.end)).flatMap(_.oneMove(turn.other, m.rookMove.start, m.rookMove.end, (p: Piece) => moveTo(p, m.rookMove.end)))
+  }
   private def oneMove(m : Move): Option[Board] = oneSimpleMove.orElse(onePromotion).orElse(oneCastle).applyOrElse(m, (_: Move) => None)
 
-  // Returns `Some[Board]` when the moves are valid; otherwise, `None`. The repeated parameter is either a `Move`
-  // instance or a function that takes a `Side` and returns a `Move`. The reason for using an `Either` is to allow
-  // castling to be specified as `O-O` or `O-O-O` without requiring the side to be specified.
-  def move(movesToMake: Either[Move, Side => Move]*): Option[Board] = movesToMake.toList match {
-    case head :: tail => oneMove(Move.toMove(head, turn)).flatMap(_.move(tail :_*))
+  def move(moves: Move*): Option[Board] = moves.toList match {
+    case head :: tail => oneMove(head).flatMap(_.move(tail :_*))
     case Nil => Some(this)
   }
 
