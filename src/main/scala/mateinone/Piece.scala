@@ -17,9 +17,10 @@ case object White extends Side { val other: Side = Black }
 case object Black extends Side { val other: Side = White }
 
 object Piece {
-  def withSide(pieces: Set[Piece], side: Side) = pieces.filter(_.side == side)
+  def withSide(pieces: Set[Piece], side: Side) = pieces.filter(_.side == side) // TODO these can be simpler! so much boilerplate
   def withPieceType(pieces: Set[Piece], pieceType: PieceType) = pieces.filter(_.pieceType == pieceType)
   def withSquare(pieces: Set[Piece], square: Square) = pieces.filter(_.square == square)
+  def withoutSquare(pieces: Set[Piece], square: Square) = pieces.filterNot(_.square == square)
   def thatMoved(pieces: Set[Piece]) = pieces.filter(_.hasMoved == true)
   def thatHaveNotMoved(pieces: Set[Piece]) = pieces.filter(_.hasMoved == false)
 }

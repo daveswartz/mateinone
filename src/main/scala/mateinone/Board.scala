@@ -98,36 +98,26 @@ case class Board private(turn: Side, pieces: Set[Piece], enPassantEnd: Option[Fi
 
   }
 
+  private def oneMove(nextTurn: Side, m: Move, movePiece: Piece => Piece) = {
+    val piece = withSquare(pieces, m.start).head
+    val enPassantTarget = piece match {
+      case Piece(White, Pawn, Square(f, `_2`), _) if m.end == square(f, `_4`) => Some(f)
+      case Piece(Black, Pawn, Square(f, `_7`), _) if m.end == square(f, `_5`) => Some(f)
+      case _ => None
+    }
+    Some(Board(nextTurn, withoutSquare(pieces, m.end) - piece + movePiece(piece), enPassantTarget))
+  }
+  private val oneSimpleMove: PartialFunction[Move, Option[Board]] = { case m : SimpleMove if moves.contains(m) => oneMove(turn.other, m, (p: Piece) => p.movedTo(m.end)) }
+  private val onePromotion: PartialFunction[Move, Option[Board]] = { case m: Promotion if moves.contains(m) => oneMove(turn.other, m, (p: Piece) => p.movedTo(m.end).promotedTo(m.promotionType)) }
+  private val oneCastle: PartialFunction[Move, Option[Board]] = { case m: Castle if moves.contains(m) => oneMove(turn, m, (p: Piece) => p.movedTo(m.end)).flatMap(_.oneMove(turn.other, m.rookMove, (p: Piece) => p.movedTo(m.rookMove.end))) }
+  private def oneMove(m : Move): Option[Board] = oneSimpleMove.orElse(onePromotion).orElse(oneCastle).applyOrElse(m, (_: Move) => None)
+
   // Returns `Some[Board]` when the moves are valid; otherwise, `None`. The repeated parameter is either a `Move`
   // instance or a function that takes a `Side` and returns a `Move`. The reason for using an `Either` is to allow
   // castling to be specified as `O-O` or `O-O-O` without requiring the side to be specified.
-  def move(movesToMake: Either[Move, Side => Move]*): Option[Board] = {
-
-    def oneMove(move: Move): Option[Board] =
-      if (moves.contains(move)) {
-        val piece = withSquare(pieces, move.start).head
-        val nextPieces = move match {
-          case SimpleMove(_, end) =>
-            pieces.filterNot(_.square == end) - piece + piece.movedTo(end)
-          case Castle(_, end, SimpleMove(rookStart, rookEnd)) =>
-            val rookPiece = withSquare(pieces, rookStart).head
-            pieces - piece - rookPiece + piece.movedTo(end) + rookPiece.movedTo(rookEnd)
-          case Promotion(_, end, promotionType) =>
-            pieces.filterNot(_.square == end) - piece + piece.movedTo(end).promotedTo(promotionType)
-        }
-        val enPassantTarget = piece match {
-          case Piece(White, Pawn, Square(f, `_2`), _) if move.end == square(f, `_4`) => Some(f)
-          case Piece(Black, Pawn, Square(f, `_7`), _) if move.end == square(f, `_5`) => Some(f)
-          case _ => None
-        }
-        Some(Board(turn.other, nextPieces, enPassantTarget))
-      } else None
-
-    movesToMake.toList match {
-      case head :: tail => oneMove(Move.toMove(head, turn)).flatMap(_.move(tail :_*))
-      case Nil => Some(this)
-    }
-
+  def move(movesToMake: Either[Move, Side => Move]*): Option[Board] = movesToMake.toList match {
+    case head :: tail => oneMove(Move.toMove(head, turn)).flatMap(_.move(tail :_*))
+    case Nil => Some(this)
   }
 
   override def toString: String = " a | b | c | d | e | f | g | h | ∙\n:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:\n" +
