@@ -17,11 +17,11 @@ object Board {
       val queen = piece(Queen)(square(D, kingRank))
       pawns ++ rooks ++ knights ++ bishops + king + queen
     }
-    Board(White, piecesForSide(White, _2, _1) ++ piecesForSide(Black, _7, _8))
+    Board(White, piecesForSide(White, _2, _1) ++ piecesForSide(Black, _7, _8), None)
   }
 }
 
-case class Board private(turn: Side, pieces: Set[Piece], lastMove: Option[Move] = None) {
+case class Board private(turn: Side, pieces: Set[Piece], enPassantEnd: Option[File]) {
   import Piece._
 
   val moves: Set[Move] = {
@@ -61,16 +61,8 @@ case class Board private(turn: Side, pieces: Set[Piece], lastMove: Option[Move] 
         val one = path(_: (Int, Int), 1, stepOnEmpty = false)
         if (side == White) Set(one(1, 1), one(-1, 1)) else Set(one(1, -1), one(-1, -1))
       }
-      def enPassants(side: Side) = {
-        def one(stepOffset: (Int, Int)) = {
-          val target: Option[Square] = piece.square + (stepOffset._1, 0)
-          new PartialFunction[Option[Move], List[Square]] {
-            def isDefinedAt(x: Option[Move]): Boolean = x.fold(false)(m => target == Some(m.end) && Set((0, -2), (0, 2)).contains(m.offset))
-            def apply(x: Option[Move]): List[Square] = path(stepOffset)
-          }.applyOrElse(lastMove, (_: Option[Move]) => List())
-        }
-        if (side == White) Set(one(1, 1), one(-1, 1)) else Set(one(1, -1), one(-1, -1))
-      }
+      def enPassants(start: File, rankStep: Int): Set[List[Square]] =
+        enPassantEnd.map(end => Set(1, -1).map(fileStep => if (start + fileStep == Some(end)) path((fileStep, rankStep)) else List())).getOrElse(Set())
       def castles(side: Side, rank: Rank) = {
         def canCastle(side: Side, rook: Square, between: Vector[Square]): Boolean =
           thatHaveNotMoved(withSquare(sameSide, rook)).size > 0 && between.forall(b => withSquare(sameSide, b).isEmpty)
@@ -81,10 +73,10 @@ case class Board private(turn: Side, pieces: Set[Piece], lastMove: Option[Move] 
 
       piece match {
         case Piece(White, Pawn,   Square(_, `_2`), false) => pawnCaptures(White) + pawnAdvance((0, 1), 2)
-        case Piece(White, Pawn,   Square(_, `_5`), true ) => pawnCaptures(White) + pawnAdvance((0, 1), 1) ++ enPassants(White)
+        case Piece(White, Pawn,   Square(f, `_5`), true ) => pawnCaptures(White) + pawnAdvance((0, 1), 1) ++ enPassants(f, 1)
         case Piece(White, Pawn,   _,               true ) => pawnCaptures(White) + pawnAdvance((0, 1), 1)
         case Piece(Black, Pawn,   Square(_, `_7`), false) => pawnCaptures(Black) + pawnAdvance((0, -1), 2)
-        case Piece(Black, Pawn,   Square(_, `_4`), true ) => pawnCaptures(Black) + pawnAdvance((0, -1), 1) ++ enPassants(Black)
+        case Piece(Black, Pawn,   Square(f, `_4`), true ) => pawnCaptures(Black) + pawnAdvance((0, -1), 1) ++ enPassants(f, -1)
         case Piece(Black, Pawn,   _,               true ) => pawnCaptures(Black) + pawnAdvance((0, -1), 1)
         case Piece(_,     Rook,   _,               _    ) => file ++ rank
         case Piece(_,     Knight, _,               _    ) => Set(path((2, 1)), path((2, -1)), path((1, 2)), path((1, -2)), path((-2, 1)), path((-2, -1)), path((-1, 2)), path((-1, -2)))
@@ -123,7 +115,12 @@ case class Board private(turn: Side, pieces: Set[Piece], lastMove: Option[Move] 
           case Promotion(_, end, promotionType) =>
             pieces.filterNot(_.square == end) - piece + piece.movedTo(end).promotedTo(promotionType)
         }
-        Some(new Board(turn.other, nextPieces, Some(move)))
+        val enPassantTarget = piece match {
+          case Piece(White, Pawn, Square(f, `_2`), _) if move.end == square(f, `_4`) => Some(f)
+          case Piece(Black, Pawn, Square(f, `_7`), _) if move.end == square(f, `_5`) => Some(f)
+          case _ => None
+        }
+        Some(Board(turn.other, nextPieces, enPassantTarget))
       } else None
 
     movesToMake.toList match {
