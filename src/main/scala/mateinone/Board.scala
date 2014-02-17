@@ -22,27 +22,27 @@ object Board {
 }
 
 case class Board private(turn: Side, pieces: Set[Piece], enPassantEnd: Option[File]) {
-  import Piece._
+
+  private val squareToPiece = pieces.map(p => p.square -> p).toMap
+  private def pieceAt(s: Square, f: Piece => Boolean = _ => true) = squareToPiece.get(s).filter(f)
+  private def pieceExists(s: Square, f: Piece => Boolean = _ => true) = pieceAt(s, f).isDefined
+  private def sameSide(p: Piece) = p.side == turn
+  private def otherSide(p: Piece) = p.side != turn
 
   val moves: Set[Move] = {
-
-    val sameSide = withSide(pieces, turn)
-    val otherSide = withSide(pieces, turn.other)
 
     def paths(piece: Piece, endOnPiece: Boolean = true): Set[List[Square]] = {
 
       def path(stepOffset: (Int, Int), nSteps: Int = 1, stepOnOther: Boolean = true, stepOnSame: Boolean = false, stepOnEmpty: Boolean = true): List[Square] = {
         def pathRecur(current: List[Square], remaining: Int): List[Square] = {
-          def hasSame(s: Square) = withSquare(sameSide, s).size > 0
-          def hasOther(s: Square) = withSquare(otherSide, s).size > 0
           if (remaining == 0) current
           else {
             current.last + stepOffset match {
               case None =>
                 current
-              case Some(next) if hasOther(next) =>
+              case Some(next) if pieceExists(next, otherSide) =>
                 if (endOnPiece) if (stepOnOther) current :+ next else current else pathRecur(current :+ next, remaining - 1)
-              case Some(next) if hasSame(next) =>
+              case Some(next) if pieceExists(next, sameSide) =>
                 if (endOnPiece) if (stepOnSame) current :+ next else current else pathRecur(current :+ next, remaining - 1)
               case Some(next) =>
                 if (stepOnEmpty) pathRecur(current :+ next, remaining - 1) else current
@@ -64,8 +64,7 @@ case class Board private(turn: Side, pieces: Set[Piece], enPassantEnd: Option[Fi
       def enPassants(start: File, rankStep: Int): Set[List[Square]] =
         enPassantEnd.map(end => Set(1, -1).map(fileStep => if (start + fileStep == Some(end)) path((fileStep, rankStep)) else List())).getOrElse(Set())
       def castles(side: Side, rank: Rank) = {
-        def canCastle(side: Side, rook: Square, between: Vector[Square]): Boolean =
-          thatHaveNotMoved(withSquare(sameSide, rook)).size > 0 && between.forall(b => withSquare(sameSide, b).isEmpty)
+        def canCastle(side: Side, rook: Square, between: Vector[Square]) = pieceExists(rook, p => !p.hasMoved && sameSide(p)) && between.forall(!pieceExists(_))
         val kingside = canCastle(side, square(H, rank), Vector(F, G).map(square(_, rank)))
         val queenside = canCastle(side, square(A, rank), Vector(B, C, D).map(square(_, rank)))
         Some(path((2, 0))).filter(_ => kingside) ++  Some(path((-2, 0))).filter(_ => queenside)
@@ -89,23 +88,25 @@ case class Board private(turn: Side, pieces: Set[Piece], enPassantEnd: Option[Fi
 
     }
 
-    val king = withPieceType(sameSide, King).head.square
-    val potentialChecks = otherSide.map(paths(_, endOnPiece = false).filter(_.contains(king))).flatten
+    val king = pieces.find(p => sameSide(p) && p.pieceType == King).get.square
     def isBlockingCheck(p: List[Square], s: Square) = p.takeWhile(king !=).contains(s)
-    val notBlockingCheck = sameSide.filterNot(s => potentialChecks.exists(c => isBlockingCheck(c, s.square))).flatMap(s => paths(s).flatten.map((s.square, _)))
-    val checkOption = otherSide.map(paths(_).filter(_.lastOption == Some(king))).flatten.headOption
-    checkOption.fold(notBlockingCheck)(c => notBlockingCheck.filter(t => isBlockingCheck(c, t._2))).flatMap(t => Move.moves(t._1, t._2, withSquare(pieces, t._1).head.pieceType).iterator)
+    val notBlockingCheck = {
+      val potentialChecks = pieces.filter(otherSide).map(paths(_, endOnPiece = false).filter(_.contains(king))).flatten
+      pieces.filter(sameSide).filterNot(s => potentialChecks.exists(c => isBlockingCheck(c, s.square))).flatMap(s => paths(s).flatten.map((s.square, _)))
+    }
+    val checkOption = pieces.filter(otherSide).map(paths(_).filter(_.lastOption == Some(king))).flatten.headOption
+    checkOption.fold(notBlockingCheck)(c => notBlockingCheck.filter(t => isBlockingCheck(c, t._2))).flatMap(t => Move.moves(t._1, t._2, pieceAt(t._1).get.pieceType).iterator)
 
   }
 
   private def oneMove(nextTurn: Side, m: Move, movePiece: Piece => Piece) = {
-    val piece = withSquare(pieces, m.start).head
+    val piece = pieceAt(m.start).get
     val enPassantTarget = piece match {
       case Piece(White, Pawn, Square(f, `_2`), _) if m.end == square(f, `_4`) => Some(f)
       case Piece(Black, Pawn, Square(f, `_7`), _) if m.end == square(f, `_5`) => Some(f)
       case _ => None
     }
-    Some(Board(nextTurn, withoutSquare(pieces, m.end) - piece + movePiece(piece), enPassantTarget))
+    Some(Board(nextTurn, pieces.filterNot(_.square == m.end) - piece + movePiece(piece), enPassantTarget))
   }
   private val oneSimpleMove: PartialFunction[Move, Option[Board]] = { case m : SimpleMove if moves.contains(m) => oneMove(turn.other, m, (p: Piece) => p.movedTo(m.end)) }
   private val onePromotion: PartialFunction[Move, Option[Board]] = { case m: Promotion if moves.contains(m) => oneMove(turn.other, m, (p: Piece) => p.movedTo(m.end).promotedTo(m.promotionType)) }
