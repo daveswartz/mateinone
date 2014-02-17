@@ -108,9 +108,10 @@ case class Board private(turn: Side, pieces: Set[Piece], enPassantEnd: Option[Fi
     }
     Some(Board(nextTurn, pieces.filterNot(_.square == m.end) - piece + movePiece(piece), enPassantTarget))
   }
-  private val oneSimpleMove: PartialFunction[Move, Option[Board]] = { case m : SimpleMove if moves.contains(m) => oneMove(turn.other, m, (p: Piece) => p.movedTo(m.end)) }
-  private val onePromotion: PartialFunction[Move, Option[Board]] = { case m: Promotion if moves.contains(m) => oneMove(turn.other, m, (p: Piece) => p.movedTo(m.end).promotedTo(m.promotionType)) }
-  private val oneCastle: PartialFunction[Move, Option[Board]] = { case m: Castle if moves.contains(m) => oneMove(turn, m, (p: Piece) => p.movedTo(m.end)).flatMap(_.oneMove(turn.other, m.rookMove, (p: Piece) => p.movedTo(m.rookMove.end))) }
+  private def moveTo(p: Piece, end: Square): Piece = p.copy(square = end, hasMoved = true)
+  private val oneSimpleMove: PartialFunction[Move, Option[Board]] = { case m : SimpleMove if moves.contains(m) => oneMove(turn.other, m, (p: Piece) => moveTo(p, m.end)) }
+  private val onePromotion: PartialFunction[Move, Option[Board]] = { case m: Promotion if moves.contains(m) => oneMove(turn.other, m, (p: Piece) => moveTo(p, m.end).copy(pieceType = m.promotionType)) }
+  private val oneCastle: PartialFunction[Move, Option[Board]] = { case m: Castle if moves.contains(m) => oneMove(turn, m, (p: Piece) => moveTo(p, m.end)).flatMap(_.oneMove(turn.other, m.rookMove, (p: Piece) => moveTo(p, m.rookMove.end))) }
   private def oneMove(m : Move): Option[Board] = oneSimpleMove.orElse(onePromotion).orElse(oneCastle).applyOrElse(m, (_: Move) => None)
 
   // Returns `Some[Board]` when the moves are valid; otherwise, `None`. The repeated parameter is either a `Move`
