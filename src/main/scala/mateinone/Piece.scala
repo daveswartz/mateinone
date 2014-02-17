@@ -1,16 +1,14 @@
 package mateinone
 
 sealed trait PieceType
-
+case object Pawn extends PieceType
+case object King extends PieceType
 object PromotionType { val all = Set(Knight, Rook, Bishop, Queen) }
 sealed trait PromotionType extends PieceType
-
-case object Pawn extends PieceType { override def toString: String = "♙" }
-case object King extends PieceType { override def toString: String = "♔" }
-case object Knight extends PromotionType { override def toString: String = "♘" }
-case object Rook extends PromotionType { override def toString: String = "♖" }
-case object Bishop extends PromotionType { override def toString: String = "♗" }
-case object Queen extends PromotionType { override def toString: String = "♕" }
+case object Knight extends PromotionType
+case object Rook extends PromotionType
+case object Bishop extends PromotionType
+case object Queen extends PromotionType
 
 sealed trait Side { val other: Side }
 case object White extends Side { val other: Side = Black }

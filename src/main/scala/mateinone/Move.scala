@@ -28,7 +28,6 @@ object SimpleMove {
 }
 case class SimpleMove(start: Square, end: Square) extends Move {
   def promote(promotionType: PromotionType): Option[Promotion] = Promotion.promotion.lift((start, end, Pawn)).flatMap(_.find(p => p.promotionType == promotionType))
-  override def toString: String = start.toString+"->"+end.toString
 }
 
 object Promotion {
@@ -51,9 +50,7 @@ object Promotion {
   implicit def promotionToLeftPromotion(p: Promotion): Either[Promotion, Side => Promotion] = Left(p)
 
 }
-case class Promotion private(start: Square, end: Square, promotionType: PromotionType) extends Move {
-  override def toString: String = start.toString+"->"+end.toString+"="+promotionType.toString
-}
+case class Promotion private(start: Square, end: Square, promotionType: PromotionType) extends Move
 
 object Castle {
 
@@ -82,6 +79,4 @@ object Castle {
   implicit def castleToRightCastle(c: Side => Castle): Either[Castle, Side => Castle] = Right(c)
 
 }
-case class Castle private(start: Square, end: Square, rookMove: SimpleMove) extends Move {
-  override def toString: String = if (end.file == G) "O-O" else "O-O-O"
-}
+case class Castle private(start: Square, end: Square, rookMove: SimpleMove) extends Move

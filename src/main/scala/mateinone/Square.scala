@@ -12,11 +12,9 @@ object File {
   val files: Vector[File] = Vector.range(0, 8).map(File.apply)
   private val fileIter = files.iterator
   val A, B, C, D, E, F, G, H = fileIter.next()
-  private val strings = Vector("a", "b", "c", "d", "e", "f", "g", "h")
 }
 case class File private(n: Int) extends Line[File] {
   override protected def lineOption = File.files.lift
-  override def toString: String = File.strings(n)
 }
 
 object Rank {
@@ -26,7 +24,6 @@ object Rank {
 }
 case class Rank private(n: Int) extends Line[Rank] {
   override protected def lineOption = Rank.ranks.lift
-  override def toString: String = (n + 1).toString
 }
 
 object Square {
@@ -45,5 +42,4 @@ object Square {
 case class Square private(file: File, rank: Rank) {
   def +(rhs: (Int, Int)): Option[Square] = (file + rhs._1).flatMap(fo => (rank + rhs._2).map(ro => Square.square(fo, ro)))
   def -(rhs: Square): (Int, Int) = (file - rhs.file, rank - rhs.rank)
-  override def toString: String = file.toString + rank.toString
 }
