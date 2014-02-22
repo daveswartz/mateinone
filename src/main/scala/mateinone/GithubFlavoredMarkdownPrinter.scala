@@ -27,7 +27,7 @@ object GithubFlavoredMarkdownPrinter {
   implicit def boardToMarkdownBoard(b: Board) = new MarkdownBoard(b)
 
   private object MarkdownMove {
-    private val fileStrings = Vector("a", "b", "c", "d", "e", "f", "g", "h")
+    private val fileStrings = Vector("A", "B", "C", "D", "E", "F", "G", "H")
   }
   class MarkdownMove(m: Move) {
     import MarkdownMove._
