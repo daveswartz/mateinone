@@ -133,14 +133,16 @@ case class Board private(turn: Side, pieces: Vector[Piece], enPassantEnd: Option
     val noAbsolutePins: Vector[(Piece, Vector[Vector[Square]])] = all.filterNot { case (piece, _) => absolutePins.exists(isBlockingCheck(_, piece.square)) }
     def checksFor(k: Square): Vector[Vector[Square]]  = otherSide.flatMap(paths(_).filter(_.contains(k)))
     def toMoves(args: (Piece, Vector[Vector[Square]])): Vector[_ <: Move] = args._2.flatMap(p => p.flatMap(end => moves(args._1.square, end, args._1.pieceType)))
+    val doesNotEndInCheck = noAbsolutePins.map { case (piece, paths) =>
+      if (piece.pieceType == King) (piece, paths.map(_.filter(checksFor(_).isEmpty)))
+      else (piece, paths)
+    }
     val checks = checksFor(king)
-    (if (checks.isEmpty) noAbsolutePins
+    (if (checks.isEmpty)
+      doesNotEndInCheck
     else {
-      def endsCheck(piece: Piece, end: Square): Boolean = piece match {
-        case Piece(_, King, _, _) => checksFor(end).isEmpty
-        case _ => checks.forall(isBlockingCheck(_, end))
-      }
-      noAbsolutePins.map { case (piece, paths) => (piece, paths.map(_.filter(endsCheck(piece, _)))) }
+      def endsCheck(end: Square): Boolean = checks.forall(isBlockingCheck(_, end))
+      doesNotEndInCheck.map { case (piece, paths) => (piece, paths.map(_.filter(endsCheck))) }
     }).flatMap(toMoves)
 
   }
