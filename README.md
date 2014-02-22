@@ -99,12 +99,3 @@ println(Board().moves)
 
 
 The script directory contains a longer example, **[random-game.scala](script/random-game.scala)**. The script plays both sides in a random game that continues until one side wins.
-
-Developing Locally ♖
---------------------
-
-* Setup the latest version of SBT;
-* Clone this repository;
-* Setup IntelliJ IDEA 12;
-* Run `sbt update gen-idea` from the project root;
-* Open the project in IntelliJ IDEA 12.

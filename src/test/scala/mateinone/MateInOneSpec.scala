@@ -80,7 +80,9 @@ class MateInOneSpec extends Specification {
     "1. d4 e5 2. dxe5 d6 3. Bg5 dxe5 4. Bxd8" in movesAllowed(D2->D4, E7->E5, D4->E5, D7->D6, C1->G5, D6->E5, G5->D8)(Set(Piece(White, Bishop, D8, hasMoved = true), Piece(Black, Pawn, E5, hasMoved = true)), nCaptured = 3)
 
     // Check
-    "1. e4 e5 2. f4 Bb4 d3; The last move puts White's own king in check" in lastMoveNotAllowed(E2->E4, E7->E5, F2->F4, F8->B4, D2->D3)
+    "1. e4 e5 2. f4 Bb4 d3; The last move puts White's own king in check"         in lastMoveNotAllowed(E2->E4, E7->E5, F2->F4, F8->B4, D2->D3)
+    "1. e4 e5 2. d4 Bb4; The last move does not move the White king out of check" in lastMoveNotAllowed(E2->E4, E7->E5, D2->D4, F8->B4, E2->E3)
+    "1. e4 e5 2. d4 Bb4; Move the White king out of check" in movesAllowed(E2->E4, E7->E5, D2->D4, F8->B4, C2->C3)(Set(Piece(White, Pawn, C3, hasMoved = true), Piece(White, Pawn, D4, hasMoved = true), Piece(White, Pawn, E4, hasMoved = true), Piece(Black, Bishop, B4, hasMoved = true), Piece(Black, Pawn, E5, hasMoved = true)))
 
     // Pawn moves (two-square advance, capture, promotion, en passant)
     "white pawn to g6 after pawn to g4" in lastMoveNotAllowed(G2->G4, A7->A6, G4->G6)
