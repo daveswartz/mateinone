@@ -135,6 +135,8 @@ case class Board private(turn: Side, pieces: Set[Piece], enPassantEnd: Option[Fi
 
   }
 
+  def isCheckmate = moves.isEmpty
+
   private def oneMove(nextTurn: Side, start: Square, end: Square, movePiece: Piece => Piece) = {
     val piece = pieceAt(start).get
     val enPassantTarget = piece match {
