@@ -16,7 +16,7 @@ import GithubFlavoredMarkdownPrinter._ // Brings `Board.print` into scope
 Create a board in the **initial position** and print the board in the Github Flavored Markdown format
 
 ```scala
-println(Board())
+println(Board().print)
 ```
 
 The rendered GFM board is below
