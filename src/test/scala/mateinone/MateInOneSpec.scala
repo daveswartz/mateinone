@@ -114,7 +114,6 @@ class MateInOneSpec extends Specification {
     "1. e4 e5 2. d4 Bb4; The last move leaves the White king in check"    in lastMoveNotAllowed(E2->E4, E7->E5, D2->D4, F8->B4, E2->E3)
     "1. e4 e5 2. d4 Bb4; Move the White king out of check"                in movesAllowed(E2->E4, E7->E5, D2->D4, F8->B4, C2->C3)(Set(Piece(White, Pawn, C3, _), Piece(White, Pawn, D4, _), Piece(White, Pawn, E4, _), Piece(Black, Bishop, B4, _), Piece(Black, Pawn, E5, _)))
     "1. f3 e5 2. g4 Qh4; Fool's mate"                                     in { Board().move(F2->F3, E7->E5, G2->G4, D8->H4) must beSome.which(_.isCheckmate) }
-    // TODO figure out why there are moves, causing isCheckmate to be false above.
   }
 
   // Checks each move is generated and allowed
