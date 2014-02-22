@@ -1,4 +1,7 @@
 import mateinone._
+
+println(Board())
+
 import GithubFlavoredMarkdownPrinter._
 
 println(Board().print)
