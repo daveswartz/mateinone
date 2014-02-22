@@ -6,31 +6,35 @@ Chess library entirely written in Scala.
 Usage ♕
 -------
 
-The library is really easy to use. Just bring some things into scope
+The library is really easy to use. Just bring the `mateinone` package into scope.
 
 ```scala
 import mateinone._
 ```
 
-Create a board in the **initial position** and print the board
+### The Board
+
+Create a board in the **initial position** and print the board:
 
 ```scala
 println(Board())
 ```
 
-The code prints the following
+The code prints the following:
 
-    Board(White,Set(Piece(White,Pawn,Square(File(2),Rank(1)),false), ...
+    Board(White,Set(Piece(White,Pawn,Square(File(2),Rank(1)),false), Piece(White,Pawn,Square(File(1),Rank(1)),false), Piece(Black,Pawn,Square(File(0),Rank(6)),false), Piece(Black,Queen,Square(File(3),Rank(7)),false), Piece(Black,Pawn,Square(File(1),Rank(6)),false), Piece(White,Rook,Square(File(0),Rank(0)),false), Piece(Black,Rook,Square(File(7),Rank(7)),false), Piece(White,Knight,Square(File(1),Rank(0)),false), Piece(Black,King,Square(File(4),Rank(7)),false), Piece(Black,Pawn,Square(File(7),Rank(6)),false), Piece(White,King,Square(File(4),Rank(0)),false), Piece(Black,Knight,Square(File(6),Rank(7)),false), Piece(White,Queen,Square(File(3),Rank(0)),false), Piece(White,Pawn,Square(File(4),Rank(1)),false), Piece(Black,Pawn,Square(File(3),Rank(6)),false), Piece(Black,Pawn,Square(File(5),Rank(6)),false), Piece(Black,Rook,Square(File(0),Rank(7)),false), Piece(White,Bishop,Square(File(5),Rank(0)),false), Piece(White,Pawn,Square(File(3),Rank(1)),false), Piece(White,Bishop,Square(File(2),Rank(0)),false), Piece(Black,Pawn,Square(File(2),Rank(6)),false), Piece(White,Pawn,Square(File(7),Rank(1)),false), Piece(White,Pawn,Square(File(0),Rank(1)),false), Piece(Black,Pawn,Square(File(4),Rank(6)),false), Piece(Black,Pawn,Square(File(6),Rank(6)),false), Piece(White,Rook,Square(File(7),Rank(0)),false), Piece(Black,Bishop,Square(File(2),Rank(7)),false), Piece(Black,Knight,Square(File(1),Rank(7)),false), Piece(White,Pawn,Square(File(6),Rank(1)),false), Piece(White,Pawn,Square(File(5),Rank(1)),false), Piece(White,Knight,Square(File(6),Rank(0)),false), Piece(Black,Bishop,Square(File(5),Rank(7)),false)),None)
 
-Print a nicer presentation of the board in the Github Flavored Markdown format by bringing a `Board.print` method into scope
+### Github Flavored Markdown Printer
+
+Print a nicer presentation of the board in the Github Flavored Markdown format by using the `GithubFlavoredMarkdownPrinter` `print` implicit.
 
 ```scala
-import GithubFlavoredMarkdownPrinter._
+import GithubFlavoredMarkdownPrinter.print
 
 println(Board().print)
 ```
 
-The rendered GFM board is below
+The rendered GFM board is below:
 
  a | b | c | d | e | f | g | h | ∙
 :-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:
@@ -43,14 +47,16 @@ The rendered GFM board is below
  ♙ | ♙ | ♙ | ♙ | ♙ | ♙ | ♙ | ♙ | **2**
  ♖ | ♘ | ♗ | ♕ | ♔ | ♗ | ♘ | ♖ | **1**
 
-More things must be brought into scope so that squares and moves can be expressed
+### Make Moves
+
+More things must be brought into scope so that squares and moves can be expressed.
 
 ```scala
 import Square._
 import MoveImplicits._
 ```
 
-Play a simple trap known as the **Scholar's mate**
+Play a simple trap known as the **Scholar's mate**:
 
 1. e4 e5
 2. Qh5 Nc6
@@ -72,7 +78,7 @@ println(Board().move(E2->E4, E7->E5, D1->H5, B8->C6, F1->C4, G8->F6, H5->F7).get
  ♙ | ♙ | ♙ | ♙ |   | ♙ | ♙ | ♙ | **2**
  ♖ | ♘ | ♗ |   | ♔ |   | ♘ | ♖ | **1**
 
-Both sides play to quickly **castle kingside**
+Both sides play to quickly **castle kingside**:
 
 1. Nf3 Nf6
 2. g3 g6
@@ -94,7 +100,7 @@ println(Board().move(G1->F3, G8->F6, G2->G3, G7->G6, F1->H3, F8->H6, `O-O`, `O-O
  ♙ | ♙ | ♙ | ♙ | ♙ | ♙ |   | ♙ | **2**
  ♖ | ♘ | ♗ | ♕ |   | ♖ | ♔ |   | **1**
 
-Make some **exchanges**.
+Make some **exchanges**:
 
 1. d4 e5
 2. dxe5 d6
@@ -116,7 +122,9 @@ println(Board().move(D2->D4, E7->E5, D4->E5, D7->D6, C1->G5, D6->E5, G5->D8).get
  ♙ | ♙ | ♙ |   | ♙ | ♙ | ♙ | ♙ | **2**
  ♖ | ♘ |   | ♕ | ♔ | ♗ | ♘ | ♖ | **1**
 
-Generate the **opening moves**.
+### Generate Moves
+
+Generate the **opening moves** and print them using the GFM printer:
 
 ```scala
 println(Board().moves.map(_.print))
