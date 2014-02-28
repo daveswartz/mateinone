@@ -110,10 +110,11 @@ class MateInOneSpec extends Specification {
   }
 
   "Check and mate" should {
-    "1. e4 e5 2. f4 Bb4 d3; The last move puts White's own king in check" in lastMoveNotAllowed(E2->E4, E7->E5, F2->F4, F8->B4, D2->D3)
-    "1. e4 e5 2. d4 Bb4; The last move leaves the White king in check"    in lastMoveNotAllowed(E2->E4, E7->E5, D2->D4, F8->B4, E2->E3)
-    "1. e4 e5 2. d4 Bb4; Move the White king out of check"                in movesAllowed(E2->E4, E7->E5, D2->D4, F8->B4, C2->C3)(Set(Piece(White, Pawn, C3, _), Piece(White, Pawn, D4, _), Piece(White, Pawn, E4, _), Piece(Black, Bishop, B4, _), Piece(Black, Pawn, E5, _)))
-    "1. f3 e5 2. g4 Qh4; Fool's mate"                                     in { Board().move(F2->F3, E7->E5, G2->G4, D8->H4) must beSome.which(_.isCheckmate) }
+    "1. e4 e5 2. f4 Bb4 3. d3; The last move puts White's own king in check"   in lastMoveNotAllowed(E2->E4, E7->E5, F2->F4, F8->B4, D2->D3)
+    "1. e4 e5 2. d4 Bb4; The last move leaves the White king in check"         in lastMoveNotAllowed(E2->E4, E7->E5, D2->D4, F8->B4, E2->E3)
+    "1. e4 e5 2. d4 Bb4; Move the White king out of check"                     in movesAllowed(E2->E4, E7->E5, D2->D4, F8->B4, C2->C3)(Set(Piece(White, Pawn, C3, _), Piece(White, Pawn, D4, _), Piece(White, Pawn, E4, _), Piece(Black, Bishop, B4, _), Piece(Black, Pawn, E5, _)))
+    "1. f3 e5 2. g4 Qh4; Fool's mate"                                          in { Board().move(F2->F3, E7->E5, G2->G4, D8->H4) must beSome.which(_.isCheckmate) } // TODO ends in checkmate
+    "1. e4 Nf6 2. d4 Ng4 3. c4 Nxh2 4. f3 Nxf3+ 5. Nxf3; Capture to end check" in movesAllowed(E2->E4, G8->F6, D2->D4, F6->G4, C2->C4, G4->H2, F2->F3, H2->F3, G1->F3)(Set(Piece(White, Pawn, C4, _), Piece(White, Pawn, D4, _), Piece(White, Pawn, E4, _), Piece(White, Knight, F3, _)), nCaptured = 3)
   }
 
   // Checks each move is generated and allowed
