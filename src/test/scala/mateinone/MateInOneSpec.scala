@@ -107,6 +107,10 @@ class MateInOneSpec extends Specification {
     "black king to g8 without castling"       in lastMoveNotAllowed(G1->F3, G8->F6, G2->G3, G7->G6, F1->H3, F8->H6, `O-O`, E8->G8)
     "white king to c1 without castling"       in lastMoveNotAllowed(B1->C3, B8->C6, D2->D3, D7->D6, C1->G5, C8->G4, D1->D2, D8->D7, E1->C1)
     "black king to c8 without castling"       in lastMoveNotAllowed(B1->C3, B8->C6, D2->D3, D7->D6, C1->G5, C8->G4, D1->D2, D8->D7, `O-O-O`, E8->C8)
+
+    "1. f4 e5 2. fxe5 f6 3. exf6 Qxf6 4. g3 Qf5 5. Bg2 Qf6 6. Nh3 Qf5 7. O-O; The king passes through a square that is attacked by an enemy piece." in
+      lastMoveNotAllowed(F2->F4, E7->E5, F4->E5, E5->F6, D8->F6, G2->G3, F6->F5, F1->G2, F5->F6, G1->H3, F6->F5, `O-O`)
+
   }
 
   "Check and mate" should {
@@ -114,7 +118,10 @@ class MateInOneSpec extends Specification {
     "1. e4 e5 2. d4 Bb4; The last move leaves the White king in check"         in lastMoveNotAllowed(E2->E4, E7->E5, D2->D4, F8->B4, E2->E3)
     "1. e4 e5 2. d4 Bb4; Move the White king out of check"                     in movesAllowed(E2->E4, E7->E5, D2->D4, F8->B4, C2->C3)(Set(Piece(White, Pawn, C3, _), Piece(White, Pawn, D4, _), Piece(White, Pawn, E4, _), Piece(Black, Bishop, B4, _), Piece(Black, Pawn, E5, _)))
     "1. f3 e5 2. g4 Qh4; Fool's mate"                                          in { Board().move(F2->F3, E7->E5, G2->G4, D8->H4) must beSome.which(_.isCheckmate) } // TODO ends in checkmate
-    "1. e4 Nf6 2. d4 Ng4 3. c4 Nxh2 4. f3 Nxf3+ 5. Nxf3; Capture to end check" in movesAllowed(E2->E4, G8->F6, D2->D4, F6->G4, C2->C4, G4->H2, F2->F3, H2->F3, G1->F3)(Set(Piece(White, Pawn, C4, _), Piece(White, Pawn, D4, _), Piece(White, Pawn, E4, _), Piece(White, Knight, F3, _)), nCaptured = 3)
+
+    "1. e4 Nf6 2. d4 Ng4 3. c4 Nxh2 4. f3 Nxf3+ 5. Nxf3; Capture the checking piece to end check." in
+      movesAllowed(E2->E4, G8->F6, D2->D4, F6->G4, C2->C4, G4->H2, F2->F3, H2->F3, G1->F3)(Set(Piece(White, Pawn, C4, _), Piece(White, Pawn, D4, _), Piece(White, Pawn, E4, _), Piece(White, Knight, F3, _)), nCaptured = 3)
+
   }
 
   // Checks each move is generated and allowed
