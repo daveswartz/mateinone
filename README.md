@@ -33,22 +33,22 @@ Print a nicer presentation of the board in the Github Flavored Markdown format b
 ```scala
 import GithubFlavoredMarkdownPrinter._
 
-println(Board().print)
+print(Board().print)
 ```
 
 Outputs the following:
-
-     a | b | c | d | e | f | g | h | ∙
-    :-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:
-     ♜ | ♞ | ♝ | ♛ | ♚ | ♝ | ♞ | ♜ | **8**
-     ♟ | ♟ | ♟ | ♟ | ♟ | ♟ | ♟ | ♟ | **7**
-       |   |   |   |   |   |   |   | **6**
-       |   |   |   |   |   |   |   | **5**
-       |   |   |   |   |   |   |   | **4**
-       |   |   |   |   |   |   |   | **3**
-     ♙ | ♙ | ♙ | ♙ | ♙ | ♙ | ♙ | ♙ | **2**
-     ♖ | ♘ | ♗ | ♕ | ♔ | ♗ | ♘ | ♖ | **1**
-
+<pre>
+ a | b | c | d | e | f | g | h | ∙
+:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:
+ ♜ | ♞ | ♝ | ♛ | ♚ | ♝ | ♞ | ♜ | **8**
+ ♟ | ♟ | ♟ | ♟ | ♟ | ♟ | ♟ | ♟ | **7**
+   |   |   |   |   |   |   |   | **6**
+   |   |   |   |   |   |   |   | **5**
+   |   |   |   |   |   |   |   | **4**
+   |   |   |   |   |   |   |   | **3**
+ ♙ | ♙ | ♙ | ♙ | ♙ | ♙ | ♙ | ♙ | **2**
+ ♖ | ♘ | ♗ | ♕ | ♔ | ♗ | ♘ | ♖ | **1**
+</pre>
 
 The rendered GFM board is below:
 
