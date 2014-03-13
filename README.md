@@ -12,6 +12,8 @@ The library is really easy to use. Just bring the `mateinone` package into scope
 import mateinone._
 ```
 
+Alternatively, use `sbt console` and skip the imports as it is configured to pre-import everything.
+
 ### The Board
 
 Create a board in the **initial position** and print the board:
@@ -20,19 +22,33 @@ Create a board in the **initial position** and print the board:
 println(Board())
 ```
 
-The code prints the following:
+Outputs the following:
 
     Board(White,Set(Piece(White,Pawn,Square(File(2),Rank(1)),false), Piece(White,Pawn,Square(File(1),Rank(1)),false), Piece(Black,Pawn,Square(File(0),Rank(6)),false), Piece(Black,Queen,Square(File(3),Rank(7)),false), Piece(Black,Pawn,Square(File(1),Rank(6)),false), Piece(White,Rook,Square(File(0),Rank(0)),false), Piece(Black,Rook,Square(File(7),Rank(7)),false), Piece(White,Knight,Square(File(1),Rank(0)),false), Piece(Black,King,Square(File(4),Rank(7)),false), Piece(Black,Pawn,Square(File(7),Rank(6)),false), Piece(White,King,Square(File(4),Rank(0)),false), Piece(Black,Knight,Square(File(6),Rank(7)),false), Piece(White,Queen,Square(File(3),Rank(0)),false), Piece(White,Pawn,Square(File(4),Rank(1)),false), Piece(Black,Pawn,Square(File(3),Rank(6)),false), Piece(Black,Pawn,Square(File(5),Rank(6)),false), Piece(Black,Rook,Square(File(0),Rank(7)),false), Piece(White,Bishop,Square(File(5),Rank(0)),false), Piece(White,Pawn,Square(File(3),Rank(1)),false), Piece(White,Bishop,Square(File(2),Rank(0)),false), Piece(Black,Pawn,Square(File(2),Rank(6)),false), Piece(White,Pawn,Square(File(7),Rank(1)),false), Piece(White,Pawn,Square(File(0),Rank(1)),false), Piece(Black,Pawn,Square(File(4),Rank(6)),false), Piece(Black,Pawn,Square(File(6),Rank(6)),false), Piece(White,Rook,Square(File(7),Rank(0)),false), Piece(Black,Bishop,Square(File(2),Rank(7)),false), Piece(Black,Knight,Square(File(1),Rank(7)),false), Piece(White,Pawn,Square(File(6),Rank(1)),false), Piece(White,Pawn,Square(File(5),Rank(1)),false), Piece(White,Knight,Square(File(6),Rank(0)),false), Piece(Black,Bishop,Square(File(5),Rank(7)),false)),None)
 
 ### Github Flavored Markdown Printer
 
-Print a nicer presentation of the board in the Github Flavored Markdown format by using the `GithubFlavoredMarkdownPrinter` `print` implicit.
+Print a nicer presentation of the board in the Github Flavored Markdown format by using the `GithubFlavoredMarkdownPrinter` `print` implicit method.
 
 ```scala
-import GithubFlavoredMarkdownPrinter.print
+import GithubFlavoredMarkdownPrinter._
 
 println(Board().print)
 ```
+
+Outputs the following:
+
+    " a | b | c | d | e | f | g | h | ∙
+    :-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:
+     ♜ | ♞ | ♝ | ♛ | ♚ | ♝ | ♞ | ♜ | **8**
+     ♟ | ♟ | ♟ | ♟ | ♟ | ♟ | ♟ | ♟ | **7**
+       |   |   |   |   |   |   |   | **6**
+       |   |   |   |   |   |   |   | **5**
+       |   |   |   |   |   |   |   | **4**
+       |   |   |   |   |   |   |   | **3**
+     ♙ | ♙ | ♙ | ♙ | ♙ | ♙ | ♙ | ♙ | **2**
+     ♖ | ♘ | ♗ | ♕ | ♔ | ♗ | ♘ | ♖ | **1**"
+
 
 The rendered GFM board is below:
 
