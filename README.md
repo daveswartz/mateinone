@@ -33,7 +33,7 @@ Print a nicer presentation of the board in the Github Flavored Markdown format b
 ```scala
 import GithubFlavoredMarkdownPrinter._
 
-print(Board().print)
+println(Board().print)
 ```
 
 Outputs the following:
@@ -148,7 +148,7 @@ println(Board().moves.map(_.print))
 
 The code prints the following
 
-    Set(G2->G3, E2->E3, H2->H4, A2->A3, C2->C3, B2->B4, G1->H3, C2->C4, B2->B3, E2->E4, G1->F3, G2->G4, F2->F4, D2->D3, A2->A4, B1->A3, D2->D4, H2->H3, F2->F3, B1->C3)
+    Vector(G2->G3, E2->E3, H2->H4, A2->A3, C2->C3, B2->B4, G1->H3, C2->C4, B2->B3, E2->E4, G1->F3, G2->G4, F2->F4, D2->D3, A2->A4, B1->A3, D2->D4, H2->H3, F2->F3, B1->C3)
 
 Scripts ♖
 ---------
