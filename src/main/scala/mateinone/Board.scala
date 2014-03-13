@@ -23,9 +23,6 @@ object Board {
 
 case class Board private(turn: Side, pieces: Vector[Piece], enPassantEnd: Option[File]) {
 
-  private val squareToPiece = pieces.map(p => p.square -> p).toMap
-  private def pieceAt(s: Square, f: Piece => Boolean = _ => true) = squareToPiece.get(s).filter(f)
-  private def pieceExists(s: Square, f: Piece => Boolean = _ => true) = pieceAt(s, f).isDefined
   private val whiteKingside = CastleConcrete(E1, G1, SimpleMove(H1, F1), `O-O`)
   private val whiteQueenside = CastleConcrete(E1, C1, SimpleMove(A1, D1), `O-O-O`)
   private val blackKingside = CastleConcrete(E8, G8, SimpleMove(H8, F8), `O-O`)
@@ -36,12 +33,18 @@ case class Board private(turn: Side, pieces: Vector[Piece], enPassantEnd: Option
   }
   private case class CastleConcrete(start: Square, end: Square, rookMove: SimpleMove, castle: Castle)
 
+  private val squareToPiece = pieces.map(p => p.square -> p).toMap
+  private def pieceAt(s: Square, f: Piece => Boolean = _ => true) = squareToPiece.get(s).filter(f)
+  private def pieceExists(s: Square, f: Piece => Boolean = _ => true) = pieceAt(s, f).isDefined
+  private type Path = Vector[Square]
+  private type Paths = Vector[Path]
+
   val moves: Vector[Move] = {
 
-    def paths(piece: Piece, endOnPiece: Boolean = true): Vector[Vector[Square]] = {
+    def paths(piece: Piece, endOnPiece: Boolean = true): Paths = {
 
-      def path(stepOffset: (Int, Int), nSteps: Int = 1, stepOnOther: Boolean = true, stepOnSame: Boolean = false, stepOnEmpty: Boolean = true): Vector[Square] = {
-        def pathRecur(current: Vector[Square], remaining: Int): Vector[Square] = {
+      def path(stepOffset: (Int, Int), nSteps: Int = 1, stepOnOther: Boolean = true, stepOnSame: Boolean = false, stepOnEmpty: Boolean = true): Path = {
+        def pathRecur(current: Path, remaining: Int): Path = {
           if (remaining == 0) current
           else {
             current.last + stepOffset match {
@@ -63,18 +66,21 @@ case class Board private(turn: Side, pieces: Vector[Piece], enPassantEnd: Option
       def rank = Vector(path((0, 1), 7), path((0, -1), 7))
       def diagonals = Vector(path((1, 1), 7), path((1, -1), 7), path((-1, 1), 7), path((-1, -1), 7))
       def adjacent = Vector(path((0, 1)), path((1, 1)), path((1, 0)), path((1, -1)), path((0, -1)), path((-1, -1)), path((-1, 0)), path((-1, 1)))
+
       def pawnAdvance(s: (Int, Int), n: Int) = path(s, n, stepOnOther = false)
+
       def pawnCaptures(side: Side) = {
         val one = path(_: (Int, Int), 1, stepOnEmpty = false)
         if (side == White) Vector(one(1, 1), one(-1, 1)) else Vector(one(1, -1), one(-1, -1))
       }
-      def enPassants(start: File, rankStep: Int): Vector[Vector[Square]] =
+
+      def enPassants(start: File, rankStep: Int): Paths =
         enPassantEnd.map(end => Vector(1, -1).map(fileStep => if (start + fileStep == Some(end)) path((fileStep, rankStep)) else Vector())).getOrElse(Vector())
-      def castles(side: Side, rank: Rank): Vector[Vector[Square]] = {
-        def canCastle(side: Side, rook: Square, between: Vector[Square]) = pieceExists(rook, p => !p.hasMoved && p.side == turn) && between.forall(!pieceExists(_))
-        val kingside = canCastle(side, square(H, rank), Vector(F, G).map(square(_, rank)))
-        val queenside = canCastle(side, square(A, rank), Vector(B, C, D).map(square(_, rank)))
-        Vector(path((2, 0))).filter(_ => kingside) ++ Vector(path((-2, 0))).filter(_ => queenside)
+
+      def castles(side: Side, rank: Rank): Paths = {
+        def canCastle(rook: File, between: Vector[File]) = pieceExists(square(rook, rank), p => !p.hasMoved) && between.map(square(_, rank)).forall(!pieceExists(_))
+        def oneOrEmpty[T](p: Boolean, t: T) = if (p) Vector(t) else Vector.empty[T]
+        oneOrEmpty(canCastle(H, Vector(F, G)), path((2, 0))) ++ oneOrEmpty(canCastle(A, Vector(B, C, D)), path((-2, 0)))
       }
 
       val all = piece match {
@@ -98,7 +104,7 @@ case class Board private(turn: Side, pieces: Vector[Piece], enPassantEnd: Option
 
     def moves(start: Square, end: Square, pieceType: PieceType): Vector[_ <: Move] = {
 
-      def promotions(starts: Vector[Square], rankOffset: Int) = for {
+      def promotions(starts: Path, rankOffset: Int) = for {
         start <- starts
         fileOffset <- Vector(-1, 0, 1)
         promotionType <- PromotionType.all
@@ -123,16 +129,16 @@ case class Board private(turn: Side, pieces: Vector[Piece], enPassantEnd: Option
 
     }
 
-    def subpath(p: Vector[Square], s: Square): Vector[Square] = p.takeWhile(s !=)
+    def subpath(p: Path, s: Square): Path = p.takeWhile(s !=)
 
     val (sameSide, otherSide) = pieces.partition(_.side == turn)
-    val all: Vector[(Piece, Vector[Vector[Square]])] = sameSide.map(p => (p, paths(p)))
+    val all: Vector[(Piece, Paths)] = sameSide.map(p => (p, paths(p)))
     val king: Square = sameSide.find(_.pieceType == King).get.square
-    val absolutePins: Vector[Vector[Square]] = otherSide.map(paths(_, endOnPiece = false).filter(_.contains(king))).flatten
-    def isBlockingCheck(p: Vector[Square], s: Square): Boolean = subpath(p, king).contains(s)
-    val noAbsolutePins: Vector[(Piece, Vector[Vector[Square]])] = all.filterNot { case (piece, _) => absolutePins.exists(isBlockingCheck(_, piece.square)) }
-    def checksFor(k: Square): Vector[Vector[Square]]  = otherSide.flatMap(paths(_).filter(_.contains(k)))
-    def toMoves(args: (Piece, Vector[Vector[Square]])): Vector[_ <: Move] = args._2.flatMap(p => p.flatMap(end => moves(args._1.square, end, args._1.pieceType)))
+    val absolutePins: Paths = otherSide.map(paths(_, endOnPiece = false).filter(_.contains(king))).flatten
+    def isBlockingCheck(p: Path, s: Square): Boolean = subpath(p, king).contains(s)
+    val noAbsolutePins: Vector[(Piece, Paths)] = all.filterNot { case (piece, _) => absolutePins.exists(isBlockingCheck(_, piece.square)) }
+    def checksFor(k: Square): Paths  = otherSide.flatMap(paths(_).filter(_.contains(k)))
+    def toMoves(args: (Piece, Paths)): Vector[_ <: Move] = args._2.flatMap(p => p.flatMap(end => moves(args._1.square, end, args._1.pieceType)))
     val doesNotEndInCheck = noAbsolutePins.map { case (piece, paths) =>
       if (piece.pieceType == King) (piece, paths.map(_.filter(checksFor(_).isEmpty)))
       else (piece, paths)
