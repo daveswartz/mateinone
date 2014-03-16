@@ -8,6 +8,8 @@ resolvers ++= Seq("snapshots", "releases").map(Resolver.sonatypeRepo)
 
 libraryDependencies ++= Seq("org.specs2" %% "specs2" % "2.3.6" % "test")
 
+scalacOptions in Compile ++= Seq("-unchecked", "-feature")
+
 scalacOptions in Test ++= Seq("-Yrangepos")
 
 initialCommands in console :=

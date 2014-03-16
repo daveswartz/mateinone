@@ -60,12 +60,12 @@ class MateInOneSpec extends Specification {
           Rook->A8, Pawn->A7, Knight->B8, Pawn->B7, Bishop->C8, Pawn->C7, Queen->D8, Pawn->D7,
           King->E8, Pawn->E7, Bishop->F8, Pawn->F7, Knight->G8, Pawn->G7, Rook->H8, Pawn->H7
         ).map { case (side, square) => Piece(Black, side, square, hasMoved = false) }
-      Board().pieces must containTheSameElementsAs(expectedPieces)
+      Board.initial.pieces must containTheSameElementsAs(expectedPieces)
     }
     "have the correct initial moves for white" in moveAndCheckMoves()(A2->A3, A2->A4, B1->A3, B1->C3, B2->B3, B2->B4, C2->C3, C2->C4, D2->D3, D2->D4, E2->E3, E2->E4, F2->F3, F2->F4, G1->F3, G1->H3, G2->G3, G2->G4, H2->H3, H2->H4)
     "have the correct initial moves for black" in moveAndCheckMoves(G2->G3)(A7->A6, A7->A5, B8->A6, B8->C6, B7->B6, B7->B5, C7->C6, C7->C5, D7->D6, D7->D5, E7->E6, E7->E5, F7->F6, F7->F5, G8->F6, G8->H6, G7->G6, G7->G5, H7->H6, H7->H5)
     "be immutable" in {
-      Board().move(G2->G3) must beSome.which { b =>
+      Board.initial.move(G2->G3) must beSome.which { b =>
         b.move(G3->G4)
         onlyTheseMoved(Set(Piece(White, Pawn, G3, _)))(b)
       }
@@ -125,7 +125,7 @@ class MateInOneSpec extends Specification {
       movesAllowed(E2->E4, E7->E5, D2->D4, F8->B4, C2->C3)(Set(Piece(White, Pawn, C3, _), Piece(White, Pawn, D4, _), Piece(White, Pawn, E4, _), Piece(Black, Bishop, B4, _), Piece(Black, Pawn, E5, _)))
 
     "1. f3 e5 2. g4 Qh4; Fool's mate" in
-      { Board().move(F2->F3, E7->E5, G2->G4, D8->H4) must beSome.which(_.isCheckmate) }
+      { Board.initial.move(F2->F3, E7->E5, G2->G4, D8->H4) must beSome.which(_.isCheckmate) }
 
     "1. e4 Nf6 2. d4 Ng4 3. c4 Nxh2 4. f3 Nxf3+ 5. Nxf3; Capture the checking piece to end check." in
       movesAllowed(E2->E4, G8->F6, D2->D4, F6->G4, C2->C4, G4->H2, F2->F3, H2->F3, G1->F3)(Set(Piece(White, Pawn, C4, _), Piece(White, Pawn, D4, _), Piece(White, Pawn, E4, _), Piece(White, Knight, F3, _)), nCaptured = 3)
@@ -133,8 +133,8 @@ class MateInOneSpec extends Specification {
   }
 
   // Checks each move is generated and allowed
-  def movesAllowed(moves: Move*)(movedPieces: Set[Boolean => Piece] = Set(), nCaptured: Int = 0) = {
-    def recur(board: Option[Board], remaining: List[Move]): Result = {
+  def movesAllowed(moves: MoveBase*)(movedPieces: Set[Boolean => Piece] = Set(), nCaptured: Int = 0) = {
+    def recur(board: Option[Board], remaining: List[MoveBase]): Result = {
       (board, remaining) match {
         case (Some(b), head :: tail) =>
           b.moves must contain(head)
@@ -145,12 +145,12 @@ class MateInOneSpec extends Specification {
           failure
       }
     }
-    recur(Some(Board()), moves.toList)
+    recur(Some(Board.initial), moves.toList)
   }
 
   // Checks each move except the last is generated and allowed
-  def lastMoveNotAllowed(moves: Move*) = {
-    def recur(board: Option[Board], remaining: List[Move]): Result = {
+  def lastMoveNotAllowed(moves: MoveBase*) = {
+    def recur(board: Option[Board], remaining: List[MoveBase]): Result = {
       (board, remaining) match {
         case (Some(b), last :: Nil) =>
           b.moves must not contain(last)
@@ -166,12 +166,12 @@ class MateInOneSpec extends Specification {
           success
       }
     }
-    recur(Some(Board()), moves.toList)
+    recur(Some(Board.initial), moves.toList)
   }
 
   // Only checks the number of captures as the actual pieces captured are determined by the initial board pieces and the moved pieces specified
   def onlyTheseMoved(movedPieces: Set[Boolean => Piece] = Set(), nCaptured: Int = 0): Board => Result = {
-    val initialPieces = Board().pieces
+    val initialPieces = Board.initial.pieces
     (board) => {
       val stationaryPieces = board.pieces.filterNot(_.hasMoved)
       stationaryPieces.size + movedPieces.size + nCaptured must beEqualTo(32)
@@ -180,7 +180,7 @@ class MateInOneSpec extends Specification {
     }
   }
 
-  def moveAndCheckMoves(moves: Move*)(expectedMoves: Move*) =
-    Board().move(moves :_*) must beSome.which(_.moves must containTheSameElementsAs(expectedMoves))
+  def moveAndCheckMoves(moves: MoveBase*)(expectedMoves: MoveBase*) =
+    Board.initial.move(moves.toList) must beSome.which(_.moves must containTheSameElementsAs(expectedMoves))
 
 }

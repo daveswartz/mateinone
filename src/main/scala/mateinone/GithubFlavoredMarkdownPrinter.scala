@@ -1,5 +1,7 @@
 package mateinone
 
+import scala.language.implicitConversions
+
 object GithubFlavoredMarkdownPrinter {
 
   class MarkdownBoard(b: Board) {
@@ -29,7 +31,7 @@ object GithubFlavoredMarkdownPrinter {
   private object MarkdownMove {
     private val fileStrings = Vector("A", "B", "C", "D", "E", "F", "G", "H")
   }
-  class MarkdownMove(m: Move) {
+  class MarkdownMove(m: MoveBase) {
     import MarkdownMove._
     private def print(s: Square): String = fileStrings(s.file.n) + (s.rank.n + 1).toString
     def print(p: PromotionType): String = p match {
@@ -39,11 +41,11 @@ object GithubFlavoredMarkdownPrinter {
       case Queen => "♕"
     }
     def print: String = m match {
-      case s: SimpleMove => print(s.start)+"->"+print(s.end)
-      case p: Promotion => print(p.start)+"->"+print(p.end)+"="+print(p.promotionType)
+      case s: Move => print(s.start)+"->"+print(s.end)
+      case p: Promotion => print(p.start)+"->"+print(p.end)+"="+print(p.`type`)
       case c: Castle => if (c == `O-O`) "O-O" else "O-O-O"
     }
   }
-  implicit def moveToMarkdownMove(m: Move) = new MarkdownMove(m)
+  implicit def moveToMarkdownMove(m: MoveBase) = new MarkdownMove(m)
 
 }

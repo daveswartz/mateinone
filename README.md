@@ -19,12 +19,12 @@ Alternatively, use `sbt console` and skip the imports as it is configured to pre
 Create a board in the **initial position** and print the board:
 
 ```scala
-println(Board())
+println(Board.initial)
 ```
 
 Outputs the following:
 
-    Board(White,Set(Piece(White,Pawn,Square(File(2),Rank(1)),false), Piece(White,Pawn,Square(File(1),Rank(1)),false), Piece(Black,Pawn,Square(File(0),Rank(6)),false), Piece(Black,Queen,Square(File(3),Rank(7)),false), Piece(Black,Pawn,Square(File(1),Rank(6)),false), Piece(White,Rook,Square(File(0),Rank(0)),false), Piece(Black,Rook,Square(File(7),Rank(7)),false), Piece(White,Knight,Square(File(1),Rank(0)),false), Piece(Black,King,Square(File(4),Rank(7)),false), Piece(Black,Pawn,Square(File(7),Rank(6)),false), Piece(White,King,Square(File(4),Rank(0)),false), Piece(Black,Knight,Square(File(6),Rank(7)),false), Piece(White,Queen,Square(File(3),Rank(0)),false), Piece(White,Pawn,Square(File(4),Rank(1)),false), Piece(Black,Pawn,Square(File(3),Rank(6)),false), Piece(Black,Pawn,Square(File(5),Rank(6)),false), Piece(Black,Rook,Square(File(0),Rank(7)),false), Piece(White,Bishop,Square(File(5),Rank(0)),false), Piece(White,Pawn,Square(File(3),Rank(1)),false), Piece(White,Bishop,Square(File(2),Rank(0)),false), Piece(Black,Pawn,Square(File(2),Rank(6)),false), Piece(White,Pawn,Square(File(7),Rank(1)),false), Piece(White,Pawn,Square(File(0),Rank(1)),false), Piece(Black,Pawn,Square(File(4),Rank(6)),false), Piece(Black,Pawn,Square(File(6),Rank(6)),false), Piece(White,Rook,Square(File(7),Rank(0)),false), Piece(Black,Bishop,Square(File(2),Rank(7)),false), Piece(Black,Knight,Square(File(1),Rank(7)),false), Piece(White,Pawn,Square(File(6),Rank(1)),false), Piece(White,Pawn,Square(File(5),Rank(1)),false), Piece(White,Knight,Square(File(6),Rank(0)),false), Piece(Black,Bishop,Square(File(5),Rank(7)),false)),None)
+    Board(White,Vector(Piece(White,Pawn,Square(File(0),Rank(1)),false), Piece(White,Pawn,Square(File(1),Rank(1)),false), Piece(White,Pawn,Square(File(2),Rank(1)),false), Piece(White,Pawn,Square(File(3),Rank(1)),false), Piece(White,Pawn,Square(File(4),Rank(1)),false), Piece(White,Pawn,Square(File(5),Rank(1)),false), Piece(White,Pawn,Square(File(6),Rank(1)),false), Piece(White,Pawn,Square(File(7),Rank(1)),false), Piece(White,Rook,Square(File(0),Rank(0)),false), Piece(White,Rook,Square(File(7),Rank(0)),false), Piece(White,Knight,Square(File(1),Rank(0)),false), Piece(White,Knight,Square(File(6),Rank(0)),false), Piece(White,Bishop,Square(File(2),Rank(0)),false), Piece(White,Bishop,Square(File(5),Rank(0)),false), Piece(White,King,Square(File(4),Rank(0)),false), Piece(White,Queen,Square(File(3),Rank(0)),false), Piece(Black,Pawn,Square(File(0),Rank(6)),false), Piece(Black,Pawn,Square(File(1),Rank(6)),false), Piece(Black,Pawn,Square(File(2),Rank(6)),false), Piece(Black,Pawn,Square(File(3),Rank(6)),false), Piece(Black,Pawn,Square(File(4),Rank(6)),false), Piece(Black,Pawn,Square(File(5),Rank(6)),false), Piece(Black,Pawn,Square(File(6),Rank(6)),false), Piece(Black,Pawn,Square(File(7),Rank(6)),false), Piece(Black,Rook,Square(File(0),Rank(7)),false), Piece(Black,Rook,Square(File(7),Rank(7)),false), Piece(Black,Knight,Square(File(1),Rank(7)),false), Piece(Black,Knight,Square(File(6),Rank(7)),false), Piece(Black,Bishop,Square(File(2),Rank(7)),false), Piece(Black,Bishop,Square(File(5),Rank(7)),false), Piece(Black,King,Square(File(4),Rank(7)),false), Piece(Black,Queen,Square(File(3),Rank(7)),false)),None)
 
 ### Github Flavored Markdown Printer
 
@@ -33,7 +33,7 @@ Print a nicer presentation of the board in the Github Flavored Markdown format b
 ```scala
 import GithubFlavoredMarkdownPrinter._
 
-println(Board().print)
+println(Board.initial.print)
 ```
 
 Outputs the following:
@@ -80,7 +80,7 @@ Play a simple trap known as the **Scholar's mate**:
 4. Qxf7# 1–0
 
 ```scala
-println(Board().move(E2->E4, E7->E5, D1->H5, B8->C6, F1->C4, G8->F6, H5->F7).get.print)
+println(Board.initial.move(E2->E4, E7->E5, D1->H5, B8->C6, F1->C4, G8->F6, H5->F7).get.print)
 ```
 
  a | b | c | d | e | f | g | h | ∙
@@ -102,7 +102,7 @@ Both sides play to quickly **castle kingside**:
 4. O-O O-O
 
 ```scala
-println(Board().move(G1->F3, G8->F6, G2->G3, G7->G6, F1->H3, F8->H6, `O-O`, `O-O`).get.print)
+println(Board.initial.move(G1->F3, G8->F6, G2->G3, G7->G6, F1->H3, F8->H6, `O-O`, `O-O`).get.print)
 ```
 
  a | b | c | d | e | f | g | h | ∙
@@ -124,7 +124,7 @@ Make some **exchanges**:
 4. Bxd8
 
 ```scala
-println(Board().move(D2->D4, E7->E5, D4->E5, D7->D6, C1->G5, D6->E5, G5->D8).get.print)
+println(Board.initial.move(D2->D4, E7->E5, D4->E5, D7->D6, C1->G5, D6->E5, G5->D8).get.print)
 ```
 
  a | b | c | d | e | f | g | h | ∙
@@ -143,12 +143,12 @@ println(Board().move(D2->D4, E7->E5, D4->E5, D7->D6, C1->G5, D6->E5, G5->D8).get
 Generate the **opening moves** and print them using the GFM printer:
 
 ```scala
-println(Board().moves.map(_.print))
+println(Board.initial.moves.map(_.print))
 ```
 
 The code prints the following
 
-    Vector(G2->G3, E2->E3, H2->H4, A2->A3, C2->C3, B2->B4, G1->H3, C2->C4, B2->B3, E2->E4, G1->F3, G2->G4, F2->F4, D2->D3, A2->A4, B1->A3, D2->D4, H2->H3, F2->F3, B1->C3)
+    Vector(A2->A3, A2->A4, B2->B3, B2->B4, C2->C3, C2->C4, D2->D3, D2->D4, E2->E3, E2->E4, F2->F3, F2->F4, G2->G3, G2->G4, H2->H3, H2->H4, B1->C3, B1->A3, G1->H3, G1->F3)
 
 Scripts ♖
 ---------
