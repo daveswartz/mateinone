@@ -128,20 +128,23 @@ case class Board private(turn: Side, pieces: Vector[Piece], pawnTwoSquareAdvance
     legalAndIllegal.exists { case s: StartAndEnd => s.end == opponentsKing; case c: Castle => false }
   }
 
+  def isCheck = Board(turn.other, pieces).canCaptureKing
+
+  def isCheckmate = moves.isEmpty && isCheck
+
+  def isStalemate = moves.isEmpty && !isCheck
+
   lazy val moves: Vector[MoveBase] = legalAndIllegal.filter { aMove =>
     val endsInCheck = { val next = doMove(this, aMove); next.canCaptureKing }
     val castlesThroughCheck = aMove match {
       case s: StartAndEnd => false
       case c: Castle =>
-        val startsInCheck = Board(turn.other, pieces).canCaptureKing
         def king(p: Piece) = p.side == turn && p.`type` == King
         val passesThroughCheck = between(c, turn).exists(b => Board(turn.other, pieces.filterNot(king) :+ Piece(turn, King, b, true)).canCaptureKing)
-        startsInCheck || passesThroughCheck
+        isCheck || passesThroughCheck
     }
     !endsInCheck && !castlesThroughCheck
   }
-
-  def isCheckmate = moves.isEmpty
 
   def move(movesToMake: List[MoveBase]): Option[Board] = movesToMake match {
     case h :: t => if (moves.contains(h)) doMove(this, h).move(t) else None
