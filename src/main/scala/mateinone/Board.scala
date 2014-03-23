@@ -151,10 +151,11 @@ case class Board private(turn: Side, pieces: Vector[Piece], private val pawnTwoS
 
   def isStalemate = moves.isEmpty && !isCheck
   def isInsufficientMaterial = {
+    val byType = pieces.groupBy(_.`type`)
     def isBlack(s: Square) = s.file.n % 2 == 0 && s.file.n % 2 == 0
-    pieces.size == 2 ||
-      (pieces.size == 3 && pieces.exists(p => Vector(Knight, Bishop).contains(p.`type`))) ||
-      (pieces.size == 4 && (pieces.filter(_.`type` == Bishop).map(_.square).map(isBlack) match { case Vector(c1, c2) => c1 == c2; case _ => false }))
+    byType.keySet == Set(King) ||
+      (byType.keySet == Set(King, Knight) && byType(Knight).size == 1) ||
+      (byType.keySet == Set(King, Bishop) && byType(Bishop).map(b => isBlack(b.square)).distinct.size == 1)
   }
   def isAutomaticDraw = isStalemate || isInsufficientMaterial
 
