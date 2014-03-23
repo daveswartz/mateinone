@@ -13,7 +13,13 @@ object Board {
       piece(Pawn, second, files: _*) ++ piece(Rook, back, A, H) ++ piece(Knight, back, B, G) ++ piece(Bishop, back, C, F) ++
         piece(King, back, E) ++ piece(Queen, back, D)
     }
-    Board(White, pieces(White, square(_, _2), square(_, _1)) ++ pieces(Black, square(_, _7), square(_, _8)), None)
+    Board(
+      White,
+      pieces(White, square(_, _2), square(_, _1)) ++ pieces(Black, square(_, _7), square(_, _8)),
+      None,
+      new ThreefoldRepetition(Nil),
+      new FiftyMoveRule(1, false)
+    )
   }
 
   private def between(c: Castle, s: Side): Vector[Square] = c match {
@@ -101,10 +107,10 @@ object Board {
     { case Move(start, end) =>
       val piece = board.pieces.find(_.square == start).get
       val pawnTwoSquareAdvanceEnd = if (piece.`type` == Pawn && math.abs(end.rank - start.rank) == 2) Some(end.file) else None
-      Board(board.turn.other, movePieces(board.pieces, start, end, piece.`type`), pawnTwoSquareAdvanceEnd)
+      Board(board.turn.other, movePieces(board.pieces, start, end, piece.`type`), pawnTwoSquareAdvanceEnd, board.three.update(move), board.fifty.update(piece.`type` == Pawn))
     }
     val onePromotion: PartialFunction[MoveBase, Board] =
-    { case Promotion(start, end, promotion) => Board(board.turn.other, movePieces(board.pieces, start, end, promotion)) }
+    { case Promotion(start, end, promotion) => Board(board.turn.other, movePieces(board.pieces, start, end, promotion), None, board.three.update(move), board.fifty.update(true)) }
     val oneCastle: PartialFunction[MoveBase, Board] =
     { case c: Castle =>
       def doCastle(back: Rank) = {
@@ -112,35 +118,53 @@ object Board {
         def moveRook(ps: Vector[Piece], start: File, end: File) = movePieces(ps, square(start, back), square(end, back), Rook)
         c match { case `O-O` => moveRook(moveKing(board.pieces, G), H, F); case `O-O-O` => moveRook(moveKing(board.pieces, C), A, D) }
       }
-      Board(board.turn.other, doCastle(if (board.turn == White) _1 else _8))
+      Board(board.turn.other, doCastle(if (board.turn == White) _1 else _8), None, board.three.update(move), board.fifty.update(false))
     }
     oneMove.orElse(onePromotion).orElse(oneCastle).apply(move)
+  }
+
+  class ThreefoldRepetition(moves: List[MoveBase]) {
+    def update(m: MoveBase) = new ThreefoldRepetition(m :: moves)
+    val isDraw = moves match { case List(a, b, c, d, e, f) => a == b && c == d && e == f; case _ => false }
+  }
+
+  class FiftyMoveRule(movesSincePawnOrCapture: Int, val isDraw: Boolean) { // TODO if capture reset movesSince
+    def update(pawnMoveOrCapture: Boolean) = if (pawnMoveOrCapture) new FiftyMoveRule(1, false) else new FiftyMoveRule(movesSincePawnOrCapture + 1, movesSincePawnOrCapture >= 100)
   }
 
 }
 import Board._
 
-case class Board private(turn: Side, pieces: Vector[Piece], pawnTwoSquareAdvanceEnd: Option[File] = None) {
+case class Board private(turn: Side, pieces: Vector[Piece], pawnTwoSquareAdvanceEnd: Option[File], three: ThreefoldRepetition, fifty: FiftyMoveRule) { // TODO last 3 should be private
 
-  private val legalAndIllegal: Vector[MoveBase] = pieces.filter(_.side == turn).flatMap(generateMoves(this, _))
-  private val canCaptureKing = {
+  private def legalAndIllegal: Vector[MoveBase] = pieces.filter(_.side == turn).flatMap(generateMoves(this, _))
+
+  private def canCaptureKing = {
     val opponentsKing = pieces.find(p => p.side != turn && p.`type` == King).get.square
     legalAndIllegal.exists { case s: StartAndEnd => s.end == opponentsKing; case c: Castle => false }
   }
 
-  def isCheck = Board(turn.other, pieces).canCaptureKing
-
+  def isCheck = this.copy(turn = turn.other).canCaptureKing
   def isCheckmate = moves.isEmpty && isCheck
 
   def isStalemate = moves.isEmpty && !isCheck
+  def isInsufficientMaterial =
+    pieces.size == 2 ||
+    (pieces.size == 3 && pieces.exists(p => Vector(Knight, Bishop).contains(p.`type`))) ||
+    (pieces.size == 4 && pieces.count(_.`type` == Bishop) == 2) // TODO allow in case where different colors
+  def isAutomaticDraw = isStalemate || isInsufficientMaterial
 
-  lazy val moves: Vector[MoveBase] = legalAndIllegal.filter { aMove =>
+  def isThreefoldRepetition = three.isDraw
+  def isFiftyMoveRule = fifty.isDraw
+  def mayClaimDraw = isThreefoldRepetition || isFiftyMoveRule
+
+  def moves: Vector[MoveBase] = legalAndIllegal.filter { aMove =>
     val endsInCheck = { val next = doMove(this, aMove); next.canCaptureKing }
     val castlesThroughCheck = aMove match {
       case s: StartAndEnd => false
       case c: Castle =>
         def king(p: Piece) = p.side == turn && p.`type` == King
-        val passesThroughCheck = between(c, turn).exists(b => Board(turn.other, pieces.filterNot(king) :+ Piece(turn, King, b, true)).canCaptureKing)
+        val passesThroughCheck = between(c, turn).exists(b => this.copy(turn = turn.other, pieces = pieces.filterNot(king) :+ Piece(turn, King, b, true)).canCaptureKing)
         isCheck || passesThroughCheck
     }
     !endsInCheck && !castlesThroughCheck
