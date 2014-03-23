@@ -101,13 +101,14 @@ object Board {
   }
 
   private def doMove(board: Board, move: MoveBase): Board = {
+    val isCapture = move match { case s: StartAndEnd => board.pieces.map(_.square).contains(s.end); case _: Castle => false }
     def movePieces(ps: Vector[Piece], start: Square, end: Square, `type`: PieceType) =
       ps.filterNot(_.square == start).filterNot(_.square == end) :+ Piece(board.turn, `type`, end, true)
     val oneMove: PartialFunction[MoveBase, Board] =
     { case Move(start, end) =>
       val piece = board.pieces.find(_.square == start).get
       val pawnTwoSquareAdvanceEnd = if (piece.`type` == Pawn && math.abs(end.rank - start.rank) == 2) Some(end.file) else None
-      Board(board.turn.other, movePieces(board.pieces, start, end, piece.`type`), pawnTwoSquareAdvanceEnd, board.three.update(move), board.fifty.update(piece.`type` == Pawn))
+      Board(board.turn.other, movePieces(board.pieces, start, end, piece.`type`), pawnTwoSquareAdvanceEnd, board.three.update(move), board.fifty.update(isCapture || piece.`type` == Pawn))
     }
     val onePromotion: PartialFunction[MoveBase, Board] =
     { case Promotion(start, end, promotion) => Board(board.turn.other, movePieces(board.pieces, start, end, promotion), None, board.three.update(move), board.fifty.update(true)) }
@@ -128,14 +129,15 @@ object Board {
     val isDraw = moves match { case List(a, b, c, d, e, f) => a == b && c == d && e == f; case _ => false }
   }
 
-  class FiftyMoveRule(movesSincePawnOrCapture: Int, val isDraw: Boolean) { // TODO if capture reset movesSince
+  class FiftyMoveRule(movesSincePawnOrCapture: Int, val isDraw: Boolean) {
     def update(pawnMoveOrCapture: Boolean) = if (pawnMoveOrCapture) new FiftyMoveRule(1, false) else new FiftyMoveRule(movesSincePawnOrCapture + 1, movesSincePawnOrCapture >= 100)
   }
 
 }
 import Board._
 
-case class Board private(turn: Side, pieces: Vector[Piece], pawnTwoSquareAdvanceEnd: Option[File], three: ThreefoldRepetition, fifty: FiftyMoveRule) { // TODO last 3 should be private
+case class Board private(turn: Side, pieces: Vector[Piece], private val pawnTwoSquareAdvanceEnd: Option[File],
+                         private val three: ThreefoldRepetition, private val fifty: FiftyMoveRule) {
 
   private def legalAndIllegal: Vector[MoveBase] = pieces.filter(_.side == turn).flatMap(generateMoves(this, _))
 
@@ -148,10 +150,12 @@ case class Board private(turn: Side, pieces: Vector[Piece], pawnTwoSquareAdvance
   def isCheckmate = moves.isEmpty && isCheck
 
   def isStalemate = moves.isEmpty && !isCheck
-  def isInsufficientMaterial =
+  def isInsufficientMaterial = {
+    def isBlack(s: Square) = s.file.n % 2 == 0 && s.file.n % 2 == 0
     pieces.size == 2 ||
-    (pieces.size == 3 && pieces.exists(p => Vector(Knight, Bishop).contains(p.`type`))) ||
-    (pieces.size == 4 && pieces.count(_.`type` == Bishop) == 2) // TODO allow in case where different colors
+      (pieces.size == 3 && pieces.exists(p => Vector(Knight, Bishop).contains(p.`type`))) ||
+      (pieces.size == 4 && (pieces.filter(_.`type` == Bishop).map(_.square).map(isBlack) match { case Vector(c1, c2) => c1 == c2; case _ => false }))
+  }
   def isAutomaticDraw = isStalemate || isInsufficientMaterial
 
   def isThreefoldRepetition = three.isDraw

@@ -115,28 +115,39 @@ class MateInOneSpec extends Specification {
 
   }
 
-  "Check and mate" should {
+  "Check" should {
 
     "1. e4 Nf6 2. d4 Ng4 3. c4 Nxh2 4. f3 Nxf3+ 5. Nxf3; Capture the checking piece." in
-      movesAllowed(E2->E4, G8->F6, D2->D4, F6->G4, C2->C4, G4->H2, F2->F3, H2->F3, G1->F3)(Set(Piece(White, Pawn, C4, _), Piece(White, Pawn, D4, _), Piece(White, Pawn, E4, _), Piece(White, Knight, F3, _)), nCaptured = 3)
+      movesAllowed(E2 -> E4, G8 -> F6, D2 -> D4, F6 -> G4, C2 -> C4, G4 -> H2, F2 -> F3, H2 -> F3, G1 -> F3)(Set(Piece(White, Pawn, C4, _), Piece(White, Pawn, D4, _), Piece(White, Pawn, E4, _), Piece(White, Knight, F3, _)), nCaptured = 3)
 
     "1. e4 e5 2. d4 Bb4+ 3. Ke2; Move the White king out of check." in
-      movesAllowed(E2->E4, E7->E5, D2->D4, F8->B4, E1->E2)(Set(Piece(White, King, E2, _), Piece(White, Pawn, D4, _), Piece(White, Pawn, E4, _), Piece(Black, Bishop, B4, _), Piece(Black, Pawn, E5, _)))
+      movesAllowed(E2 -> E4, E7 -> E5, D2 -> D4, F8 -> B4, E1 -> E2)(Set(Piece(White, King, E2, _), Piece(White, Pawn, D4, _), Piece(White, Pawn, E4, _), Piece(Black, Bishop, B4, _), Piece(Black, Pawn, E5, _)))
 
     "1. e4 e5 2. d4 Bb4+ 3. c3; Block the check." in
-      movesAllowed(E2->E4, E7->E5, D2->D4, F8->B4, C2->C3)(Set(Piece(White, Pawn, C3, _), Piece(White, Pawn, D4, _), Piece(White, Pawn, E4, _), Piece(Black, Bishop, B4, _), Piece(Black, Pawn, E5, _)))
+      movesAllowed(E2 -> E4, E7 -> E5, D2 -> D4, F8 -> B4, C2 -> C3)(Set(Piece(White, Pawn, C3, _), Piece(White, Pawn, D4, _), Piece(White, Pawn, E4, _), Piece(Black, Bishop, B4, _), Piece(Black, Pawn, E5, _)))
 
     "1. e4 e5 2. f4 Bb4 3. d3; The last move puts White's own king in check." in
-      lastMoveNotAllowed(E2->E4, E7->E5, F2->F4, F8->B4, D2->D3)
+      lastMoveNotAllowed(E2 -> E4, E7 -> E5, F2 -> F4, F8 -> B4, D2 -> D3)
 
     "1. e4 e5 2. d4 Bb4+ 3. e3; The last move leaves the White king in check." in
-      lastMoveNotAllowed(E2->E4, E7->E5, D2->D4, F8->B4, E2->E3)
+      lastMoveNotAllowed(E2 -> E4, E7 -> E5, D2 -> D4, F8 -> B4, E2 -> E3)
+
+  }
+
+  "Checkmate" should {
 
     "1. f3 e5 2. g4 Qh4#; Fool's mate." in
       { Board.initial.move(F2->F3, E7->E5, G2->G4, D8->H4) must beSome.which(_.isCheckmate) }
 
     "1. e4 e5 2. Qh5 Nc6 3. Bc4 Nf6? 4. Qxf7#; Scholars's mate." in
       { Board.initial.move(E2->E4, E7->E5, D1->H5, B8->C6, F1->C4, G8->F6, H5->F7) must beSome.which(_.isCheckmate) }
+
+  }
+
+  "Draws" should {
+
+    "1. e3 a5 2. Qh5 Ra6 3. Qxa5 h5 4. h4 Rah6 5. Qxc7 f6 6. Qxd7+ Kf7 7. Qxb7 Qd3 8. Qxb8 Qh7 9. Qxc8 Kg6 10. Qe6; Stalemate." in
+      { Board.initial.move(E2->E3, A7->A5, D1->H5, A8->A6, H5->A5, H7->H5, H2->H4, A6->H6, A5->C7, F7->F6, C7->D7, E8->F7, D7->B7, D8->D3, B7->B8, D3->H7, B8->C8, F7->G6, C8->E6) must beSome.which(b => b.isStalemate && b.isAutomaticDraw) }
 
   }
 
