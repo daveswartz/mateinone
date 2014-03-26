@@ -149,6 +149,8 @@ class MateInOneSpec extends Specification {
     "1. e3 a5 2. Qh5 Ra6 3. Qxa5 h5 4. h4 Rah6 5. Qxc7 f6 6. Qxd7+ Kf7 7. Qxb7 Qd3 8. Qxb8 Qh7 9. Qxc8 Kg6 10. Qe6; Stalemate." in
       { Board.initial.move(E2->E3, A7->A5, D1->H5, A8->A6, H5->A5, H7->H5, H2->H4, A6->H6, A5->C7, F7->F6, C7->D7, E8->F7, D7->B7, D8->D3, B7->B8, D3->H7, B8->C8, F7->G6, C8->E6) must beSome.which(b => b.isStalemate && b.isAutomaticDraw) }
 
+    "1. Nf3 Nf6 2. Ng1 Ng8 3. Nf3 Nf6 4. Ng1 Ng8 5. Nf3 Nf6; Threefold repetition." in
+      { Board.initial.move(G1->F3, G8->F6, F3->G1, F6->G8, G1->F3, G8->F6, F3->G1, F6->G8, G1->F3, G8->F6) must beSome.which(b => b.isThreefoldRepetition && b.mayClaimDraw) }
   }
 
   // Checks each move is generated and allowed

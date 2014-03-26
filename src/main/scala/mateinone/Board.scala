@@ -126,7 +126,7 @@ object Board {
 
   class ThreefoldRepetition(moves: List[MoveBase]) {
     def update(m: MoveBase) = new ThreefoldRepetition(m :: moves)
-    val isDraw = moves match { case List(a, b, c, d, e, f) => a == b && c == d && e == f; case _ => false }
+    val isDraw = moves match { case List(a, b, c, d, e, f, g, h, i, j) => a == e && a == i && b == f && b == j; case _ => false }
   }
 
   class FiftyMoveRule(movesSincePawnOrCapture: Int, val isDraw: Boolean) {
