@@ -50,6 +50,7 @@ class MateInOneSpec extends Specification {
   }
 
   "Board" should {
+
     "have the correct initial pieces" in {
       val expectedPieces: Seq[Piece] =
         Seq(
@@ -62,14 +63,16 @@ class MateInOneSpec extends Specification {
         ).map { case (side, square) => Piece(Black, side, square, hasMoved = false) }
       Board.initial.pieces must containTheSameElementsAs(expectedPieces)
     }
-    "have the correct initial moves for white" in moveAndCheckMoves()(A2->A3, A2->A4, B1->A3, B1->C3, B2->B3, B2->B4, C2->C3, C2->C4, D2->D3, D2->D4, E2->E3, E2->E4, F2->F3, F2->F4, G1->F3, G1->H3, G2->G3, G2->G4, H2->H3, H2->H4)
-    "have the correct initial moves for black" in moveAndCheckMoves(G2->G3)(A7->A6, A7->A5, B8->A6, B8->C6, B7->B6, B7->B5, C7->C6, C7->C5, D7->D6, D7->D5, E7->E6, E7->E5, F7->F6, F7->F5, G8->F6, G8->H6, G7->G6, G7->G5, H7->H6, H7->H5)
-    "be immutable" in {
-      Board.initial.move(G2->G3) must beSome.which { b =>
-        b.move(G3->G4)
-        onlyTheseMoved(Set(Piece(White, Pawn, G3, _)))(b)
-      }
-    }
+
+    "have the correct initial moves for white" in
+      moveAndCheckMoves()(A2->A3, A2->A4, B1->A3, B1->C3, B2->B3, B2->B4, C2->C3, C2->C4, D2->D3, D2->D4, E2->E3, E2->E4, F2->F3, F2->F4, G1->F3, G1->H3, G2->G3, G2->G4, H2->H3, H2->H4)
+
+    "have the correct initial moves for black" in
+      moveAndCheckMoves(G2->G3)(A7->A6, A7->A5, B8->A6, B8->C6, B7->B6, B7->B5, C7->C6, C7->C5, D7->D6, D7->D5, E7->E6, E7->E5, F7->F6, F7->F5, G8->F6, G8->H6, G7->G6, G7->G5, H7->H6, H7->H5)
+
+    "be immutable" in
+      { Board.initial.move(G2->G3) must beSome.which { b => b.move(G3->G4); onlyTheseMoved(Set(Piece(White, Pawn, G3, _)))(b) } }
+
   }
 
   "Simple moves" should {
@@ -149,8 +152,12 @@ class MateInOneSpec extends Specification {
     "1. e3 a5 2. Qh5 Ra6 3. Qxa5 h5 4. h4 Rah6 5. Qxc7 f6 6. Qxd7+ Kf7 7. Qxb7 Qd3 8. Qxb8 Qh7 9. Qxc8 Kg6 10. Qe6; Stalemate." in
       { Board.initial.move(E2->E3, A7->A5, D1->H5, A8->A6, H5->A5, H7->H5, H2->H4, A6->H6, A5->C7, F7->F6, C7->D7, E8->F7, D7->B7, D8->D3, B7->B8, D3->H7, B8->C8, F7->G6, C8->E6) must beSome.which(b => b.isStalemate && b.isAutomaticDraw) }
 
-    "1. Nf3 Nf6 2. Ng1 Ng8 3. Nf3 Nf6 4. Ng1 Ng8 5. Nf3 Nf6; Threefold repetition." in
+    "1. Nf3 Nf6 2. Ng1 Ng8 3. Nf3 Nf6 4. Ng1 Ng8 5. Nf3 Nf6; Threefold repetition in succession." in
       { Board.initial.move(G1->F3, G8->F6, F3->G1, F6->G8, G1->F3, G8->F6, F3->G1, F6->G8, G1->F3, G8->F6) must beSome.which(b => b.isThreefoldRepetition && b.mayClaimDraw) }
+
+    "1. Nf3 Nf6 2. Nh4 Nh5 3. Nf3 Nf6 4. Ng1 Ng8 5. Nf3 Nf6 6. Ng1 Ng8 5. Nf3 Nf6; Threefold repetition not in succession." in
+      { Board.initial.move(G1->F3, G8->F6, F3->H4, F6->H5, H4->F3, H5->F6, F3->G1, F6->G8, G1->F3, G8->F6, F3->G1, F6->G8, G1->F3, G8->F6) must beSome.which(b => b.isThreefoldRepetition && b.mayClaimDraw) }
+
   }
 
   // Checks each move is generated and allowed
