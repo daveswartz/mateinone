@@ -3,6 +3,7 @@ package mateinone
 import Square._
 import File._
 import Rank._
+import scala.annotation.tailrec
 
 object Board {
 
@@ -24,22 +25,16 @@ object Board {
 
     type Path = Vector[Square]
 
-    def path(stepOffset: (Int, Int), nSteps: Int = 1, stepOnOther: Boolean = true, stepOnEmpty: Boolean = true): Path = {
-      def pathRecur(current: Path, remaining: Int): Path = {
-        if (remaining == 0) current
-        else {
-          current.last + stepOffset match {
-            case None =>
-              current
-            case Some(next) if board.pieces.exists(p => p.square == next && p.side != piece.side) =>
-              if (stepOnOther) current :+ next else current
-            case Some(next) if board.pieces.exists(p => p.square == next && p.side == piece.side) =>
-              current
-            case Some(next) =>
-              if (stepOnEmpty) pathRecur(current :+ next, remaining - 1) else current
-          }
+    def path(stepOffset: (Int, Int), nSteps: Int = 1, mayCapture: Boolean = true, mustCapture: Boolean = false): Path = {
+      def blocked(next: Square) = board.pieces.exists(p => p.square == next && p.side == piece.side)
+      def capture(next: Square) = board.pieces.exists(p => p.square == next && p.side != piece.side)
+      def pathRecur(current: Path, remaining: Int): Path =
+        current.last + stepOffset match {
+          case None => current
+          case Some(next) if capture(next) && mayCapture => current :+ next
+          case Some(next) if remaining >= 1 && !blocked(next) && !capture(next) && !mustCapture => pathRecur(current :+ next, remaining - 1)
+          case Some(next) => current
         }
-      }
       pathRecur(Vector(piece.square), nSteps).tail
     }
 
@@ -48,10 +43,10 @@ object Board {
     def diagonals = Vector(path((1, 1), 7), path((1, -1), 7), path((-1, 1), 7), path((-1, -1), 7))
     def adjacent = Vector(path((0, 1)), path((1, 1)), path((1, 0)), path((1, -1)), path((0, -1)), path((-1, -1)), path((-1, 0)), path((-1, 1)))
 
-    def pawnAdvance(s: (Int, Int), n: Int) = path(s, n, stepOnOther = false)
+    def pawnAdvance(s: (Int, Int), n: Int) = path(s, n, mayCapture = false)
 
     def pawnCaptures(side: Side) = {
-      val one = path(_: (Int, Int), 1, stepOnEmpty = false)
+      val one = path(_: (Int, Int), 1, mustCapture = true)
       if (side == White) Vector(one(1, 1), one(-1, 1)) else Vector(one(1, -1), one(-1, -1))
     }
 
@@ -85,21 +80,25 @@ object Board {
     def toPromotions(paths: Vector[Path]): Vector[Promotion] = PromotionType.all.flatMap(t => paths.flatMap(_.map(end => Promotion(piece.square, end, t))))
 
     piece match {
+
       case Piece(White, Pawn,   Square(_, `_2`), false) => toMoves(pawnCaptures(White) :+ pawnAdvance((0, 1), 2))
       case Piece(White, Pawn,   Square(f, `_5`), true ) => toMoves(pawnCaptures(White) ++ enPassant(f, 1) :+ pawnAdvance((0, 1), 1))
       case Piece(White, Pawn,   Square(_, `_7`), true ) => toPromotions(pawnCaptures(White) :+ pawnAdvance((0, 1), 1))
       case Piece(White, Pawn,   _,               true ) => toMoves(pawnCaptures(White) :+ pawnAdvance((0, 1), 1))
+      case Piece(White, King,   E1,              false) => toMoves(adjacent) ++ castles(White)
+
       case Piece(Black, Pawn,   Square(_, `_7`), false) => toMoves(pawnCaptures(Black) :+ pawnAdvance((0, -1), 2))
       case Piece(Black, Pawn,   Square(f, `_4`), true ) => toMoves(pawnCaptures(Black) ++ enPassant(f, -1) :+ pawnAdvance((0, -1), 1))
       case Piece(Black, Pawn,   Square(_, `_2`), true ) => toPromotions(pawnCaptures(Black) :+ pawnAdvance((0, -1), 1))
       case Piece(Black, Pawn,   _,               true ) => toMoves(pawnCaptures(Black) :+ pawnAdvance((0, -1), 1))
+      case Piece(Black, King,   E8,              false) => toMoves(adjacent) ++ castles(Black)
+
       case Piece(_,     Rook,   _,               _    ) => toMoves(file ++ rank)
       case Piece(_,     Knight, _,               _    ) => toMoves(Vector(path((2, 1)), path((2, -1)), path((1, 2)), path((1, -2)), path((-2, 1)), path((-2, -1)), path((-1, 2)), path((-1, -2))))
       case Piece(_,     Bishop, _,               _    ) => toMoves(diagonals)
-      case Piece(White, King,   E1,              false) => toMoves(adjacent) ++ castles(White)
-      case Piece(Black, King,   E8,              false) => toMoves(adjacent) ++ castles(Black)
       case Piece(_,     King,   _,               _    ) => toMoves(adjacent)
       case Piece(_,     Queen,  _,               _    ) => toMoves(file ++ rank ++ diagonals)
+
     }
 
   }
