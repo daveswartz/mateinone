@@ -9,17 +9,11 @@ object Board {
 
   val initial: Board = {
     def pieces(side: Side, second: File => Square, back: File => Square) = {
-      def piece(`type`: PieceType, rank: File => Square, fs: File*) = fs.toVector.map(f => Piece(side, `type`, rank(f), false))
+      def piece(`type`: PieceType, rank: File => Square, fs: File*) = fs.toVector.map(f => Piece(side, `type`, rank(f), hasMoved = false))
       piece(Pawn, second, files: _*) ++ piece(Rook, back, A, H) ++ piece(Knight, back, B, G) ++ piece(Bishop, back, C, F) ++
         piece(King, back, E) ++ piece(Queen, back, D)
     }
-    Board(
-      White,
-      pieces(White, square(_, _2), square(_, _1)) ++ pieces(Black, square(_, _7), square(_, _8)),
-      Vector(),
-      None,
-      new FiftyMoveRule(1, false)
-    )
+    Board(White, pieces(White, square(_, _2), square(_, _1)) ++ pieces(Black, square(_, _7), square(_, _8)), Vector())
   }
 
   private def between(c: Castle, s: Side): Vector[Square] = c match {
@@ -62,8 +56,20 @@ object Board {
       if (side == White) Vector(one(1, 1), one(-1, 1)) else Vector(one(1, -1), one(-1, -1))
     }
 
-    def enPassants(start: File, rankStep: Int) =
-      board.pawnTwoSquareAdvanceEnd.map(end => Vector(1, -1).map(fileStep => if (start + fileStep == Some(end)) path((fileStep, rankStep)) else Vector())).getOrElse(Vector())
+    def enPassant(start: File, rankStep: Int): Option[Path] = {
+      val (lastBoard, lastMove) = board.history.last
+      def isAllowed(last: Move, fileStep: Int) = {
+        val isPawn = lastBoard.pieces.find(_.square == last.start).get.`type` == Pawn
+        val isTwoSquareAdvance = math.abs(last.end.rank - last.start.rank) == 2
+        val canCapture = start + fileStep == Some(last.end.file)
+        isPawn && isTwoSquareAdvance && canCapture
+      }
+      lastMove match {
+        case last: Move if isAllowed(last, 1) => Some(path((1, rankStep)))
+        case last: Move if isAllowed(last, -1) => Some(path((-1, rankStep)))
+        case _=> None
+      }
+    }
 
     def castles(side: Side): Vector[Castle] = {
       def canCastle(c: Castle) = {
@@ -81,11 +87,11 @@ object Board {
 
     piece match {
       case Piece(White, Pawn,   Square(_, `_2`), false) => toMoves(pawnCaptures(White) :+ pawnAdvance((0, 1), 2))
-      case Piece(White, Pawn,   Square(f, `_5`), true ) => toMoves(pawnCaptures(White) ++ enPassants(f, 1) :+ pawnAdvance((0, 1), 1))
+      case Piece(White, Pawn,   Square(f, `_5`), true ) => toMoves(pawnCaptures(White) ++ enPassant(f, 1) :+ pawnAdvance((0, 1), 1))
       case Piece(White, Pawn,   Square(_, `_7`), true ) => toPromotions(pawnCaptures(White) :+ pawnAdvance((0, 1), 1))
       case Piece(White, Pawn,   _,               true ) => toMoves(pawnCaptures(White) :+ pawnAdvance((0, 1), 1))
       case Piece(Black, Pawn,   Square(_, `_7`), false) => toMoves(pawnCaptures(Black) :+ pawnAdvance((0, -1), 2))
-      case Piece(Black, Pawn,   Square(f, `_4`), true ) => toMoves(pawnCaptures(Black) ++ enPassants(f, -1) :+ pawnAdvance((0, -1), 1))
+      case Piece(Black, Pawn,   Square(f, `_4`), true ) => toMoves(pawnCaptures(Black) ++ enPassant(f, -1) :+ pawnAdvance((0, -1), 1))
       case Piece(Black, Pawn,   Square(_, `_2`), true ) => toPromotions(pawnCaptures(Black) :+ pawnAdvance((0, -1), 1))
       case Piece(Black, Pawn,   _,               true ) => toMoves(pawnCaptures(Black) :+ pawnAdvance((0, -1), 1))
       case Piece(_,     Rook,   _,               _    ) => toMoves(file ++ rank)
@@ -100,38 +106,29 @@ object Board {
   }
 
   private def doMove(board: Board, move: MoveBase): Board = {
-    val isCapture = move match { case s: StartAndEnd => board.pieces.map(_.square).contains(s.end); case _: Castle => false }
     def movePieces(ps: Vector[Piece], start: Square, end: Square, `type`: PieceType) =
-      ps.filterNot(_.square == start).filterNot(_.square == end) :+ Piece(board.turn, `type`, end, true)
+      ps.filterNot(_.square == start).filterNot(_.square == end) :+ Piece(board.turn, `type`, end, hasMoved = true)
+    def createBoard(pieces: Vector[Piece], last: MoveBase) = Board(board.turn.other, pieces, board.history :+ (board, move))
     val oneMove: PartialFunction[MoveBase, Board] =
-    { case Move(start, end) =>
-      val piece = board.pieces.find(_.square == start).get
-      val pawnTwoSquareAdvanceEnd = if (piece.`type` == Pawn && math.abs(end.rank - start.rank) == 2) Some(end.file) else None
-      Board(board.turn.other, movePieces(board.pieces, start, end, piece.`type`), board.history :+ board.moves _, pawnTwoSquareAdvanceEnd, board.fifty.update(isCapture || piece.`type` == Pawn))
-    }
+      { case m @ Move(start, end) =>
+        createBoard(movePieces(board.pieces, start, end, board.pieces.find(_.square == start).get.`type`), m) }
     val onePromotion: PartialFunction[MoveBase, Board] =
-    { case Promotion(start, end, promotion) => Board(board.turn.other, movePieces(board.pieces, start, end, promotion), board.history :+ board.moves _, None, board.fifty.update(true)) }
+      { case p @ Promotion(start, end, promotion) =>
+        createBoard(movePieces(board.pieces, start, end, promotion), p) }
     val oneCastle: PartialFunction[MoveBase, Board] =
-    { case c: Castle =>
-      def doCastle(back: Rank) = {
-        def moveKing(ps: Vector[Piece], end: File) = movePieces(ps, square(E, back), square(end, back), King)
-        def moveRook(ps: Vector[Piece], start: File, end: File) = movePieces(ps, square(start, back), square(end, back), Rook)
-        c match { case `O-O` => moveRook(moveKing(board.pieces, G), H, F); case `O-O-O` => moveRook(moveKing(board.pieces, C), A, D) }
-      }
-      Board(board.turn.other, doCastle(if (board.turn == White) _1 else _8), board.history :+ board.moves _, None, board.fifty.update(false))
-    }
+      { case c: Castle =>
+        def doCastle(back: Rank) = {
+          def moveKing(ps: Vector[Piece], end: File) = movePieces(ps, square(E, back), square(end, back), King)
+          def moveRook(ps: Vector[Piece], start: File, end: File) = movePieces(ps, square(start, back), square(end, back), Rook)
+          c match { case `O-O` => moveRook(moveKing(board.pieces, G), H, F); case `O-O-O` => moveRook(moveKing(board.pieces, C), A, D) } }
+        createBoard(doCastle(if (board.turn == White) _1 else _8), c) }
     oneMove.orElse(onePromotion).orElse(oneCastle).apply(move)
-  }
-
-  class FiftyMoveRule(movesSincePawnOrCapture: Int, val isDraw: Boolean) {
-    def update(pawnMoveOrCapture: Boolean) = if (pawnMoveOrCapture) new FiftyMoveRule(1, false) else new FiftyMoveRule(movesSincePawnOrCapture + 1, movesSincePawnOrCapture >= 100)
   }
 
 }
 import Board._
 
-case class Board private(turn: Side, pieces: Vector[Piece], private val history: Vector[() => Vector[MoveBase]], private val pawnTwoSquareAdvanceEnd: Option[File],
-                         private val fifty: FiftyMoveRule) {
+case class Board private(turn: Side, pieces: Vector[Piece], history: Vector[(Board, MoveBase)]) {
 
   private def legalAndIllegal: Vector[MoveBase] = pieces.filter(_.side == turn).flatMap(generateMoves(this, _))
 
@@ -153,8 +150,13 @@ case class Board private(turn: Side, pieces: Vector[Piece], private val history:
   }
   def isAutomaticDraw = isStalemate || isInsufficientMaterial
 
-  def isThreefoldRepetition = history.groupBy(_()).exists { case (_, repeats) => repeats.size == 3 }
-  def isFiftyMoveRule = fifty.isDraw
+  def isThreefoldRepetition = history.groupBy(_._1.moves).exists { case (_, repeats) => repeats.size == 3 }
+  def isFiftyMoveRule = {
+    def isPawnMoveOrCapture(b: Board, m: MoveBase) = m match {
+      case s: StartAndEnd => b.pieces.map(_.square).contains(s.end) || b.pieces.find(_.square == s.start).get.`type` == Pawn
+      case _: Castle => false }
+    history.size >= 100 && !history.takeRight(100).exists { case (b, m) => isPawnMoveOrCapture(b, m) }
+  }
   def mayClaimDraw = isThreefoldRepetition || isFiftyMoveRule
 
   def moves: Vector[MoveBase] =
@@ -164,7 +166,7 @@ case class Board private(turn: Side, pieces: Vector[Piece], private val history:
         case s: StartAndEnd => false
         case c: Castle =>
           def king(p: Piece) = p.side == turn && p.`type` == King
-          val passesThroughCheck = between(c, turn).exists(b => this.copy(turn = turn.other, pieces = pieces.filterNot(king) :+ Piece(turn, King, b, true)).canCaptureKing)
+          val passesThroughCheck = between(c, turn).exists(b => this.copy(turn = turn.other, pieces = pieces.filterNot(king) :+ Piece(turn, King, b, hasMoved = true)).canCaptureKing)
           isCheck || passesThroughCheck
       }
       !endsInCheck && !castlesThroughCheck
