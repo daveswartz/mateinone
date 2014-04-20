@@ -1,6 +1,5 @@
 package mateinone
 
-import language.postfixOps
 import Square._
 import File._
 import Rank._

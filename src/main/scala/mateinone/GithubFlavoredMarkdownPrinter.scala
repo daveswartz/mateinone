@@ -34,7 +34,7 @@ object GithubFlavoredMarkdownPrinter {
   class MarkdownMove(m: MoveBase) {
     import MarkdownMove._
     private def print(s: Square): String = fileStrings(s.file.n) + (s.rank.n + 1).toString
-    def print(p: PromotionType): String = p match {
+    private def print(p: PromotionType): String = p match {
       case Rook => "♖"
       case Knight => "♘"
       case Bishop => "♗"
