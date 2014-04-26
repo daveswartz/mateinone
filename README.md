@@ -16,52 +16,44 @@ Alternatively, use `sbt console` and skip the imports as it is configured to pre
 
 ### The Board
 
-Create a board in the **initial position** and print the board:
+Create a board in the **initial position**:
 
 ```scala
 println(Board.initial)
 ```
 
-Outputs the following:
+The `toString` method outputs the following:
 
     Board(White,Vector(Piece(White,Pawn,Square(File(0),Rank(1)),false), Piece(White,Pawn,Square(File(1),Rank(1)),false), Piece(White,Pawn,Square(File(2),Rank(1)),false), Piece(White,Pawn,Square(File(3),Rank(1)),false), Piece(White,Pawn,Square(File(4),Rank(1)),false), Piece(White,Pawn,Square(File(5),Rank(1)),false), Piece(White,Pawn,Square(File(6),Rank(1)),false), Piece(White,Pawn,Square(File(7),Rank(1)),false), Piece(White,Rook,Square(File(0),Rank(0)),false), Piece(White,Rook,Square(File(7),Rank(0)),false), Piece(White,Knight,Square(File(1),Rank(0)),false), Piece(White,Knight,Square(File(6),Rank(0)),false), Piece(White,Bishop,Square(File(2),Rank(0)),false), Piece(White,Bishop,Square(File(5),Rank(0)),false), Piece(White,King,Square(File(4),Rank(0)),false), Piece(White,Queen,Square(File(3),Rank(0)),false), Piece(Black,Pawn,Square(File(0),Rank(6)),false), Piece(Black,Pawn,Square(File(1),Rank(6)),false), Piece(Black,Pawn,Square(File(2),Rank(6)),false), Piece(Black,Pawn,Square(File(3),Rank(6)),false), Piece(Black,Pawn,Square(File(4),Rank(6)),false), Piece(Black,Pawn,Square(File(5),Rank(6)),false), Piece(Black,Pawn,Square(File(6),Rank(6)),false), Piece(Black,Pawn,Square(File(7),Rank(6)),false), Piece(Black,Rook,Square(File(0),Rank(7)),false), Piece(Black,Rook,Square(File(7),Rank(7)),false), Piece(Black,Knight,Square(File(1),Rank(7)),false), Piece(Black,Knight,Square(File(6),Rank(7)),false), Piece(Black,Bishop,Square(File(2),Rank(7)),false), Piece(Black,Bishop,Square(File(5),Rank(7)),false), Piece(Black,King,Square(File(4),Rank(7)),false), Piece(Black,Queen,Square(File(3),Rank(7)),false)),None)
 
-### Github Flavored Markdown Printer
+### Pretty Print
 
-Print a nicer presentation of the board in the Github Flavored Markdown format by using the `GithubFlavoredMarkdownPrinter` `print` implicit method.
+Print a nicer presentation of the board using the `print` implicit method of `TerminalPrinter`.
 
 ```scala
-import GithubFlavoredMarkdownPrinter._
+import TerminalPrinter._
 
 println(Board.initial.print)
 ```
 
 Outputs the following:
+
 <pre>
- a | b | c | d | e | f | g | h | ∙
-:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:
- ♜ | ♞ | ♝ | ♛ | ♚ | ♝ | ♞ | ♜ | **8**
- ♟ | ♟ | ♟ | ♟ | ♟ | ♟ | ♟ | ♟ | **7**
-   |   |   |   |   |   |   |   | **6**
-   |   |   |   |   |   |   |   | **5**
-   |   |   |   |   |   |   |   | **4**
-   |   |   |   |   |   |   |   | **3**
- ♙ | ♙ | ♙ | ♙ | ♙ | ♙ | ♙ | ♙ | **2**
- ♖ | ♘ | ♗ | ♕ | ♔ | ♗ | ♘ | ♖ | **1**
+┌─────────────────┐
+│ ♜ ♞ ♝ ♛ ♚ ♝ ♞ ♜ │
+│ ♟ ♟ ♟ ♟ ♟ ♟ ♟ ♟ │
+│                 │
+│                 │
+│                 │
+│                 │
+│ ♙ ♙ ♙ ♙ ♙ ♙ ♙ ♙ │
+│ ♖ ♘ ♗ ♕ ♔ ♗ ♘ ♖ │
+└─────────────────┘
 </pre>
 
-The rendered GFM board is below:
+Note: in the terminal the varying width of unicode characters is handled properly.
 
- a | b | c | d | e | f | g | h | ∙
-:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:
- ♜ | ♞ | ♝ | ♛ | ♚ | ♝ | ♞ | ♜ | **8**
- ♟ | ♟ | ♟ | ♟ | ♟ | ♟ | ♟ | ♟ | **7**
-   |   |   |   |   |   |   |   | **6**
-   |   |   |   |   |   |   |   | **5**
-   |   |   |   |   |   |   |   | **4**
-   |   |   |   |   |   |   |   | **3**
- ♙ | ♙ | ♙ | ♙ | ♙ | ♙ | ♙ | ♙ | **2**
- ♖ | ♘ | ♗ | ♕ | ♔ | ♗ | ♘ | ♖ | **1**
+The `print` implicit method of the `GithubFlavoredMarkdownPrinter` is used to generate the markdown representing the board for subsequent examples.
 
 ### Make Moves
 
@@ -140,13 +132,15 @@ println(Board.initial.move(D2->D4, E7->E5, D4->E5, D7->D6, C1->G5, D6->E5, G5->D
 
 ### Generate Moves
 
-Generate the **opening moves** and print them using the GFM printer:
+Generate the **opening moves** and print them using the  the `print` implicit method of `MovePrinter`:
 
 ```scala
+import MovePrinter._
+
 println(Board.initial.moves.map(_.print))
 ```
 
-The code prints the following
+Outputs the following:
 
     Vector(A2->A3, A2->A4, B2->B3, B2->B4, C2->C3, C2->C4, D2->D3, D2->D4, E2->E3, E2->E4, F2->F3, F2->F4, G2->G3, G2->G4, H2->H3, H2->H4, B1->C3, B1->A3, G1->H3, G1->F3)
 

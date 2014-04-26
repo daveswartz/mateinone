@@ -15,7 +15,8 @@ scalacOptions in Test ++= Seq("-Yrangepos")
 initialCommands in console :=
   """
     |import mateinone._
-    |import GithubFlavoredMarkdownPrinter._
+    |import TerminalPrinter._
     |import Square._
     |import MoveImplicits._
+    |import MovePrinter._
   """.stripMargin

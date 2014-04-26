@@ -2,8 +2,33 @@ package mateinone
 
 import scala.language.implicitConversions
 
-object GithubFlavoredMarkdownPrinter {
+object TerminalPrinter {
+  class TerminalBoard(b: Board) {
+    def print: String = {
+      "┌─────────────────┐\n" +
+      Square.squares.transpose.reverse
+        .map(_.map(square => b.pieces.find(_.square == square)))
+        .map(_.map {
+        case Some(Piece(White, Pawn, _, _)) => "♙ "
+        case Some(Piece(White, Rook, _, _)) => "♖ "
+        case Some(Piece(White, Knight, _, _)) => "♘ "
+        case Some(Piece(White, Bishop, _, _)) => "♗ "
+        case Some(Piece(White, Queen, _, _)) => "♕ "
+        case Some(Piece(White, King, _, _)) => "♔ "
+        case Some(Piece(Black, Pawn, _, _)) => "♟ "
+        case Some(Piece(Black, Rook, _, _)) => "♜ "
+        case Some(Piece(Black, Knight, _, _)) => "♞ "
+        case Some(Piece(Black, Bishop, _, _)) => "♝ "
+        case Some(Piece(Black, Queen, _, _)) => "♛ "
+        case Some(Piece(Black, King, _, _)) => "♚ "
+        case None => "  "
+      }).map("│ "+_.reduce(_+_)+"│").reduce(_+"\n"+_) + "\n└─────────────────┘"
+    }
+  }
+  implicit def boardToTerminalBoard(b: Board) = new TerminalBoard(b)
+}
 
+object GithubFlavoredMarkdownPrinter {
   class MarkdownBoard(b: Board) {
     def print: String = {
       " a | b | c | d | e | f | g | h | ∙\n:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:\n" +
@@ -27,12 +52,14 @@ object GithubFlavoredMarkdownPrinter {
     }
   }
   implicit def boardToMarkdownBoard(b: Board) = new MarkdownBoard(b)
+}
 
-  private object MarkdownMove {
+object MovePrinter {
+  private object PrintableMove {
     private val fileStrings = Vector("A", "B", "C", "D", "E", "F", "G", "H")
   }
-  class MarkdownMove(m: MoveBase) {
-    import MarkdownMove._
+  class PrintableMove(m: MoveBase) {
+    import PrintableMove._
     private def print(s: Square): String = fileStrings(s.file.n) + (s.rank.n + 1).toString
     private def print(p: PromotionType): String = p match {
       case Rook => "♖"
@@ -46,6 +73,5 @@ object GithubFlavoredMarkdownPrinter {
       case c: Castle => if (c == `O-O`) "O-O" else "O-O-O"
     }
   }
-  implicit def moveToMarkdownMove(m: MoveBase) = new MarkdownMove(m)
-
+  implicit def moveToPrintableMove(m: MoveBase) = new PrintableMove(m)
 }
