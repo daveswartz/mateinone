@@ -105,7 +105,7 @@ object Board {
 }
 import Board._
 
-case class Board private(turn: Side, pieces: Vector[Piece], history: Vector[(Board, MoveBase)]) {
+case class Board private(turn: Side, pieces: Vector[Piece], private val history: Vector[(Board, MoveBase)]) {
 
   private def legalAndIllegal: Vector[MoveBase] = pieces.filter(_.side == turn).flatMap(generateMoves(this, _))
 
@@ -136,7 +136,7 @@ case class Board private(turn: Side, pieces: Vector[Piece], history: Vector[(Boa
   }
   def mayClaimDraw = isThreefoldRepetition || isFiftyMoveRule
 
-  def moves: Vector[MoveBase] =
+  lazy val moves: Vector[MoveBase] =
     legalAndIllegal.filter { aMove =>
       val endsInCheck = { val next = doMove(this, aMove); next.canCaptureKing }
       val castlesThroughCheck = aMove match {
@@ -156,5 +156,7 @@ case class Board private(turn: Side, pieces: Vector[Piece], history: Vector[(Boa
     }
 
   def move(movesToMake: MoveBase*): Option[Board] = move(movesToMake.toList)
+
+  override def toString() = "Board("+turn+","+pieces+")"
 
 }
