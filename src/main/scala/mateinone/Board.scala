@@ -157,6 +157,8 @@ case class Board private(turn: Side, pieces: Vector[Piece], private val history:
 
   def move(movesToMake: MoveBase*): Option[Board] = move(movesToMake.toList)
 
+  lazy val moveHistory: Vector[MoveBase] = history.map(_._2)
+
   override def toString() = "Board("+turn+","+pieces+")"
 
 }

@@ -149,4 +149,4 @@ Scripts ♖
 
 The script directory contains all the code above in **[basic.scala](script/basic.scala)**
 
-The directory also contains a longer example, **[random-game.scala](script/random-game.scala)**. The script plays both sides of a random game that continues until one side wins.
+The **[random-game.scala](script/random-game.scala)** script plays both sides of a random game that continues until one side wins or the game is drawn.
