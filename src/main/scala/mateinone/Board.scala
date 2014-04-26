@@ -3,7 +3,6 @@ package mateinone
 import Square._
 import File._
 import Rank._
-import scala.annotation.tailrec
 
 object Board {
 
@@ -21,36 +20,20 @@ object Board {
     case `O-O-O` => s match { case White => Vector(B1, C1, D1); case Black => Vector(B8, C8, D8) }
   }
 
-  private def generateMoves(board: Board, piece: Piece): Vector[MoveBase] = {
+  private def generateMoves(board: Board, piece: Piece): Iterable[MoveBase] = {
 
-    type Path = Vector[Square]
+    def isOccupied(square: Square) = board.pieces.exists(p => p.square == square)
+    def isCapture(square: Square) = board.pieces.exists(p => p.square == square && p.side == piece.side.other)
+    def steps(step: (Int, Int)) = Iterator.iterate[Option[Square]](Some(piece.square))(_.flatMap(_ + step)).drop(1).takeWhile(_.isDefined).map(_.get)
+    def pawnAdvance(step: (Int, Int), nSteps: Int) = steps(step).take(nSteps).takeWhile(!isOccupied(_))
+    def pawnCapture(step: (Int, Int)) = steps(step).take(1).takeWhile(isCapture)
+    def canCapture(step: (Int, Int)) = steps(step).span(!isOccupied(_)) match { case (empty, occ) => empty ++ occ.take(1).takeWhile(isCapture) }
+    def file = List((1, 0), (-1, 0)).map(canCapture)
+    def rank = List((0, 1), (0, -1)).map(canCapture)
+    def diagonals = List((1, 1), (1, -1), (-1, 1), (-1, -1)).map(canCapture)
+    def adjacent = List((0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1), (-1, 0), (-1, 1)).map(canCapture(_).take(1))
 
-    def path(stepOffset: (Int, Int), nSteps: Int = 1, mayCapture: Boolean = true, mustCapture: Boolean = false): Path = {
-      def blocked(next: Square) = board.pieces.exists(p => p.square == next && p.side == piece.side)
-      def capture(next: Square) = board.pieces.exists(p => p.square == next && p.side != piece.side)
-      def pathRecur(current: Path, remaining: Int): Path =
-        current.last + stepOffset match {
-          case None => current
-          case Some(next) if capture(next) && mayCapture => current :+ next
-          case Some(next) if remaining >= 1 && !blocked(next) && !capture(next) && !mustCapture => pathRecur(current :+ next, remaining - 1)
-          case Some(next) => current
-        }
-      pathRecur(Vector(piece.square), nSteps).tail
-    }
-
-    def file = Vector(path((1, 0), 7), path((-1, 0), 7))
-    def rank = Vector(path((0, 1), 7), path((0, -1), 7))
-    def diagonals = Vector(path((1, 1), 7), path((1, -1), 7), path((-1, 1), 7), path((-1, -1), 7))
-    def adjacent = Vector(path((0, 1)), path((1, 1)), path((1, 0)), path((1, -1)), path((0, -1)), path((-1, -1)), path((-1, 0)), path((-1, 1)))
-
-    def pawnAdvance(s: (Int, Int), n: Int) = path(s, n, mayCapture = false)
-
-    def pawnCaptures(side: Side) = {
-      val one = path(_: (Int, Int), 1, mustCapture = true)
-      if (side == White) Vector(one(1, 1), one(-1, 1)) else Vector(one(1, -1), one(-1, -1))
-    }
-
-    def enPassant(start: File, rankStep: Int): Option[Path] = {
+    def enPassant(start: File, rankStep: Int): Option[Iterator[Square]] = {
       val (lastBoard, lastMove) = board.history.last
       def isAllowed(last: Move, fileStep: Int) = {
         val isPawn = lastBoard.pieces.find(_.square == last.start).get.`type` == Pawn
@@ -59,8 +42,8 @@ object Board {
         isPawn && isTwoSquareAdvance && canCapture
       }
       lastMove match {
-        case last: Move if isAllowed(last, 1) => Some(path((1, rankStep)))
-        case last: Move if isAllowed(last, -1) => Some(path((-1, rankStep)))
+        case last: Move if isAllowed(last, 1) => Some(canCapture((1, rankStep)))
+        case last: Move if isAllowed(last, -1) => Some(canCapture((-1, rankStep)))
         case _=> None
       }
     }
@@ -76,29 +59,25 @@ object Board {
       result
     }
 
-    def toMoves(paths: Vector[Path]): Vector[Move] = paths.flatMap(_.map(end => Move(piece.square, end)))
-    def toPromotions(paths: Vector[Path]): Vector[Promotion] = PromotionType.all.flatMap(t => paths.flatMap(_.map(end => Promotion(piece.square, end, t))))
+    def toMoves(paths: Iterable[Iterator[Square]]) = paths.flatMap(_.map(e => Move(piece.square, e)))
+    def toPromotions(paths: Iterable[Iterator[Square]]) = paths.flatMap(_.flatMap(e => PromotionType.all.map(t => Promotion(piece.square, e, t))))
 
     piece match {
-
-      case Piece(White, Pawn,   Square(_, `_2`), false) => toMoves(pawnCaptures(White) :+ pawnAdvance((0, 1), 2))
-      case Piece(White, Pawn,   Square(f, `_5`), true ) => toMoves(pawnCaptures(White) ++ enPassant(f, 1) :+ pawnAdvance((0, 1), 1))
-      case Piece(White, Pawn,   Square(_, `_7`), true ) => toPromotions(pawnCaptures(White) :+ pawnAdvance((0, 1), 1))
-      case Piece(White, Pawn,   _,               true ) => toMoves(pawnCaptures(White) :+ pawnAdvance((0, 1), 1))
+      case Piece(White, Pawn,   Square(_, `_2`), false) => toMoves(Iterable(pawnCapture(1, 1), pawnCapture(-1, 1), pawnAdvance((0, 1), 2)))
+      case Piece(White, Pawn,   Square(f, `_5`), true ) => toMoves(Iterable(pawnCapture(1, 1), pawnCapture(-1, 1), pawnAdvance((0, 1), 1)) ++ enPassant(f, 1))
+      case Piece(White, Pawn,   Square(_, `_7`), true ) => toPromotions(Iterable(pawnCapture(1, 1), pawnCapture(-1, 1), pawnAdvance((0, 1), 1)))
+      case Piece(White, Pawn,   _,               true ) => toMoves(Iterable(pawnCapture(1, 1), pawnCapture(-1, 1), pawnAdvance((0, 1), 1)))
       case Piece(White, King,   E1,              false) => toMoves(adjacent) ++ castles(White)
-
-      case Piece(Black, Pawn,   Square(_, `_7`), false) => toMoves(pawnCaptures(Black) :+ pawnAdvance((0, -1), 2))
-      case Piece(Black, Pawn,   Square(f, `_4`), true ) => toMoves(pawnCaptures(Black) ++ enPassant(f, -1) :+ pawnAdvance((0, -1), 1))
-      case Piece(Black, Pawn,   Square(_, `_2`), true ) => toPromotions(pawnCaptures(Black) :+ pawnAdvance((0, -1), 1))
-      case Piece(Black, Pawn,   _,               true ) => toMoves(pawnCaptures(Black) :+ pawnAdvance((0, -1), 1))
+      case Piece(Black, Pawn,   Square(_, `_7`), false) => toMoves(Iterable(pawnCapture(1, -1), pawnCapture(-1, -1), pawnAdvance((0, -1), 2)))
+      case Piece(Black, Pawn,   Square(f, `_4`), true ) => toMoves(Iterable(pawnCapture(1, -1), pawnCapture(-1, -1), pawnAdvance((0, -1), 1)) ++ enPassant(f, -1))
+      case Piece(Black, Pawn,   Square(_, `_2`), true ) => toPromotions(Iterable(pawnCapture(1, -1), pawnCapture(-1, -1), pawnAdvance((0, -1), 1)))
+      case Piece(Black, Pawn,   _,               true ) => toMoves(Iterable(pawnCapture(1, -1), pawnCapture(-1, -1), pawnAdvance((0, -1), 1)))
       case Piece(Black, King,   E8,              false) => toMoves(adjacent) ++ castles(Black)
-
       case Piece(_,     Rook,   _,               _    ) => toMoves(file ++ rank)
-      case Piece(_,     Knight, _,               _    ) => toMoves(Vector(path((2, 1)), path((2, -1)), path((1, 2)), path((1, -2)), path((-2, 1)), path((-2, -1)), path((-1, 2)), path((-1, -2))))
+      case Piece(_,     Knight, _,               _    ) => toMoves(Iterable((2, 1), (2, -1), (1, 2), (1, -2), (-2, 1), (-2, -1), (-1, 2), (-1, -2)).map(canCapture(_).take(1)))
       case Piece(_,     Bishop, _,               _    ) => toMoves(diagonals)
       case Piece(_,     King,   _,               _    ) => toMoves(adjacent)
       case Piece(_,     Queen,  _,               _    ) => toMoves(file ++ rank ++ diagonals)
-
     }
 
   }
