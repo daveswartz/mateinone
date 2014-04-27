@@ -1,29 +1,37 @@
 package mateinone
 
 import scala.language.implicitConversions
+import Square._
+
+object Printers {
+  class PrintablePiece(piece: Piece) {
+    def print = piece match {
+      case Piece(White, Pawn, _, _) => "♙"
+      case Piece(White, Rook, _, _) => "♖"
+      case Piece(White, Knight, _, _) => "♘"
+      case Piece(White, Bishop, _, _) => "♗"
+      case Piece(White, Queen, _, _) => "♕"
+      case Piece(White, King, _, _) => "♔"
+      case Piece(Black, Pawn, _, _) => "♟"
+      case Piece(Black, Rook, _, _) => "♜"
+      case Piece(Black, Knight, _, _) => "♞"
+      case Piece(Black, Bishop, _, _) => "♝"
+      case Piece(Black, Queen, _, _) => "♛"
+      case Piece(Black, King, _, _) => "♚"
+    }
+  }
+  implicit def pieceToPrintablePiece(p: Piece) = new PrintablePiece(p)
+}
+import Printers._
 
 object TerminalPrinter {
   class TerminalBoard(b: Board) {
-    def print: String = {
-      "┌─────────────────┐\n" +
-      Square.squares.transpose.reverse
-        .map(_.map(square => b.pieces.find(_.square == square)))
-        .map(_.map {
-        case Some(Piece(White, Pawn, _, _)) => "♙ "
-        case Some(Piece(White, Rook, _, _)) => "♖ "
-        case Some(Piece(White, Knight, _, _)) => "♘ "
-        case Some(Piece(White, Bishop, _, _)) => "♗ "
-        case Some(Piece(White, Queen, _, _)) => "♕ "
-        case Some(Piece(White, King, _, _)) => "♔ "
-        case Some(Piece(Black, Pawn, _, _)) => "♟ "
-        case Some(Piece(Black, Rook, _, _)) => "♜ "
-        case Some(Piece(Black, Knight, _, _)) => "♞ "
-        case Some(Piece(Black, Bishop, _, _)) => "♝ "
-        case Some(Piece(Black, Queen, _, _)) => "♛ "
-        case Some(Piece(Black, King, _, _)) => "♚ "
-        case None => "  "
-      }).map("│ "+_.reduce(_+_)+"│").reduce(_+"\n"+_) + "\n└─────────────────┘"
+    private val lastMoveStart = b.moveHistory.lastOption map {
+      case Move(s, _) => s
+      case Promotion(s, _, _) => s
+      case _: Castle => if (b.turn == White) E8 else E1
     }
+    def print: String = ("┌─────────────────┐" +: squares.transpose.reverse.map(rank => rank.map(square => if (lastMoveStart == Some(square)) "·" else b.pieces.find(_.square == square).fold(" ")(_.print))).map(rank => ("│"+:rank:+"│").mkString(" ")) :+ "└─────────────────┘").mkString("\n")
   }
   implicit def boardToTerminalBoard(b: Board) = new TerminalBoard(b)
 }
@@ -56,7 +64,7 @@ object GithubFlavoredMarkdownPrinter {
 
 object MovePrinter {
   private object PrintableMove {
-    private val fileStrings = Vector("A", "B", "C", "D", "E", "F", "G", "H")
+    private val fileStrings = Vector("a", "b", "c", "d", "e", "f", "g", "h")
   }
   class PrintableMove(m: MoveBase) {
     import PrintableMove._
