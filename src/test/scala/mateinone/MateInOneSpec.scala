@@ -45,6 +45,10 @@ class MateInOneSpec extends Specification {
       H8 + (0, 1) must beNone
       H8 + (1, 0) must beNone
       A1 + (2, 2) must beEqualTo(Some(C3))
+      A1 + (7, 7) must beEqualTo(Some(H8))
+      C3 + (-2, -2) must beEqualTo(Some(A1))
+      H8 + (-7, -7) must beEqualTo(Some(A1))
+      H8 + (0, -1) must beEqualTo(Some(H7))
     }
     "-" in { C3 - A1 must beEqualTo((2, 2)) }
   }

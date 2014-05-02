@@ -107,34 +107,34 @@ import Board._
 
 case class Board private(turn: Side, pieces: Vector[Piece], private val history: Vector[(Board, MoveBase)]) {
 
-  private def legalAndIllegal: Vector[MoveBase] = pieces.filter(_.side == turn).flatMap(generateMoves(this, _))
+  private lazy val legalAndIllegal: Vector[MoveBase] = pieces.filter(_.side == turn).flatMap(generateMoves(this, _))
 
-  private def canCaptureKing = {
+  private lazy val canCaptureKing = {
     val opponentsKing = pieces.find(p => p.side != turn && p.`type` == King).get.square
     legalAndIllegal.exists { case s: StartAndEnd => s.end == opponentsKing; case c: Castle => false }
   }
 
-  def isCheck = this.copy(turn = turn.other).canCaptureKing
-  def isCheckmate = moves.isEmpty && isCheck
+  lazy val isCheck = this.copy(turn = turn.other).canCaptureKing
+  lazy val isCheckmate = moves.isEmpty && isCheck
 
-  def isStalemate = moves.isEmpty && !isCheck
-  def isInsufficientMaterial = {
+  lazy val isStalemate = moves.isEmpty && !isCheck
+  lazy val isInsufficientMaterial = {
     val byType = pieces.groupBy(_.`type`)
     def isBlack(s: Square) = s.file.n % 2 == 0 && s.file.n % 2 == 0
     byType.keySet == Set(King) ||
       (byType.keySet == Set(King, Knight) && byType(Knight).size == 1) ||
       (byType.keySet == Set(King, Bishop) && byType(Bishop).map(b => isBlack(b.square)).distinct.size == 1)
   }
-  def isAutomaticDraw = isStalemate || isInsufficientMaterial
+  lazy val isAutomaticDraw = isStalemate || isInsufficientMaterial
 
-  def isThreefoldRepetition = history.groupBy(_._1.moves).exists { case (_, repeats) => repeats.size == 3 }
-  def isFiftyMoveRule = {
+  lazy val isThreefoldRepetition = history.groupBy(_._1.moves).exists { case (_, repeats) => repeats.size == 3 }
+  lazy val isFiftyMoveRule = {
     def isPawnMoveOrCapture(b: Board, m: MoveBase) = m match {
       case s: StartAndEnd => b.pieces.map(_.square).contains(s.end) || b.pieces.find(_.square == s.start).get.`type` == Pawn
       case _: Castle => false }
     history.size >= 100 && !history.takeRight(100).exists { case (b, m) => isPawnMoveOrCapture(b, m) }
   }
-  def mayClaimDraw = isThreefoldRepetition || isFiftyMoveRule
+  lazy val mayClaimDraw = isThreefoldRepetition || isFiftyMoveRule
 
   lazy val moves: Vector[MoveBase] =
     legalAndIllegal.filter { aMove =>
