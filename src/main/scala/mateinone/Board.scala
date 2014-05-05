@@ -42,7 +42,7 @@ object Board {
     def adjacent = Offsets.adjacent.map(canCapture(_).take(1))
 
     def enPassant(start: File, rankStep: Int): Option[Iterator[Square]] = {
-      val (lastBoard, lastMove) = board.history.last
+      val (lastMove, lastBoard) = board.history.last
       def isAllowed(last: Move, fileStep: Int) = {
         val isPawn = lastBoard.pieces.find(_.square == last.start).get.`type` == Pawn
         val isTwoSquareAdvance = math.abs(last.end.rank.n - last.start.rank.n) == 2
@@ -93,7 +93,7 @@ object Board {
   private def doMove(board: Board, move: MoveBase): Board = {
     def movePieces(ps: Vector[Piece], start: Square, end: Square, `type`: PieceType) =
       ps.filterNot(_.square == start).filterNot(_.square == end) :+ Piece(board.turn, `type`, end, hasMoved = true)
-    def createBoard(pieces: Vector[Piece], last: MoveBase) = Board(board.turn.other, pieces, board.history :+ (board, move))
+    def createBoard(pieces: Vector[Piece], last: MoveBase) = Board(board.turn.other, pieces, board.history :+ (move, board))
     val oneMove: PartialFunction[MoveBase, Board] = { case m @ Move(start, end) =>
       createBoard(movePieces(board.pieces, start, end, board.pieces.find(_.square == start).get.`type`), m) }
     val onePromotion: PartialFunction[MoveBase, Board] = { case p @ Promotion(start, end, promotion) =>
@@ -110,7 +110,7 @@ object Board {
 }
 import Board._
 
-case class Board private(turn: Side, pieces: Vector[Piece], private val history: Vector[(Board, MoveBase)]) {
+case class Board private(turn: Side, pieces: Vector[Piece], private val history: Vector[(MoveBase, Board)]) {
 
   private lazy val legalAndIllegal: Vector[MoveBase] = pieces.filter(_.side == turn).flatMap(generateMoves(this, _))
 
@@ -132,12 +132,12 @@ case class Board private(turn: Side, pieces: Vector[Piece], private val history:
   }
   lazy val isAutomaticDraw = isStalemate || isInsufficientMaterial
 
-  lazy val isThreefoldRepetition = history.groupBy(_._1.moves).exists { case (_, repeats) => repeats.size == 3 }
+  lazy val isThreefoldRepetition = history.groupBy(_._2.moves).exists { case (_, repeats) => repeats.size == 3 }
   lazy val isFiftyMoveRule = {
-    def isPawnMoveOrCapture(b: Board, m: MoveBase) = m match {
+    def isPawnMoveOrCapture(m: MoveBase, b: Board) = m match {
       case s: StartAndEnd => b.pieces.map(_.square).contains(s.end) || b.pieces.find(_.square == s.start).get.`type` == Pawn
       case _: Castle => false }
-    history.size >= 100 && !history.takeRight(100).exists { case (b, m) => isPawnMoveOrCapture(b, m) }
+    history.size >= 100 && !history.takeRight(100).exists { case (m, b) => isPawnMoveOrCapture(m, b) }
   }
   lazy val mayClaimDraw = isThreefoldRepetition || isFiftyMoveRule
 
@@ -162,7 +162,7 @@ case class Board private(turn: Side, pieces: Vector[Piece], private val history:
 
   def move(movesToMake: MoveBase*): Option[Board] = move(movesToMake.toList)
 
-  lazy val moveHistory: Vector[MoveBase] = history.map(_._2)
+  lazy val moveHistory: Vector[MoveBase] = history.map(_._1)
 
   override def toString() = "Board("+turn+","+pieces+")"
 
