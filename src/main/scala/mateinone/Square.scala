@@ -1,29 +1,25 @@
 package mateinone
 
-sealed trait Line[T <: Line[T]] extends Ordered[T] {
-  val n: Int
-  protected def lineOption: Int => Option[T]
-  def +(rhs: Int): Option[T] = lineOption(n + rhs)
-  def -(rhs: T): Int = n - rhs.n
-  def compare(that: T): Int = n.compare(that.n)
-}
-
 object File {
   val files: Vector[File] = Vector.range(0, 8).map(File.apply)
+  private val fileOption = files.lift
   private val fileIter = files.iterator
   val A, B, C, D, E, F, G, H = fileIter.next()
 }
-case class File private(n: Int) extends Line[File] {
-  override protected def lineOption = File.files.lift
+case class File private(n: Int) extends Ordered[File] {
+  def +(rhs: Int): Option[File] = File.fileOption(n + rhs)
+  def compare(that: File): Int = n.compare(that.n)
 }
 
 object Rank {
   val ranks: Vector[Rank] = Vector.range(0, 8).map(Rank.apply)
+  private val rankOption = ranks.lift
   private val rankIter = ranks.iterator
   val _1, _2, _3, _4, _5, _6, _7, _8 = rankIter.next()
 }
-case class Rank private(n: Int) extends Line[Rank] {
-  override protected def lineOption = Rank.ranks.lift
+case class Rank private(n: Int) extends Ordered[Rank] {
+  def +(rhs: Int): Option[Rank] = Rank.rankOption(n + rhs)
+  def compare(that: Rank): Int = n.compare(that.n)
 }
 
 object Square {
@@ -41,5 +37,4 @@ object Square {
 }
 case class Square private(file: File, rank: Rank) {
   def +(rhs: (Int, Int)): Option[Square] = (file + rhs._1).flatMap(fo => (rank + rhs._2).map(ro => Square.square(fo, ro)))
-  def -(rhs: Square): (Int, Int) = (file - rhs.file, rank - rhs.rank)
 }

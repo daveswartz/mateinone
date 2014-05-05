@@ -15,7 +15,6 @@ class MateInOneSpec extends Specification {
       H + 1 must beNone
       A + 2 must beEqualTo(Some(C))
     }
-    "-" in { H - A must beEqualTo(7) }
     "compareTo" in {
       A.compare(B) must beEqualTo(-1)
       B.compare(A) must beEqualTo(1)
@@ -29,7 +28,6 @@ class MateInOneSpec extends Specification {
       _8 + 1 must beNone
       _1 + 2 must beEqualTo(Some(_3))
     }
-    "-" in { _8 - _1 must beEqualTo(7) }
     "compareTo" in {
       _1.compare(_2) must beEqualTo(-1)
       _2.compare(_1) must beEqualTo(1)
@@ -50,7 +48,6 @@ class MateInOneSpec extends Specification {
       H8 + (-7, -7) must beEqualTo(Some(A1))
       H8 + (0, -1) must beEqualTo(Some(H7))
     }
-    "-" in { C3 - A1 must beEqualTo((2, 2)) }
   }
 
   "Board" should {

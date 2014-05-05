@@ -1,9 +1,7 @@
 import mateinone._
 import mateinone.Piece
-import mateinone.Square._
 import TerminalPrinter._
 import MovePrinter._
-import MoveImplicits._
 
 def score(board: Board) = {
   def value(pieces: Vector[Piece]) = pieces.map(_.`type`).map {
@@ -23,7 +21,7 @@ def bfs(board: Board, limit: Int): Board =
 
 println("Starting...")
 val start = System.nanoTime()
-val max = bfs(Board.initial, 5)
+val max = bfs(Board.initial, 4)
 val elapsed = (System.nanoTime() - start) / 1e9
 println("Elapsed (s): "+elapsed)
 println("Score: "+ score(max))
