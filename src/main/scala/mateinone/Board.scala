@@ -110,7 +110,7 @@ object Board {
 }
 import Board._
 
-case class Board private(turn: Side, pieces: Vector[Piece], private val history: Vector[(MoveBase, Board)]) {
+case class Board private(turn: Side, pieces: Vector[Piece], history: Vector[(MoveBase, Board)]) {
 
   private lazy val legalAndIllegal: Vector[MoveBase] = pieces.filter(_.side == turn).flatMap(generateMoves(this, _))
 
@@ -142,27 +142,26 @@ case class Board private(turn: Side, pieces: Vector[Piece], private val history:
   lazy val mayClaimDraw = isThreefoldRepetition || isFiftyMoveRule
 
   lazy val moves: Vector[MoveBase] = // TODO change to (MoveBase, Board) so it can reuse
-    legalAndIllegal.filter { aMove =>
-      val endsInCheck = { val next = doMove(this, aMove); next.canCaptureKing }
-      val castlesThroughCheck = aMove match {
-        case s: StartAndEnd => false
-        case c: Castle =>
-          def king(p: Piece) = p.side == turn && p.`type` == King
-          val passesThroughCheck = between(c, turn).exists(b => this.copy(turn = turn.other, pieces = pieces.filterNot(king) :+ Piece(turn, King, b, hasMoved = true)).canCaptureKing)
-          isCheck || passesThroughCheck
-      }
-      !endsInCheck && !castlesThroughCheck
-    }
+    legalAndIllegal
+      .map(m => (m, doMove(this, m)))
+      .filter { case (move, board) =>
+        val castlesThroughCheck = move match {
+          case s: StartAndEnd => false
+          case c: Castle =>
+            def king(p: Piece) = p.side == turn && p.`type` == King
+            val passesThroughCheck = between(c, turn).exists(b => this.copy(turn = turn.other, pieces = pieces.filterNot(king) :+ Piece(turn, King, b, hasMoved = true)).canCaptureKing)
+            isCheck || passesThroughCheck
+        }
+        !board.canCaptureKing && !castlesThroughCheck
+    }.map(_._1)
 
   def move(movesToMake: List[MoveBase]): Option[Board] =
     movesToMake match {
-      case h :: t => if (moves.contains(h)) doMove(this, h).move(t) else None
+      case h :: t => moves.find(_ == h).flatMap(doMove(this, _).move(t))
       case _ => Some(this)
     }
 
   def move(movesToMake: MoveBase*): Option[Board] = move(movesToMake.toList)
-
-  lazy val moveHistory: Vector[MoveBase] = history.map(_._1)
 
   override def toString() = "Board("+turn+","+pieces+")"
 

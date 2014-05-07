@@ -26,10 +26,10 @@ import Printers._
 
 object TerminalPrinter {
   class TerminalBoard(b: Board) {
-    private val lastMoveStart = b.moveHistory.lastOption map {
-      case Move(s, _) => s
-      case Promotion(s, _, _) => s
-      case _: Castle => if (b.turn == White) E8 else E1
+    private val lastMoveStart = b.history.lastOption map {
+      case (Move(s, _), _) => s
+      case (Promotion(s, _, _), _) => s
+      case (_: Castle, _) => if (b.turn == White) E8 else E1
     }
     def print: String = ("┌─────────────────┐" +: squares.transpose.reverse.map(rank => rank.map(square => if (lastMoveStart == Some(square)) "·" else b.pieces.find(_.square == square).fold(" ")(_.print))).map(rank => ("│"+:rank:+"│").mkString(" ")) :+ "└─────────────────┘").mkString("\n")
   }
