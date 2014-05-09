@@ -61,25 +61,3 @@ object GithubFlavoredMarkdownPrinter {
   }
   implicit def boardToMarkdownBoard(b: Board) = new MarkdownBoard(b)
 }
-
-object MovePrinter {
-  private object PrintableMove {
-    private val fileStrings = Vector("a", "b", "c", "d", "e", "f", "g", "h")
-  }
-  class PrintableMove(m: MoveBase) {
-    import PrintableMove._
-    private def print(s: Square): String = fileStrings(s.file.n) + (s.rank.n + 1).toString
-    private def print(p: PromotionType): String = p match {
-      case Rook => "♖"
-      case Knight => "♘"
-      case Bishop => "♗"
-      case Queen => "♕"
-    }
-    def print: String = m match {
-      case s: Move => print(s.start)+"->"+print(s.end)
-      case p: Promotion => print(p.start)+"->"+print(p.end)+"="+print(p.`type`)
-      case c: Castle => if (c == `O-O`) "O-O" else "O-O-O"
-    }
-  }
-  implicit def moveToPrintableMove(m: MoveBase) = new PrintableMove(m)
-}

@@ -119,6 +119,22 @@ case class Board private(turn: Side, pieces: Vector[Piece], history: Vector[(Mov
     legalAndIllegal.exists { case s: StartAndEnd => s.end == opponentsKing; case c: Castle => false }
   }
 
+  private lazy val leaves: Vector[(MoveBase, Board)] =
+    legalAndIllegal
+      .map(m => (m, doMove(this, m)))
+      .filter { case (m, b) =>
+        val castlesThroughCheck = m match {
+          case s: StartAndEnd => false
+          case c: Castle =>
+            def king(p: Piece) = p.side == turn && p.`type` == King
+            val passesThroughCheck = between(c, turn).exists(b => this.copy(turn = turn.other, pieces = pieces.filterNot(king) :+ Piece(turn, King, b, hasMoved = true)).canCaptureKing)
+            isCheck || passesThroughCheck
+        }
+        !b.canCaptureKing && !castlesThroughCheck }
+
+  lazy val moves: Vector[MoveBase] = leaves.map { case (m, _) => m }
+  lazy val boards: Vector[Board] = leaves.map { case (_, b) => b }
+
   lazy val isCheck = this.copy(turn = turn.other).canCaptureKing
   lazy val isCheckmate = moves.isEmpty && isCheck
 
@@ -141,23 +157,9 @@ case class Board private(turn: Side, pieces: Vector[Piece], history: Vector[(Mov
   }
   lazy val mayClaimDraw = isThreefoldRepetition || isFiftyMoveRule
 
-  lazy val moves: Vector[MoveBase] = // TODO change to (MoveBase, Board) so it can reuse
-    legalAndIllegal
-      .map(m => (m, doMove(this, m)))
-      .filter { case (move, board) =>
-        val castlesThroughCheck = move match {
-          case s: StartAndEnd => false
-          case c: Castle =>
-            def king(p: Piece) = p.side == turn && p.`type` == King
-            val passesThroughCheck = between(c, turn).exists(b => this.copy(turn = turn.other, pieces = pieces.filterNot(king) :+ Piece(turn, King, b, hasMoved = true)).canCaptureKing)
-            isCheck || passesThroughCheck
-        }
-        !board.canCaptureKing && !castlesThroughCheck
-    }.map(_._1)
-
   def move(movesToMake: List[MoveBase]): Option[Board] =
     movesToMake match {
-      case h :: t => moves.find(_ == h).flatMap(doMove(this, _).move(t))
+      case h :: t => leaves.find { case (m, _) => h == m }.flatMap { case (_, b) => b.move(t) }
       case _ => Some(this)
     }
 
