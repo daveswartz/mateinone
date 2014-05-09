@@ -16,8 +16,8 @@ object Board {
   }
 
   private def between(c: Castle, s: Side): Vector[Square] = c match {
-    case `O-O` => s match { case White => Vector(F1, G1); case Black => Vector(F8, G8) }
-    case `O-O-O` => s match { case White => Vector(B1, C1, D1); case Black => Vector(B8, C8, D8) }
+    case `O-O` => s match { case White => Vector(F1); case Black => Vector(F8) }
+    case `O-O-O` => s match { case White => Vector(C1, D1); case Black => Vector(C8, D8) }
   }
 
   private object Offsets {
@@ -114,53 +114,49 @@ case class Board private(turn: Side, pieces: Vector[Piece], history: Vector[(Mov
 
   private lazy val legalAndIllegal: Vector[MoveBase] = pieces filter(_.side == turn) flatMap(generateMoves(this, _))
 
-  private lazy val opponentsKing = pieces filter(_.`type` == King) filter(_.side != turn)
-
-  private lazy val canCaptureKing = legalAndIllegal exists { case s: StartAndEnd => opponentsKing.exists(_.square == s.end); case c: Castle => false }
-
-  private lazy val leaves: Vector[(MoveBase, Board)] = {
-    def castlesThroughCheck(m: MoveBase): Boolean = m match {
-      case s: StartAndEnd => false
-      case c: Castle =>
-        val kings = between(c, turn) map (s => Piece(turn, King, s, hasMoved = true)) // TODO between is not between
-        this.copy(pieces = pieces ++ kings).isCheck
-    }
-    legalAndIllegal map(m => (m, doMove(this, m))) filter { case (m, b) => !castlesThroughCheck(m) && !b.canCaptureKing }
+  private lazy val canCaptureKing: Boolean = {
+    val opponentsKing = pieces.filter(p => p.`type` == King && p.side != turn).map(_.square).toSet
+    legalAndIllegal.exists { case s: StartAndEnd => opponentsKing.contains(s.end); case c: Castle => false }
   }
 
-  lazy val moves: Vector[MoveBase] = leaves map { case (m, _) => m }
-  lazy val boards: Vector[Board] = leaves map { case (_, b) => b }
+  private lazy val leaves: Map[MoveBase, Board] = {
+    def castlesThroughCheck(m: MoveBase): Boolean =
+      m match {
+        case s: StartAndEnd => false
+        case c: Castle => this.copy(pieces = pieces ++ between(c, turn).map(s => Piece(turn, King, s, hasMoved = true))).isCheck
+      }
+    legalAndIllegal.map(m => (m, doMove(this, m))).filter { case (m, b) => !castlesThroughCheck(m) && !b.canCaptureKing }.toMap
+  }
 
-  lazy val isCheck = this.copy(turn = turn.other).canCaptureKing
-  lazy val isCheckmate = moves.isEmpty && isCheck
+  lazy val moves: Set[MoveBase] = leaves.keySet
+  lazy val boards: Iterable[Board] = leaves.values
 
-  lazy val isStalemate = moves.isEmpty && !isCheck
-  lazy val isInsufficientMaterial = {
+  lazy val isCheck: Boolean = this.copy(turn = turn.other).canCaptureKing
+  lazy val isCheckmate: Boolean = moves.isEmpty && isCheck
+
+  lazy val isStalemate: Boolean = moves.isEmpty && !isCheck
+  lazy val isInsufficientMaterial: Boolean = {
     val byType = pieces.groupBy(_.`type`)
     def isBlack(s: Square) = s.file.n % 2 == 0 && s.file.n % 2 == 0
     byType.keySet == Set(King) ||
       (byType.keySet == Set(King, Knight) && byType(Knight).size == 1) ||
       (byType.keySet == Set(King, Bishop) && byType(Bishop).map(b => isBlack(b.square)).distinct.size == 1)
   }
-  lazy val isAutomaticDraw = isStalemate || isInsufficientMaterial
+  lazy val isAutomaticDraw: Boolean = isStalemate || isInsufficientMaterial
 
-  lazy val isThreefoldRepetition = history.groupBy(_._2.moves).exists { case (_, repeats) => repeats.size == 3 }
-  lazy val isFiftyMoveRule = {
+  lazy val isThreefoldRepetition: Boolean = history.groupBy(_._2.moves).exists { case (_, repeats) => repeats.size == 3 }
+  lazy val isFiftyMoveRule: Boolean = {
     def isPawnMoveOrCapture(m: MoveBase, b: Board) = m match {
       case s: StartAndEnd => b.pieces.map(_.square).contains(s.end) || b.pieces.find(_.square == s.start).get.`type` == Pawn
       case _: Castle => false }
     history.size >= 100 && !history.takeRight(100).exists { case (m, b) => isPawnMoveOrCapture(m, b) }
   }
-  lazy val mayClaimDraw = isThreefoldRepetition || isFiftyMoveRule
+  lazy val mayClaimDraw: Boolean = isThreefoldRepetition || isFiftyMoveRule
 
-  def move(movesToMake: List[MoveBase]): Option[Board] =
-    movesToMake match {
-      case h :: t => leaves.find { case (m, _) => h == m }.flatMap { case (_, b) => b.move(t) }
-      case _ => Some(this)
-    }
+  def move(movesToMake: List[MoveBase]): Option[Board] = movesToMake match { case h :: t => leaves.get(h).flatMap(_.move(t)); case _ => Some(this) }
 
   def move(movesToMake: MoveBase*): Option[Board] = move(movesToMake.toList)
 
-  override def toString() = "Board("+turn+","+pieces+")"
+  override def toString(): String = "Board("+turn+","+pieces+")"
 
 }
