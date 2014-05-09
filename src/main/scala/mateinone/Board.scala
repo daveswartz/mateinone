@@ -8,9 +8,9 @@ object Board {
 
   val initial: Board = {
     def pieces(side: Side, second: File => Square, back: File => Square) = {
-      def piece(`type`: PieceType, rank: File => Square, fs: File*) = fs.toVector.map(f => Piece(side, `type`, rank(f), hasMoved = false))
-      piece(Pawn, second, files: _*) ++ piece(Rook, back, A, H) ++ piece(Knight, back, B, G) ++ piece(Bishop, back, C, F) ++
-        piece(King, back, E) ++ piece(Queen, back, D)
+      def piece(`type`: PieceType, rank: File => Square, files: Vector[File]) = files.map(f => Piece(side, `type`, rank(f), hasMoved = false))
+      piece(Pawn, second, files) ++ piece(Rook, back, Vector(A, H)) ++ piece(Knight, back, Vector(B, G)) ++ piece(Bishop, back, Vector(C, F)) ++
+        piece(King, back, Vector(E)) ++ piece(Queen, back, Vector(D))
     }
     Board(White, pieces(White, square(_, _2), square(_, _1)) ++ pieces(Black, square(_, _7), square(_, _8)), Vector())
   }
@@ -30,8 +30,8 @@ object Board {
 
   private def generateMoves(board: Board, piece: Piece): Iterable[MoveBase] = {
 
-    def isOccupied(square: Square) = board.pieces.exists(p => p.square == square)
-    def isCapture(square: Square) = board.pieces.exists(p => p.square == square && p.side == piece.side.other)
+    def isOccupied(square: Square) = board.pieces exists(_.square == square)
+    def isCapture(square: Square) = board.pieces exists(p => p.square == square && p.side == piece.side.other)
     def steps(step: (Int, Int)) = Iterator.iterate[Option[Square]](Some(piece.square))(_.flatMap(_ + step)).drop(1).takeWhile(_.isDefined).map(_.get)
     def pawnAdvance(step: (Int, Int), nSteps: Int) = steps(step).take(nSteps).takeWhile(!isOccupied(_))
     def pawnCapture(step: (Int, Int)) = steps(step).take(1).takeWhile(isCapture)
@@ -112,28 +112,24 @@ import Board._
 
 case class Board private(turn: Side, pieces: Vector[Piece], history: Vector[(MoveBase, Board)]) {
 
-  private lazy val legalAndIllegal: Vector[MoveBase] = pieces.filter(_.side == turn).flatMap(generateMoves(this, _))
+  private lazy val legalAndIllegal: Vector[MoveBase] = pieces filter(_.side == turn) flatMap(generateMoves(this, _))
 
-  private lazy val canCaptureKing = {
-    val opponentsKing = pieces.find(p => p.side != turn && p.`type` == King).get.square
-    legalAndIllegal.exists { case s: StartAndEnd => s.end == opponentsKing; case c: Castle => false }
+  private lazy val opponentsKing = pieces filter(_.`type` == King) filter(_.side != turn)
+
+  private lazy val canCaptureKing = legalAndIllegal exists { case s: StartAndEnd => opponentsKing.exists(_.square == s.end); case c: Castle => false }
+
+  private lazy val leaves: Vector[(MoveBase, Board)] = {
+    def castlesThroughCheck(m: MoveBase): Boolean = m match {
+      case s: StartAndEnd => false
+      case c: Castle =>
+        val kings = between(c, turn) map (s => Piece(turn, King, s, hasMoved = true)) // TODO between is not between
+        this.copy(pieces = pieces ++ kings).isCheck
+    }
+    legalAndIllegal map(m => (m, doMove(this, m))) filter { case (m, b) => !castlesThroughCheck(m) && !b.canCaptureKing }
   }
 
-  private lazy val leaves: Vector[(MoveBase, Board)] =
-    legalAndIllegal
-      .map(m => (m, doMove(this, m)))
-      .filter { case (m, b) =>
-        val castlesThroughCheck = m match {
-          case s: StartAndEnd => false
-          case c: Castle =>
-            def king(p: Piece) = p.side == turn && p.`type` == King
-            val passesThroughCheck = between(c, turn).exists(b => this.copy(turn = turn.other, pieces = pieces.filterNot(king) :+ Piece(turn, King, b, hasMoved = true)).canCaptureKing)
-            isCheck || passesThroughCheck
-        }
-        !b.canCaptureKing && !castlesThroughCheck }
-
-  lazy val moves: Vector[MoveBase] = leaves.map { case (m, _) => m }
-  lazy val boards: Vector[Board] = leaves.map { case (_, b) => b }
+  lazy val moves: Vector[MoveBase] = leaves map { case (m, _) => m }
+  lazy val boards: Vector[Board] = leaves map { case (_, b) => b }
 
   lazy val isCheck = this.copy(turn = turn.other).canCaptureKing
   lazy val isCheckmate = moves.isEmpty && isCheck
