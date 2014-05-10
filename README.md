@@ -132,7 +132,7 @@ println(Board.initial.move(D2->D4, E7->E5, D4->E5, D7->D6, C1->G5, D6->E5, G5->D
 
 ### Generate Moves
 
-Generate the **opening moves** and print them using the  the `toString` implicit method of `Move`:
+Generate the **opening moves** and print them using the  the `toString` method of `Move`:
 
 ```scala
 println(Board.initial.moves)
@@ -140,7 +140,7 @@ println(Board.initial.moves)
 
 Outputs the following:
 
-    Vector(A2->A3, A2->A4, B2->B3, B2->B4, C2->C3, C2->C4, D2->D3, D2->D4, E2->E3, E2->E4, F2->F3, F2->F4, G2->G3, G2->G4, H2->H3, H2->H4, B1->C3, B1->A3, G1->H3, G1->F3)
+    Set(c2->c3, f2->f3, f2->f4, b2->b4, a2->a3, c2->c4, d2->d3, b2->b3, g2->g4, h2->h3, b1->c3, e2->e4, d2->d4, g2->g3, a2->a4, h2->h4, g1->h3, b1->a3, g1->f3, e2->e3)
 
 Scripts ♖
 ---------
@@ -148,3 +148,5 @@ Scripts ♖
 The script directory contains all the code above in **[basic.scala](script/basic.scala)**
 
 The **[random-game.scala](script/random-game.scala)** script plays both sides of a random game that continues until one side wins or the game is drawn.
+
+The **[evaluation.scala](script/evaluation.scala)** script does a breadth-first search of moves using a simple board evaluation function to find the best move.
