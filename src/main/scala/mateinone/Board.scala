@@ -26,74 +26,83 @@ object Board {
     val diagonals = Vector(upRight, downRight, downLeft, upLeft)
     val adjacent = Vector(up, upRight, right, downRight, down, downLeft, left, upLeft)
     val knight = Vector((2, 1), (2, -1), (1, 2), (1, -2), (-2, 1), (-2, -1), (-1, 2), (-1, -2))
+    val whitePawnAdvance = up
+    val blackPawnAdvance = down
+    val whitePawnCapture = Vector(upLeft, upRight)
+    val blackPawnCapture = Vector(downLeft, downRight)
+    val whiteEnPassent = Vector((upLeft, left), (upRight, right))
+    val blackEnPassent = Vector((downLeft, left), (downRight, right))
   }
 
-  private def generateMoves(board: Board, piece: Piece): Vector[MoveBase] = { // TODO change to do all pieces at once, sharing data
+  private def generateMoves(board: Board): Vector[MoveBase] = {
 
-    def isOccupied(square: Square): Boolean = board.pieces exists(_.square == square)
-    def isCapture(square: Square): Boolean = board.pieces exists(p => p.square == square && p.side == piece.side.other)
+    val occupied: Set[Square] = board.pieces.map(_.square).toSet
+    def isOpen(s: Square): Boolean = !occupied.contains(s)
+    val opponents: Set[Square] = board.pieces.filter(_.side == board.turn.other).map(_.square).toSet
 
-    def steps(step: (Int, Int)): Iterator[Square] =
-      Iterator.iterate[Option[Square]](Some(piece.square))(_.flatMap(_ + step)).drop(1).takeWhile(_.isDefined).map(_.get)
+    val wasTwoSquarePawnAdvance: Boolean =
+      board.history.lastOption match {
+        case Some((Move(s, e), b)) if b.pieces.find(_.square == s).get.`type` == Pawn && math.abs(e.rank.n - s.rank.n) == 2 => true
+        case _ => false }
 
-    def canCapture(step: (Int, Int)): Iterator[Square] = steps(step).span(!isOccupied(_)) match { case (open, occ) => open ++ occ.take(1).takeWhile(isCapture) }
+    board.pieces filter(_.side == board.turn) flatMap { piece =>
 
-    def file: Vector[Square] = Offsets.file.flatMap(canCapture)
-    def rank: Vector[Square] = Offsets.rank.flatMap(canCapture)
-    def diagonals: Vector[Square] = Offsets.diagonals.flatMap(canCapture)
-    def adjacent: Vector[Square] = Offsets.adjacent.flatMap(canCapture(_).take(1))
-    def knights: Vector[Square] = Offsets.knight.flatMap(canCapture(_).take(1))
+      def steps(step: (Int, Int)): Iterator[Square] =
+        Iterator.iterate[Option[Square]](Some(piece.square))(_.flatMap(_ + step)).drop(1).takeWhile(_.isDefined).map(_.get)
 
-    def pawnAdvance(step: (Int, Int), nSteps: Int): Vector[Square] = steps(step).take(nSteps).takeWhile(!isOccupied(_)).toVector
-    def pawnCapture(step: (Int, Int)): Vector[Square] = steps(step).take(1).takeWhile(isCapture).toVector
+      def canCapture(step: (Int, Int)): Iterator[Square] =
+        steps(step).span(isOpen) match { case (open, occ) => open ++ occ.take(1).takeWhile(opponents.contains) }
 
-    def enPassant(start: File, rankStep: Int): Vector[Square] = {
-      val (lastMove, lastBoard) = board.history.last
-      def isAllowed(last: Move, fileStep: Int) = {
-        val isPawn = lastBoard.pieces.find(_.square == last.start).get.`type` == Pawn
-        val isTwoSquareAdvance = math.abs(last.end.rank.n - last.start.rank.n) == 2
-        val canCapture = start + fileStep == Some(last.end.file)
-        isPawn && isTwoSquareAdvance && canCapture
+      def file: Vector[Square] = Offsets.file.flatMap(canCapture)
+      def rank: Vector[Square] = Offsets.rank.flatMap(canCapture)
+      def diagonals: Vector[Square] = Offsets.diagonals.flatMap(canCapture)
+      def adjacent: Vector[Square] = Offsets.adjacent.flatMap(canCapture(_).take(1))
+      def knights: Vector[Square] = Offsets.knight.flatMap(canCapture(_).take(1))
+
+      def openAdvance(step: (Int, Int), nSteps: Int): Vector[Square] = steps(step).take(nSteps).takeWhile(isOpen).toVector
+      def captureAdvance(step: (Int, Int)): Vector[Square] = steps(step).take(1).takeWhile(opponents.contains).toVector
+
+      def enPassant(step: (Int, Int), captureStep: (Int, Int)): Vector[Square] =
+        if (wasTwoSquarePawnAdvance && captureAdvance(captureStep).size == 1) openAdvance(step, 1) else Vector()
+
+      def pawnEnds(captures: Vector[(Int, Int)], advance: (Int, Int), advanceSteps: Int, enPassants: Vector[((Int, Int), (Int, Int))] = Vector()): Vector[Square] =
+        captures.flatMap(captureAdvance) ++ openAdvance(advance, advanceSteps) ++ enPassants.flatMap(e => enPassant(e._1, e._2))
+
+      def castles(side: Side): Vector[Castle] = {
+        def canCastle(c: Castle) = {
+          def rook(c: Castle): Square = c match { case `O-O` => side match { case White => H1; case Black => H8 }; case `O-O-O` => side match { case White => A1; case Black => A8 } }
+          board.pieces.exists(p => p.square == rook(c) && !p.hasMoved) && between(c, side).forall(s => !board.pieces.exists(_.square == s))
+        }
+        var result = Vector.empty[Castle]
+        if (canCastle(`O-O`)) result = result :+ `O-O`
+        if (canCastle(`O-O-O`)) result = result :+ `O-O-O`
+        result
       }
-      lastMove match {
-        case last: Move if isAllowed(last, 1) => canCapture((1, rankStep)).toVector
-        case last: Move if isAllowed(last, -1) => canCapture((-1, rankStep)).toVector
-        case _=> Vector()
+
+      def toMoves(ends: Vector[Square]): Vector[MoveBase] = ends.map(e => Move(piece.square, e))
+      def toPromotions(ends: Vector[Square]): Vector[MoveBase] = ends.flatMap(e => PromotionType.all.map(t => Promotion(piece.square, e, t)))
+
+      piece match {
+        case Piece(White, Pawn,   Square(_, `_2`), false) => toMoves(pawnEnds(Offsets.whitePawnCapture, Offsets.whitePawnAdvance, 2))
+        case Piece(White, Pawn,   Square(f, `_5`), true ) => toMoves(pawnEnds(Offsets.whitePawnCapture, Offsets.whitePawnAdvance, 1, Offsets.whiteEnPassent))
+        case Piece(White, Pawn,   Square(_, `_7`), true ) => toPromotions(pawnEnds(Offsets.whitePawnCapture, Offsets.whitePawnAdvance, 1))
+        case Piece(White, Pawn,   _,               true ) => toMoves(pawnEnds(Offsets.whitePawnCapture, Offsets.whitePawnAdvance, 1))
+
+        case Piece(Black, Pawn,   Square(_, `_7`), false) => toMoves(pawnEnds(Offsets.blackPawnCapture, Offsets.blackPawnAdvance, 2))
+        case Piece(Black, Pawn,   Square(f, `_4`), true ) => toMoves(pawnEnds(Offsets.blackPawnCapture, Offsets.blackPawnAdvance, 1, Offsets.blackEnPassent))
+        case Piece(Black, Pawn,   Square(_, `_2`), true ) => toPromotions(pawnEnds(Offsets.blackPawnCapture, Offsets.blackPawnAdvance, 1))
+        case Piece(Black, Pawn,   _,               true ) => toMoves(pawnEnds(Offsets.blackPawnCapture, Offsets.blackPawnAdvance, 1))
+
+        case Piece(White, King,   E1,              false) => toMoves(adjacent) ++ castles(White)
+        case Piece(Black, King,   E8,              false) => toMoves(adjacent) ++ castles(Black)
+        case Piece(_,     Rook,   _,               _    ) => toMoves(file ++ rank)
+        case Piece(_,     Knight, _,               _    ) => toMoves(knights)
+        case Piece(_,     Bishop, _,               _    ) => toMoves(diagonals)
+        case Piece(_,     King,   _,               _    ) => toMoves(adjacent)
+        case Piece(_,     Queen,  _,               _    ) => toMoves(file ++ rank ++ diagonals)
       }
+
     }
-
-    def castles(side: Side): Vector[Castle] = {
-      def canCastle(c: Castle) = {
-        def rook(c: Castle): Square = c match { case `O-O` => side match { case White => H1; case Black => H8 }; case `O-O-O` => side match { case White => A1; case Black => A8 } }
-        board.pieces.exists(p => p.square == rook(c) && !p.hasMoved) && between(c, side).forall(s => !board.pieces.exists(_.square == s))
-      }
-      var result = Vector.empty[Castle]
-      if (canCastle(`O-O`)) result = result :+ `O-O`
-      if (canCastle(`O-O-O`)) result = result :+ `O-O-O`
-      result
-    }
-
-    def toMoves(ends: Vector[Square]): Vector[MoveBase] = ends.map(e => Move(piece.square, e))
-    def toPromotions(ends: Vector[Square]): Vector[MoveBase] = ends.flatMap(e => PromotionType.all.map(t => Promotion(piece.square, e, t)))
-
-    piece match {
-      case Piece(White, Pawn,   Square(_, `_2`), false) => toMoves(pawnCapture(Offsets.upRight) ++ pawnCapture(Offsets.upLeft) ++ pawnAdvance(Offsets.up, 2))
-      case Piece(White, Pawn,   Square(f, `_5`), true ) => toMoves(pawnCapture(Offsets.upRight) ++ pawnCapture(Offsets.upLeft) ++ pawnAdvance(Offsets.up, 1) ++ enPassant(f, 1))
-      case Piece(White, Pawn,   Square(_, `_7`), true ) => toPromotions(pawnCapture(Offsets.upRight) ++ pawnCapture(Offsets.upLeft) ++ pawnAdvance(Offsets.up, 1))
-      case Piece(White, Pawn,   _,               true ) => toMoves(pawnCapture(Offsets.upRight) ++ pawnCapture(Offsets.upLeft) ++ pawnAdvance(Offsets.up, 1))
-      case Piece(White, King,   E1,              false) => toMoves(adjacent) ++ castles(White)
-      case Piece(Black, Pawn,   Square(_, `_7`), false) => toMoves(pawnCapture(Offsets.downRight) ++ pawnCapture(Offsets.downLeft) ++ pawnAdvance(Offsets.down, 2))
-      case Piece(Black, Pawn,   Square(f, `_4`), true ) => toMoves(pawnCapture(Offsets.downRight) ++ pawnCapture(Offsets.downLeft) ++ pawnAdvance(Offsets.down, 1) ++ enPassant(f, -1))
-      case Piece(Black, Pawn,   Square(_, `_2`), true ) => toPromotions(pawnCapture(Offsets.downRight) ++ pawnCapture(Offsets.downLeft) ++ pawnAdvance(Offsets.down, 1))
-      case Piece(Black, Pawn,   _,               true ) => toMoves(pawnCapture(Offsets.downRight) ++ pawnCapture(Offsets.downLeft) ++ pawnAdvance(Offsets.down, 1))
-      case Piece(Black, King,   E8,              false) => toMoves(adjacent) ++ castles(Black)
-      case Piece(_,     Rook,   _,               _    ) => toMoves(file ++ rank)
-      case Piece(_,     Knight, _,               _    ) => toMoves(knights)
-      case Piece(_,     Bishop, _,               _    ) => toMoves(diagonals)
-      case Piece(_,     King,   _,               _    ) => toMoves(adjacent)
-      case Piece(_,     Queen,  _,               _    ) => toMoves(file ++ rank ++ diagonals)
-    }
-
   }
 
   private def doMove(board: Board, move: MoveBase): Board = {
@@ -118,7 +127,7 @@ import Board._
 
 case class Board private(turn: Side, pieces: Vector[Piece], history: Vector[(MoveBase, Board)]) {
 
-  private lazy val legalAndIllegal: Vector[MoveBase] = pieces filter(_.side == turn) flatMap(generateMoves(this, _))
+  private lazy val legalAndIllegal: Vector[MoveBase] = generateMoves(this)
 
   private lazy val canCaptureKing: Boolean = {
     val opponentsKing = pieces.filter(p => p.`type` == King && p.side != turn).map(_.square).toSet
