@@ -18,5 +18,4 @@ initialCommands in console :=
     |import TerminalPrinter._
     |import Square._
     |import MoveImplicits._
-    |import MovePrinter._
   """.stripMargin

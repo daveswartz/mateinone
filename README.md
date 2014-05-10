@@ -132,12 +132,10 @@ println(Board.initial.move(D2->D4, E7->E5, D4->E5, D7->D6, C1->G5, D6->E5, G5->D
 
 ### Generate Moves
 
-Generate the **opening moves** and print them using the  the `print` implicit method of `MovePrinter`:
+Generate the **opening moves** and print them using the  the `toString` implicit method of `Move`:
 
 ```scala
-import MovePrinter._
-
-println(Board.initial.moves.map(_.print))
+println(Board.initial.moves)
 ```
 
 Outputs the following:

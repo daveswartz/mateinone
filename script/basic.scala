@@ -15,6 +15,4 @@ println(Board.initial.move(G1->F3, G8->F6, G2->G3, G7->G6, F1->H3, F8->H6, `O-O`
 
 println(Board.initial.move(D2->D4, E7->E5, D4->E5, D7->D6, C1->G5, D6->E5, G5->D8).get.print)
 
-import MovePrinter._
-
-println(Board.initial.moves.map(_.print))
+println(Board.initial.moves)

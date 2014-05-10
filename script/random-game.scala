@@ -1,11 +1,10 @@
 import mateinone._
 import TerminalPrinter._
-import MovePrinter._
 import scala.annotation.tailrec
 import scala.util.Random
 
 @tailrec def printAndMove(index: Int, board: Board, last: Seq[MoveBase]) {
-  if (index > 1) println(index/2+". "+last.map(_.print).fold("")(_+" "+_))
+  if (index > 1) println(index/2+". "+last.fold("")(_+" "+_))
   println(board.print)
   if (board.isCheckmate) println("Checkmate "+board.turn.other.toString+" wins")
   else if (board.isStalemate) println("Stalemate")
