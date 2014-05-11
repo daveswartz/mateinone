@@ -147,6 +147,4 @@ Scripts ♖
 
 The script directory contains all the code above in **[basic.scala](script/basic.scala)**
 
-The **[random-game.scala](script/random-game.scala)** script plays both sides of a random game that continues until one side wins or the game is drawn.
-
-The **[evaluation.scala](script/evaluation.scala)** script does a breadth-first search of moves using a simple board evaluation function to find the best move.
+The **[computer-computer-game.scala](script/computer-computer-game.scala)** script plays both sides of a game that continues until one side wins or the game is drawn.
