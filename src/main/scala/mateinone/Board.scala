@@ -6,6 +6,15 @@ import Rank._
 
 object Board {
 
+  val initial: Board = {
+    def pieces(side: Side, second: File => Square, back: File => Square) = {
+      def piece(`type`: PieceType, rank: File => Square, files: Vector[File]) = files.map(f => Piece(side, `type`, rank(f), hasMoved = false))
+      piece(Pawn, second, files) ++ piece(Rook, back, Vector(A, H)) ++ piece(Knight, back, Vector(B, G)) ++ piece(Bishop, back, Vector(C, F)) ++
+        piece(King, back, Vector(E)) ++ piece(Queen, back, Vector(D))
+    }
+    Board(White, pieces(White, square(_, _2), square(_, _1)) ++ pieces(Black, square(_, _7), square(_, _8)), Vector())
+  }
+
   private object generateMoves {
 
     private val (up, upRight, right, downRight, down, downLeft, left, upLeft) = ((0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1), (-1, 0), (-1, 1))
@@ -20,6 +29,7 @@ object Board {
       val occupied: Set[Square] = board.pieces.map(_.square).toSet
       def isOpen(s: Square): Boolean = !occupied.contains(s)
       val opponents: Set[Square] = board.pieces.filter(_.side == board.turn.other).map(_.square).toSet
+      def isOpponent(s: Square): Boolean = opponents.contains(s)
 
       val wasTwoSquarePawnAdvance: Boolean =
         board.history.lastOption match {
@@ -33,14 +43,11 @@ object Board {
         def steps(step: (Int, Int)): Iterator[Square] =
           Iterator.iterate[Option[Square]](Some(piece.square))(_.flatMap(_ + step)).drop(1).takeWhile(_.isDefined).map(_.get)
 
-        def canCapture(step: (Int, Int)): Iterator[Square] =
-          steps(step).span(isOpen) match { case (open, occ) => open ++ occ.take(1).takeWhile(opponents.contains) }
-
         def toMoves(ends: Vector[Square]): Vector[MoveBase] = ends.map(e => Move(piece.square, e))
 
         def pawnMoves(p: Piece): Vector[MoveBase] = {
           def open(step: (Int, Int), nSteps: Int): Vector[Square] = steps(step).take(nSteps).takeWhile(isOpen).toVector
-          def capture(step: (Int, Int)): Vector[Square] = steps(step).take(1).takeWhile(opponents.contains).toVector
+          def capture(step: (Int, Int)): Vector[Square] = steps(step).take(1).takeWhile(isOpponent).toVector
           def enPassant(step: (Int, Int), captureStep: (Int, Int)): Vector[Square] =
             if (wasTwoSquarePawnAdvance && !capture(captureStep).isEmpty) open(step, 1) else Vector()
 
@@ -64,8 +71,10 @@ object Board {
           result
         }
 
-        def canCaptureMoves(offsets: Vector[(Int, Int)]): Vector[MoveBase] = toMoves(offsets.flatMap(canCapture))
-        def oneCanCaptureMove(offsets: Vector[(Int, Int)]): Vector[MoveBase] = toMoves(offsets.flatMap(canCapture(_).take(1)))
+        def canCaptureMoves(offsets: Vector[(Int, Int)]): Vector[MoveBase] =
+          toMoves(offsets.flatMap(steps(_).span(isOpen) match { case (open, occ) => open ++ occ.take(1).takeWhile(isOpponent) }))
+        def oneCanCaptureMove(offsets: Vector[(Int, Int)]): Vector[MoveBase] =
+          toMoves(offsets.flatMap(steps(_).take(1).takeWhile(s => isOpen(s) || isOpponent(s))))
 
         piece match {
           case p @ Piece(_, Pawn, _, _)        => pawnMoves(p)
@@ -80,15 +89,6 @@ object Board {
 
       }
     }
-  }
-
-  val initial: Board = {
-    def pieces(side: Side, second: File => Square, back: File => Square) = {
-      def piece(`type`: PieceType, rank: File => Square, files: Vector[File]) = files.map(f => Piece(side, `type`, rank(f), hasMoved = false))
-      piece(Pawn, second, files) ++ piece(Rook, back, Vector(A, H)) ++ piece(Knight, back, Vector(B, G)) ++ piece(Bishop, back, Vector(C, F)) ++
-        piece(King, back, Vector(E)) ++ piece(Queen, back, Vector(D))
-    }
-    Board(White, pieces(White, square(_, _2), square(_, _1)) ++ pieces(Black, square(_, _7), square(_, _8)), Vector())
   }
 
   private def between(c: Castle, s: Side): Vector[Square] = c match {
