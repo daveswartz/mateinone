@@ -83,8 +83,8 @@ object Board {
       val moved: Set[Square] = board.pieces.filter(_.hasMoved).map(_.square).toSet
       def hasMoved(s: Square): Boolean = moved.contains(s)
       val kingMoved = hasMoved(if (isWhite) E1 else E8)
-      val kingside: Boolean = !hasMoved(if (isWhite) H1 else H8) && !kingMoved && isOpen(if (isWhite) F1 else F8)
-      val queenside: Boolean = !hasMoved(if (isWhite) A1 else A8) && !kingMoved && (if (isWhite) Vector(C1, D1) else Vector(C8, D8)).forall(isOpen)
+      val kingside: Boolean = !hasMoved(if (isWhite) H1 else H8) && !kingMoved && (if (isWhite) Vector(F1, G1) else Vector(F8, G8)).forall(isOpen)
+      val queenside: Boolean = !hasMoved(if (isWhite) A1 else A8) && !kingMoved && (if (isWhite) Vector(B1, C1, D1) else Vector(B8, C8, D8)).forall(isOpen)
       if (kingside && queenside) Vector(`O-O`, `O-O-O`) else if (kingside) Vector(`O-O`) else if (queenside) Vector(`O-O-O`) else Vector()
     }
 
