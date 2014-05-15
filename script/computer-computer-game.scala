@@ -3,7 +3,6 @@ import scala.annotation.tailrec
 import TerminalPrinter._
 
 // Evaluation http://chessprogramming.wikispaces.com/Evaluation
-// Evaluation http://chessprogramming.wikispaces.com/Evaluation
 // Piece-Square Tables http://chessprogramming.wikispaces.com/Piece-Square+Tables
 // Simplified evaluation function http://chessprogramming.wikispaces.com/Simplified+evaluation+function
 
@@ -100,7 +99,7 @@ def score(node: Board, depth: Int): Int =
   else node.boards.map(-score(_, depth - 1)).max
 
 def nextMove(node: Board, depth: Int): MoveBase =
-  node.boards.maxBy(-score(_, depth - 1)).history.last._1
+  node.boards.par.maxBy(-score(_, depth - 1)).history.last._1
 
 @tailrec def step(board: Board) {
   println(board.print)
@@ -109,7 +108,7 @@ def nextMove(node: Board, depth: Int): MoveBase =
   else if (board.isInsufficientMaterial) println("Insufficient mating material")
   else if (board.isThreefoldRepetition) println(board.turn.toString+" claimed draw by threefold repetition")
   else if (board.isFiftyMoveRule) println(board.turn.toString+" claimed draw by fifty-move rule")
-  else step(board.move(nextMove(board, 2)).get)
+  else step(board.move(nextMove(board, 4)).get)
 }
 
 step(Board.initial)
