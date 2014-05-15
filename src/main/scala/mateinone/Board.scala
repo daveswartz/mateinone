@@ -150,7 +150,12 @@ case class Board private(turn: Side, pieces: Vector[Piece], history: Vector[(Mov
   }
   lazy val isAutomaticDraw: Boolean = isStalemate || isInsufficientMaterial
 
-  lazy val isThreefoldRepetition: Boolean = history.groupBy(_._2.moves).exists { case (_, repeats) => repeats.size == 3 }
+  lazy val isThreefoldRepetition: Boolean =
+    (history.map(_._2) :+ this)
+      .groupBy(_.pieces.map(p => (p.side, p.`type`, p.square)))
+      .values.find(_.size == 3)
+      .exists(_.map(_.moves).distinct.size == 1)
+
   lazy val isFiftyMoveRule: Boolean = {
     def isPawnMoveOrCapture(m: MoveBase, b: Board) = m match {
       case s: StartAndEnd => b.pieces.map(_.square).contains(s.end) || b.pieces.find(_.square == s.start).get.`type` == Pawn

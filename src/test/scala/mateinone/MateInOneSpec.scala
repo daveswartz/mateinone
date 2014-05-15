@@ -156,8 +156,8 @@ class MateInOneSpec extends Specification {
     "1. Nf3 Nf6 2. Ng1 Ng8 3. Nf3 Nf6 4. Ng1 Ng8 5. Nf3 Nf6; Threefold repetition in succession." in
       { Board.initial.move(G1->F3, G8->F6, F3->G1, F6->G8, G1->F3, G8->F6, F3->G1, F6->G8, G1->F3, G8->F6) must beSome.which(b => b.isThreefoldRepetition && b.mayClaimDraw) }
 
-    "1. Nf3 Nf6 2. Nh4 Nh5 3. Nf3 Nf6 4. Ng1 Ng8 5. Nf3 Nf6 6. Ng1 Ng8 5. Nf3 Nf6; Threefold repetition not in succession." in
-      { Board.initial.move(G1->F3, G8->F6, F3->H4, F6->H5, H4->F3, H5->F6, F3->G1, F6->G8, G1->F3, G8->F6, F3->G1, F6->G8, G1->F3, G8->F6) must beSome.which(b => b.isThreefoldRepetition && b.mayClaimDraw) }
+    "1. Nf3 Nf6 2. Nh4 Nh5 3. Nf3 Nf6 4. Ng1 Ng8 5. Nf3 Nf6; Threefold repetition not in succession." in
+      { Board.initial.move(G1->F3, G8->F6, F3->H4, F6->H5, H4->F3, H5->F6, F3->G1, F6->G8, G1->F3, G8->F6) must beSome.which(b => b.isThreefoldRepetition && b.mayClaimDraw) }
 
     "1. Nf3 Nf6 2. Ng1 Ng8 ... 49. Nf3 Nf6 50. Ng1 Ng8; Fifty-move rule." in
       { val moves: List[MoveBase] = List(G1->F3, G8->F6, F3->G1, F6->G8)
