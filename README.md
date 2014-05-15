@@ -147,4 +147,4 @@ Scripts ♖
 
 The script directory contains all the code above in **[basic.scala](script/basic.scala)**
 
-The **[computer-computer-game.scala](script/computer-computer-game.scala)** script plays both sides of a game that continues until one side wins or the game is drawn.
+The **[computer-computer-game.scala](script/computer-computer-game.scala)** script plays both sides until the game is won or drawn.
