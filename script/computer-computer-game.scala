@@ -108,7 +108,7 @@ def nextMove(node: Board, depth: Int): MoveBase =
   else if (board.isInsufficientMaterial) println("Insufficient mating material")
   else if (board.isThreefoldRepetition) println(board.turn.toString+" claimed draw by threefold repetition")
   else if (board.isFiftyMoveRule) println(board.turn.toString+" claimed draw by fifty-move rule")
-  else step(board.move(nextMove(board, 4)).get)
+  else step(board.move(nextMove(board, 2)).get)
 }
 
 step(Board.initial)

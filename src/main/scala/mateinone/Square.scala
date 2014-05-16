@@ -34,7 +34,9 @@ object Square {
       G1, G2, G3, G4, G5, G6, G7, G8,
       H1, H2, H3, H4, H5, H6, H7, H8 = squareIter.next()
   def square(file: File, rank: Rank): Square = squares(file.n)(rank.n)
+  private val fileStrings = Vector("a", "b", "c", "d", "e", "f", "g", "h")
 }
 case class Square private(file: File, rank: Rank) {
   def +(rhs: (Int, Int)): Option[Square] = (file + rhs._1).flatMap(fo => (rank + rhs._2).map(ro => Square.square(fo, ro)))
+  override def toString(): String = Square.fileStrings(file.n) + (rank.n + 1).toString
 }
