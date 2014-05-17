@@ -99,23 +99,36 @@ implicit def boardWithValue(b: Board) = new {
     def pieceValue(`type`: PieceType): Int =
       `type` match { case Pawn => 100; case Knight => 320; case Bishop => 330; case Rook => 500; case Queen => 900; case King => 0 }
     def value(piece: Piece): Int = squareValue(piece.side,  piece.`type`, piece.square, isEndGame) + pieceValue(piece.`type`)
-    b.pieces.toVector.map(p => (if (b.turn == p.side) 1 else -1) * value(p)).sum
+    b.pieces.toVector.map(p => (if (White == p.side) 1 else -1) * value(p)).sum
   }
 }
 
-def negamax(node: Board, depth: Int): Int =
-  if (depth == 0 || node.boards.isEmpty) node.value
-  else node.boards.map(-negamax(_, depth - 1)).max
+def negamax(node: Board, depth: Int, α: Int, β: Int, color: Int): Int =
+  if (depth == 0 || node.boards.isEmpty) color * node.value
+  else {
+    var α_new = α
+    var best = Int.MinValue
+    node.boards
+      .toVector
+      .sortBy(_.value)
+      .foreach { child =>
+        if (α_new >= β) return best
+        val v = -negamax(child, depth - 1, -β, -α_new, -color)
+        best = math.max(best, v)
+        α_new = math.max(α_new, v)
+      }
+    best
+  }
 
-@tailrec def step(board: Board) {
+@tailrec def step(board: Board, color: Int) {
   println(board.print)
-  println("Value: "+(if (board.turn == Black) -board.value else board.value))
+  println("Value: "+board.value)
   if (board.isCheckmate) println("Checkmate "+board.turn.other.toString+" wins")
   else if (board.isStalemate) println("Stalemate")
   else if (board.isInsufficientMaterial) println("Insufficient mating material")
   else if (board.isThreefoldRepetition) println(board.turn.toString+" claimed draw by threefold repetition")
   else if (board.isFiftyMoveRule) println(board.turn.toString+" claimed draw by fifty-move rule")
-  else step(board.boards.maxBy(-negamax(_, 2)))
+  else step(board.boards.maxBy(-negamax(_, 2, -10000, 10000, -color)), -color)
 }
 
-step(Board.initial)
+step(Board.initial, 1)
