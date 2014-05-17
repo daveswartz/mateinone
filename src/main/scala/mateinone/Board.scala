@@ -42,14 +42,14 @@ object Board {
 
       board.pieces filter(_.side == board.turn) flatMap { piece: Piece =>
 
-        def steps(step: (Int, Int)): Iterator[Square] =
-          Iterator.iterate[Option[Square]](Some(piece.square))(_.flatMap(_ + step)).drop(1).takeWhile(_.isDefined).map(_.get)
+        def steps(step: (Int, Int)): Vector[Square] =
+          Iterator.iterate[Option[Square]](Some(piece.square))(_.flatMap(_ + step)).drop(1).takeWhile(_.isDefined).map(_.get).toVector
 
         def toMoves(ends: Vector[Square]): Vector[MoveBase] = ends.map(e => Move(piece.square, e))
 
         def pawnMoves(p: Piece): Vector[MoveBase] = {
-          def open(step: (Int, Int), nSteps: Int): Vector[Square] = steps(step).take(nSteps).takeWhile(isOpen).toVector
-          def capture(step: (Int, Int)): Vector[Square] = steps(step).take(1).takeWhile(isOpponent).toVector
+          def open(step: (Int, Int), nSteps: Int): Vector[Square] = steps(step).take(nSteps).takeWhile(isOpen)
+          def capture(step: (Int, Int)): Vector[Square] = steps(step).take(1).takeWhile(isOpponent)
           def enPassant(step: (Int, Int), captureStep: (Int, Int)): Vector[Square] =
             if (wasTwoSquarePawnAdvance && !capture(captureStep).isEmpty) open(step, 1) else Vector()
 
