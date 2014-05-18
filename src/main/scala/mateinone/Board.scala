@@ -80,8 +80,8 @@ object Board {
     }
 
     val castles: Vector[MoveBase] = {
-      val moved: Set[Square] = board.pieces.filter(_.hasMoved).map(_.square)
-      def hasMoved(s: Square): Boolean = moved.contains(s)
+      val stationary: Set[Square] = board.pieces.filter(!_.hasMoved).map(_.square)
+      def hasMoved(s: Square): Boolean = !stationary.contains(s)
       val kingMoved = hasMoved(if (isWhite) E1 else E8)
       val kingside: Boolean = !hasMoved(if (isWhite) H1 else H8) && !kingMoved && (if (isWhite) Vector(F1, G1) else Vector(F8, G8)).forall(isOpen)
       val queenside: Boolean = !hasMoved(if (isWhite) A1 else A8) && !kingMoved && (if (isWhite) Vector(B1, C1, D1) else Vector(B8, C8, D8)).forall(isOpen)
