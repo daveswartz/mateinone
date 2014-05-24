@@ -35,7 +35,7 @@ object Board {
       def steps(start: Square, step: (Int, Int)): Vector[Square] =
         Iterator.iterate[Option[Square]](Some(start))(_.flatMap(_ + step)).drop(1).takeWhile(_.isDefined).map(_.get).toVector
 
-      def toMoves(start: Square, ends: Vector[Square]): Vector[MoveBase] = ends.map(e => Move(start, e))
+      def toMoves(start: Square, ends: Vector[Square]): Vector[MoveBase] = ends.map(e => Move.move(start, e))
 
       def pawnMoves(start: Square): Vector[MoveBase] = {
 
@@ -125,7 +125,7 @@ case class Board private(turn: Side, pieces: Set[Piece],
                          private val positions: Vector[Board.Position] = Vector(),
                          private val twoSquarePawnAdvance: Option[File] = None) {
 
-  private def legalAndIllegal: Vector[MoveBase] = generateMoves(this)
+  private lazy val legalAndIllegal: Vector[MoveBase] = generateMoves(this)
 
   private lazy val canCaptureKing: Boolean = {
     val opponentsKing = pieces.filter(p => p.`type` == King && p.side != turn).map(_.square)
@@ -145,7 +145,7 @@ case class Board private(turn: Side, pieces: Set[Piece],
       .toMap
   }
 
-  private lazy val position: Position =(pieces, twoSquarePawnAdvance)
+  private lazy val position: Position = (pieces, twoSquarePawnAdvance)
 
   def moves: Set[MoveBase] = leaves.keySet
   def boards: Iterable[Board] = leaves.values
