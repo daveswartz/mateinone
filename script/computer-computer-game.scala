@@ -40,25 +40,25 @@ object PieceSquareTables {
   ))
 
   private val rook: Vector[Vector[Int]] = groupByRank(Vector(
-    0, 0, 0, 0, 0, 0, 0, 0,
-    5, 10, 10, 10, 10, 10, 10, 5,
-    -5, 0, 0, 0, 0, 0, 0, -5,
-    -5, 0, 0, 0, 0, 0, 0, -5,
-    -5, 0, 0, 0, 0, 0, 0, -5,
-    -5, 0, 0, 0, 0, 0, 0, -5,
-    -5, 0, 0, 0, 0, 0, 0, -5,
-    0, 0, 0, 5, 5, 0, 0, 0
+      0,   0,   0,   0,   0,   0,   0,   0,
+      5,  10,  10,  10,  10,  10,  10,   5,
+     -5,   0,   0,   0,   0,   0,   0,  -5,
+     -5,   0,   0,   0,   0,   0,   0,  -5,
+     -5,   0,   0,   0,   0,   0,   0,  -5,
+     -5,   0,   0,   0,   0,   0,   0,  -5,
+     -5,   0,   0,   0,   0,   0,   0,  -5,
+      0,   0,   0,   5,   5,   0,   0,   0
   ))
 
   private val queen: Vector[Vector[Int]] = groupByRank(Vector(
-    -20, -10, -10, -5, -5, -10, -10, -20,
-    -10, 0, 0, 0, 0, 0, 0, -10,
-    -10, 0, 5, 5, 5, 5, 0, -10,
-    -5, 0, 5, 5, 5, 5, 0, -5,
-    0, 0, 5, 5, 5, 5, 0, -5,
-    -10, 5, 5, 5, 5, 5, 0, -10,
-    -10, 0, 5, 0, 0, 0, 0, -10,
-    -20, -10, -10, -5, -5, -10, -10, -20
+    -20, -10, -10,  -5,  -5, -10, -10, -20,
+    -10,   0,   0,   0,   0,   0,   0, -10,
+    -10,   0,   5,   5,   5,   5,   0, -10,
+     -5,   0,   5,   5,   5,   5,   0,  -5,
+      0,   0,   5,   5,   5,   5,   0,  -5,
+    -10,   5,   5,   5,   5,   5,   0, -10,
+    -10,   0,   5,   0,   0,   0,   0, -10,
+    -20, -10, -10,  -5,  -5, -10, -10, -20
   ))
 
   private val kingMiddleGame: Vector[Vector[Int]] = groupByRank(Vector(
@@ -68,67 +68,57 @@ object PieceSquareTables {
     -30, -40, -40, -50, -50, -40, -40, -30,
     -20, -30, -30, -40, -40, -30, -30, -20,
     -10, -20, -20, -20, -20, -20, -20, -10,
-    20, 20, 0, 0, 0, 0, 20, 20,
-    20, 30, 10, 0, 0, 10, 30, 20
+     20,  20,   0,   0,   0,   0,  20,  20,
+     20,  30,  10,   0,   0,  10,  30,  20
   ))
 
   private val kingEndGame: Vector[Vector[Int]] = groupByRank(Vector(
     -50, -40, -30, -20, -20, -30, -40, -50,
-    -30, -20, -10, 0, 0, -10, -20, -30,
-    -30, -10, 20, 30, 30, 20, -10, -30,
-    -30, -10, 30, 40, 40, 30, -10, -30,
-    -30, -10, 30, 40, 40, 30, -10, -30,
-    -30, -10, 20, 30, 30, 20, -10, -30,
-    -30, -30, 0, 0, 0, 0, -30, -30,
+    -30, -20, -10,   0,   0, -10, -20, -30,
+    -30, -10,  20,  30,  30,  20, -10, -30,
+    -30, -10,  30,  40,  40,  30, -10, -30,
+    -30, -10,  30,  40,  40,  30, -10, -30,
+    -30, -10,  20,  30,  30,  20, -10, -30,
+    -30, -30,   0,   0,   0,   0, -30, -30,
     -50, -30, -30, -30, -30, -30, -30, -50
   ))
 
   private def squareValues(`type`: PieceType, isEndGame: Boolean): Vector[Vector[Int]] = `type` match {
     case Pawn => pawn; case Knight => knight; case Bishop => bishop; case Rook => rook; case Queen => queen;
-    case King if !isEndGame => kingMiddleGame; case King if isEndGame => kingEndGame }
+    case King => if (isEndGame) kingEndGame else kingMiddleGame }
 
   def squareValue(side: Side, `type`: PieceType, square: Square, isEndGame: Boolean = false): Int =
     squareValues(`type`, isEndGame)(if (side == White) 7 - square.rank.n else square.rank.n)(square.file.n)
 
 }
+import PieceSquareTables._
+
+def pieceTypeValue(`type`: PieceType): Int =
+  `type` match { case Pawn => 100; case Knight => 320; case Bishop => 330; case Rook => 500; case Queen => 900; case King => 0 }
 
 implicit def boardWithValue(b: Board) = new {
   val value: Int = {
-    import PieceSquareTables.squareValue
     val isEndGame = b.pieces.count(_.`type` == Queen) == 0
-    def pieceValue(`type`: PieceType): Int =
-      `type` match { case Pawn => 100; case Knight => 320; case Bishop => 330; case Rook => 500; case Queen => 900; case King => 0 }
-    def value(piece: Piece): Int = squareValue(piece.side,  piece.`type`, piece.square, isEndGame) + pieceValue(piece.`type`)
+    def value(piece: Piece): Int = squareValue(piece.side,  piece.`type`, piece.square, isEndGame) + pieceTypeValue(piece.`type`)
     b.pieces.toVector.map(p => (if (White == p.side) 1 else -1) * value(p)).sum
   }
 }
 
-def negamax(node: Board, depth: Int, α: Int, β: Int, color: Int): Int =
+def negamax(node: Board, depth: Int, color: Int): Int =
   if (depth == 0 || node.boards.isEmpty) color * node.value
-  else {
-    var α_new = α
-    var best = Int.MinValue
-    node.boards
-      .toVector
-      .sortBy(_.value)
-      .foreach { child =>
-        if (α_new >= β) return best
-        val v = -negamax(child, depth - 1, -β, -α_new, -color)
-        best = math.max(best, v)
-        α_new = math.max(α_new, v)
-      }
-    best
-  }
+  else node.boards.map(-negamax(_, depth - 1, -color)).max
 
-@tailrec def step(board: Board, color: Int) {
+var board = Board.initial
+@tailrec def step(depth: Int, color: Int) {
   println(board.print)
-  println("Value: "+board.value)
   if (board.isCheckmate) println("Checkmate "+board.turn.other.toString+" wins")
   else if (board.isStalemate) println("Stalemate")
   else if (board.isInsufficientMaterial) println("Insufficient mating material")
   else if (board.isThreefoldRepetition) println(board.turn.toString+" claimed draw by threefold repetition")
   else if (board.isFiftyMoveRule) println(board.turn.toString+" claimed draw by fifty-move rule")
-  else step(board.boards.maxBy(-negamax(_, 2, -10000, 10000, -color)), -color)
+  else {
+    board = board.boards.par.maxBy(-negamax(_, depth - 1, -color))
+    step(depth, -color)
+  }
 }
-
-step(Board.initial, 1)
+step(depth = 4, color = 1)

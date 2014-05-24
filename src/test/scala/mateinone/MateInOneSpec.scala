@@ -89,9 +89,22 @@ class MateInOneSpec extends Specification {
     "pawn promotion"                               in movesAllowed(G2->G4, H7->H5, H2->H4, H5->G4, H4->H5, H8->H6, F2->F3, H6->G6, H5->H6, G4->F3, H6->H7, F3->E2, H7->H8->Queen)(Set(Piece(White, Queen, H8, _), Piece(Black, Rook, G6, _), Piece(Black, Pawn, E2, _)), nCaptured = 3)
     "pawn promotion on capture"                    in movesAllowed(G2->G4, H7->H5, H2->H4, H5->G4, H4->H5, H8->H6, F2->F3, H6->G6, H5->H6, G4->F3, H6->H7, F3->E2, H7->G8->Queen)(Set(Piece(White, Queen, G8, _), Piece(Black, Rook, G6, _), Piece(Black, Pawn, E2, _)), nCaptured = 4)
     "white pawn to g8 without promotion"           in lastMoveNotAllowed(G2->G4, H7->H5, H2->H4, H5->G4, H4->H5, H8->H6, F2->F3, H6->G6, H5->H6, G4->F3, H6->H7, F3->E2, H7->H8)
-    "en passant when pawn advanced two"            in movesAllowed(E2->E4, E7->E6, E4->E5, D7->D5, E5->D6)(Set(Piece(White, Pawn, D6, _), Piece(Black, Pawn, E6, _)), nCaptured = 1)
-    "en passant when pawn previously advanced two" in lastMoveNotAllowed(E2->E4, D7->D5, E4->E5, E7->E6, E5->D6)
-    "en passant when pawn advanced one"            in lastMoveNotAllowed(E2->E4, D7->D6, E4->E5, D6->D5, E5->D6)
+  }
+
+  "En passant" should {
+
+    "1. e4 e6 2. e5 d5 3. exd6; White captures the black pawn en passant." in
+      movesAllowed(E2->E4, E7->E6, E4->E5, D7->D5, E5->D6)(Set(Piece(White, Pawn, D6, _), Piece(Black, Pawn, E6, _)), nCaptured = 1)
+
+    "1. e4 d5 2. e5 g5 3. exd6; White attempts to capture the black pawn en passant, but in the wrong file." in
+      lastMoveNotAllowed(E2->E4, D7->D5, E4->E5, G7->G5, E5->D6)
+
+    "1. e4 d5 2. e5 e6 3. exd6; White attempts to capture the black pawn en passant, but it did not just move." in
+      lastMoveNotAllowed(E2->E4, D7->D5, E4->E5, E7->E6, E5->D6)
+
+    "1. e4 d6 2. e5 d5 3. exd6; White attempts to capture the black pawn en passant, but it only advanced one square." in
+      lastMoveNotAllowed(E2->E4, D7->D6, E4->E5, D6->D5, E5->D6)
+
   }
 
   "Castling" should {
