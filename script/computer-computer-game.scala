@@ -104,18 +104,14 @@ implicit def boardWithValue(b: Board) = new {
   }
 }
 
+var evaluations = 0
 def negamax(node: Board, depth: Int, color: Int): Int =
-  if (depth == 0 || node.boards.isEmpty) color * node.value
+  if (depth == 0 || node.boards.isEmpty) { evaluations += 1; color * node.value }
   else node.boards.map(-negamax(_, depth - 1, -color)).max
 
-var (move: Option[MoveBase], board: Board) = (None, Board.initial)
+var board = Board.initial
 var start = System.currentTimeMillis
 @tailrec def step(depth: Int, color: Int) {
-  println(board.print(move))
-  val end = System.currentTimeMillis
-  println("Score: %d | Elapsed: %.3f".format(board.value, (end - start)/1000d))
-  start = end
-
   if (board.isCheckmate) println("Checkmate "+board.turn.other.toString+" wins")
   else if (board.isStalemate) println("Stalemate")
   else if (board.isInsufficientMaterial) println("Insufficient mating material")
@@ -123,9 +119,15 @@ var start = System.currentTimeMillis
   else if (board.isFiftyMoveRule) println(board.turn.toString+" claimed draw by fifty-move rule")
   else {
     val (m, b) = board.leaves.par.maxBy(l => -negamax(l._2, depth - 1, -color))
-    move = Some(m)
     board = b
+    println(board.print(Some(m)))
+    val end = System.currentTimeMillis
+    println("Score: %d | Leaves: %d | Evaluations: %d | Elapsed: %.3f".format(board.value, board.leaves.size, evaluations, (end - start)/1000d))
+    evaluations = 0
+    start = end
     step(depth, -color)
   }
 }
+
+println(board.print(None))
 step(depth = 4, color = 1)
