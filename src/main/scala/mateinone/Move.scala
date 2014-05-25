@@ -2,13 +2,17 @@ package mateinone
 
 import scala.language.implicitConversions
 import scala.language.reflectiveCalls
+import scala.collection.mutable
 
 sealed trait MoveBase
 sealed trait StartAndEnd { val start: Square; val end: Square }
 
 object Move {
-  private val moves: Map[(Square, Square), Move] = Square.squares.flatten.flatMap(s => Square.squares.flatten.map(e => (s, e) -> Move(s, e))).toMap
-  def move(start: Square, end: Square): Move = moves(start, end)
+  private val cache: mutable.Map[Move, Move] = mutable.Map()
+  def move(start: Square, end: Square): Move = {
+    val key = Move(start, end)
+    cache.getOrElseUpdate(key, key)
+  }
 }
 case class Move private(start: Square, end: Square) extends MoveBase with StartAndEnd {
   override def toString(): String = start+"->"+end

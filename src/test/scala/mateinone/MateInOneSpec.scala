@@ -57,11 +57,11 @@ class MateInOneSpec extends Specification {
         Seq(
           Rook->A1, Pawn->A2, Knight->B1, Pawn->B2, Bishop->C1, Pawn->C2, Queen->D1, Pawn->D2,
           King->E1, Pawn->E2, Bishop->F1, Pawn->F2, Knight->G1, Pawn->G2, Rook->H1, Pawn->H2
-        ).map { case (side, square) => Piece(White, side, square, hasMoved = false) } ++
+        ).map { case (side, square) => Piece.piece(White, side, square, hasMoved = false) } ++
         Seq(
           Rook->A8, Pawn->A7, Knight->B8, Pawn->B7, Bishop->C8, Pawn->C7, Queen->D8, Pawn->D7,
           King->E8, Pawn->E7, Bishop->F8, Pawn->F7, Knight->G8, Pawn->G7, Rook->H8, Pawn->H7
-        ).map { case (side, square) => Piece(Black, side, square, hasMoved = false) }
+        ).map { case (side, square) => Piece.piece(Black, side, square, hasMoved = false) }
       Board.initial.pieces must containTheSameElementsAs(expectedPieces)
     }
 
@@ -72,29 +72,29 @@ class MateInOneSpec extends Specification {
       moveAndCheckMoves(G2->G3)(A7->A6, A7->A5, B8->A6, B8->C6, B7->B6, B7->B5, C7->C6, C7->C5, D7->D6, D7->D5, E7->E6, E7->E5, F7->F6, F7->F5, G8->F6, G8->H6, G7->G6, G7->G5, H7->H6, H7->H5)
 
     "be immutable" in
-      { Board.initial.move(G2->G3) must beSome.which { b => b.move(G3->G4); onlyTheseMoved(Set(Piece(White, Pawn, G3, _)))(b) } }
+      { Board.initial.move(G2->G3) must beSome.which { b => b.move(G3->G4); onlyTheseMoved(Set(Piece.piece(White, Pawn, G3, _)))(b) } }
 
   }
 
   "Simple moves" should {
-    "1. g3"                                   in movesAllowed(G2->G3)(Set(Piece(White, Pawn, G3, _)))
-    "1. Nf3"                                  in movesAllowed(G1->F3)(Set(Piece(White, Knight, F3, _)))
-    "1. g3 a6 2. Bh3"                         in movesAllowed(G2->G3, A7->A6, F1->H3)(Set(Piece(White, Pawn, G3, _), Piece(White, Bishop, H3, _), Piece(Black, Pawn, A6, _)))
-    "1. d4 e5 2. dxe5 d6 3. Bg5 dxe5 4. Bxd8" in movesAllowed(D2->D4, E7->E5, D4->E5, D7->D6, C1->G5, D6->E5, G5->D8)(Set(Piece(White, Bishop, D8, _), Piece(Black, Pawn, E5, _)), nCaptured = 3)
+    "1. g3"                                   in movesAllowed(G2->G3)(Set(Piece.piece(White, Pawn, G3, _)))
+    "1. Nf3"                                  in movesAllowed(G1->F3)(Set(Piece.piece(White, Knight, F3, _)))
+    "1. g3 a6 2. Bh3"                         in movesAllowed(G2->G3, A7->A6, F1->H3)(Set(Piece.piece(White, Pawn, G3, _), Piece.piece(White, Bishop, H3, _), Piece.piece(Black, Pawn, A6, _)))
+    "1. d4 e5 2. dxe5 d6 3. Bg5 dxe5 4. Bxd8" in movesAllowed(D2->D4, E7->E5, D4->E5, D7->D6, C1->G5, D6->E5, G5->D8)(Set(Piece.piece(White, Bishop, D8, _), Piece.piece(Black, Pawn, E5, _)), nCaptured = 3)
   }
 
   "Pawn moves" should {
     "white pawn to g6 after pawn to g4"            in lastMoveNotAllowed(G2->G4, A7->A6, G4->G6)
     "white pawn capture non-diagonal"              in lastMoveNotAllowed(D2->D4, D7->D5, D4->D5)
-    "pawn promotion"                               in movesAllowed(G2->G4, H7->H5, H2->H4, H5->G4, H4->H5, H8->H6, F2->F3, H6->G6, H5->H6, G4->F3, H6->H7, F3->E2, H7->H8->Queen)(Set(Piece(White, Queen, H8, _), Piece(Black, Rook, G6, _), Piece(Black, Pawn, E2, _)), nCaptured = 3)
-    "pawn promotion on capture"                    in movesAllowed(G2->G4, H7->H5, H2->H4, H5->G4, H4->H5, H8->H6, F2->F3, H6->G6, H5->H6, G4->F3, H6->H7, F3->E2, H7->G8->Queen)(Set(Piece(White, Queen, G8, _), Piece(Black, Rook, G6, _), Piece(Black, Pawn, E2, _)), nCaptured = 4)
+    "pawn promotion"                               in movesAllowed(G2->G4, H7->H5, H2->H4, H5->G4, H4->H5, H8->H6, F2->F3, H6->G6, H5->H6, G4->F3, H6->H7, F3->E2, H7->H8->Queen)(Set(Piece.piece(White, Queen, H8, _), Piece.piece(Black, Rook, G6, _), Piece.piece(Black, Pawn, E2, _)), nCaptured = 3)
+    "pawn promotion on capture"                    in movesAllowed(G2->G4, H7->H5, H2->H4, H5->G4, H4->H5, H8->H6, F2->F3, H6->G6, H5->H6, G4->F3, H6->H7, F3->E2, H7->G8->Queen)(Set(Piece.piece(White, Queen, G8, _), Piece.piece(Black, Rook, G6, _), Piece.piece(Black, Pawn, E2, _)), nCaptured = 4)
     "white pawn to g8 without promotion"           in lastMoveNotAllowed(G2->G4, H7->H5, H2->H4, H5->G4, H4->H5, H8->H6, F2->F3, H6->G6, H5->H6, G4->F3, H6->H7, F3->E2, H7->H8)
   }
 
   "En passant" should {
 
     "1. e4 e6 2. e5 d5 3. exd6; White captures the black pawn en passant." in
-      movesAllowed(E2->E4, E7->E6, E4->E5, D7->D5, E5->D6)(Set(Piece(White, Pawn, D6, _), Piece(Black, Pawn, E6, _)), nCaptured = 1)
+      movesAllowed(E2->E4, E7->E6, E4->E5, D7->D5, E5->D6)(Set(Piece.piece(White, Pawn, D6, _), Piece.piece(Black, Pawn, E6, _)), nCaptured = 1)
 
     "1. e4 d5 2. e5 g5 3. exd6; White attempts to capture the black pawn en passant, but in the wrong file." in
       lastMoveNotAllowed(E2->E4, D7->D5, E4->E5, G7->G5, E5->D6)
@@ -110,10 +110,10 @@ class MateInOneSpec extends Specification {
   "Castling" should {
 
     "1. Nf3 Nf6 2. g3 g6 3. Bh3 Bh6 4. O-O O-O; White and black castle kingside." in
-      movesAllowed(G1->F3, G8->F6, G2->G3, G7->G6, F1->H3, F8->H6, `O-O`, `O-O`)(Set(Piece(White, Knight, F3, _),  Piece(White, Pawn, G3, _),  Piece(White, Bishop, H3, _),  Piece(White, King, G1, _),  Piece(White, Rook, F1, _),  Piece(Black, Knight, F6, _),  Piece(Black, Pawn, G6, _),  Piece(Black, Bishop, H6, _),  Piece(Black, King, G8, _),  Piece(Black, Rook, F8, _)))
+      movesAllowed(G1->F3, G8->F6, G2->G3, G7->G6, F1->H3, F8->H6, `O-O`, `O-O`)(Set(Piece.piece(White, Knight, F3, _),  Piece.piece(White, Pawn, G3, _),  Piece.piece(White, Bishop, H3, _),  Piece.piece(White, King, G1, _),  Piece.piece(White, Rook, F1, _),  Piece.piece(Black, Knight, F6, _),  Piece.piece(Black, Pawn, G6, _),  Piece.piece(Black, Bishop, H6, _),  Piece.piece(Black, King, G8, _),  Piece.piece(Black, Rook, F8, _)))
 
     "1. Nc3 Nc6 2. d3 d6 3. Bg5 Bg4 4. Qd2 Qd7 5. O-O-O O-O-O; White and black castle queenside." in
-      movesAllowed(B1->C3, B8->C6, D2->D3, D7->D6, C1->G5, C8->G4, D1->D2, D8->D7, `O-O-O`, `O-O-O`)(Set(Piece(White, Knight, C3, _),  Piece(White, Pawn, D3, _),  Piece(White, Bishop, G5, _),  Piece(White, Queen, D2, _),  Piece(White, Rook, D1, _),  Piece(White, King, C1, _),  Piece(Black, Knight, C6, _),  Piece(Black, Pawn, D6, _),  Piece(Black, Bishop, G4, _),  Piece(Black, Queen, D7, _),  Piece(Black, Rook, D8, _),  Piece(Black, King, C8, _)))
+      movesAllowed(B1->C3, B8->C6, D2->D3, D7->D6, C1->G5, C8->G4, D1->D2, D8->D7, `O-O-O`, `O-O-O`)(Set(Piece.piece(White, Knight, C3, _),  Piece.piece(White, Pawn, D3, _),  Piece.piece(White, Bishop, G5, _),  Piece.piece(White, Queen, D2, _),  Piece.piece(White, Rook, D1, _),  Piece.piece(White, King, C1, _),  Piece.piece(Black, Knight, C6, _),  Piece.piece(Black, Pawn, D6, _),  Piece.piece(Black, Bishop, G4, _),  Piece.piece(Black, Queen, D7, _),  Piece.piece(Black, Rook, D8, _),  Piece.piece(Black, King, C8, _)))
 
     "1. Nf3 Nf6 2. g3 g6 3. Bh3 Bh6 4. Kf1 Kf8 5. Ke1 Ke8 6. O-O; White attempts to castle kingside after moving the king." in
       lastMoveNotAllowed(G1->F3, G8->F6, G2->G3, G7->G6, F1->H3, F8->H6, E1->F1, E8->F8, F1->E1, F8->E8, `O-O`)
@@ -135,13 +135,13 @@ class MateInOneSpec extends Specification {
   "Check" should {
 
     "1. e4 Nf6 2. d4 Ng4 3. c4 Nxh2 4. f3 Nxf3+ 5. Nxf3; Capture the checking piece." in
-      movesAllowed(E2 -> E4, G8 -> F6, D2 -> D4, F6 -> G4, C2 -> C4, G4 -> H2, F2 -> F3, H2 -> F3, G1 -> F3)(Set(Piece(White, Pawn, C4, _), Piece(White, Pawn, D4, _), Piece(White, Pawn, E4, _), Piece(White, Knight, F3, _)), nCaptured = 3)
+      movesAllowed(E2 -> E4, G8 -> F6, D2 -> D4, F6 -> G4, C2 -> C4, G4 -> H2, F2 -> F3, H2 -> F3, G1 -> F3)(Set(Piece.piece(White, Pawn, C4, _), Piece.piece(White, Pawn, D4, _), Piece.piece(White, Pawn, E4, _), Piece.piece(White, Knight, F3, _)), nCaptured = 3)
 
     "1. e4 e5 2. d4 Bb4+ 3. Ke2; Move the White king out of check." in
-      movesAllowed(E2 -> E4, E7 -> E5, D2 -> D4, F8 -> B4, E1 -> E2)(Set(Piece(White, King, E2, _), Piece(White, Pawn, D4, _), Piece(White, Pawn, E4, _), Piece(Black, Bishop, B4, _), Piece(Black, Pawn, E5, _)))
+      movesAllowed(E2 -> E4, E7 -> E5, D2 -> D4, F8 -> B4, E1 -> E2)(Set(Piece.piece(White, King, E2, _), Piece.piece(White, Pawn, D4, _), Piece.piece(White, Pawn, E4, _), Piece.piece(Black, Bishop, B4, _), Piece.piece(Black, Pawn, E5, _)))
 
     "1. e4 e5 2. d4 Bb4+ 3. c3; Block the check." in
-      movesAllowed(E2 -> E4, E7 -> E5, D2 -> D4, F8 -> B4, C2 -> C3)(Set(Piece(White, Pawn, C3, _), Piece(White, Pawn, D4, _), Piece(White, Pawn, E4, _), Piece(Black, Bishop, B4, _), Piece(Black, Pawn, E5, _)))
+      movesAllowed(E2 -> E4, E7 -> E5, D2 -> D4, F8 -> B4, C2 -> C3)(Set(Piece.piece(White, Pawn, C3, _), Piece.piece(White, Pawn, D4, _), Piece.piece(White, Pawn, E4, _), Piece.piece(Black, Bishop, B4, _), Piece.piece(Black, Pawn, E5, _)))
 
     "1. e4 e5 2. f4 Bb4 3. d3; The last move puts White's own king in check." in
       lastMoveNotAllowed(E2 -> E4, E7 -> E5, F2 -> F4, F8 -> B4, D2 -> D3)

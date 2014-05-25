@@ -25,10 +25,16 @@ import Printers._
 
 object TerminalPrinter {
   implicit def boardToTerminalBoard(b: Board) = new {
-    def print: String = (
-      "┌─────────────────┐" +:
-      squares.transpose.reverse.map(rank => rank.map(square => b.pieces.find(_.square == square).fold(" ")(_.print))).map(rank => ("│"+:rank:+"│").mkString(" ")) :+
-      "└─────────────────┘").mkString("\n")
+    def print(last: Option[MoveBase]): String = {
+      val start = last map {
+        case Move(s, _) => s
+        case Promotion(s, _, _) => s
+        case _: Castle => if (b.turn == White) E8 else E1
+      }
+      ("┌─────────────────┐" +:
+        squares.transpose.reverse.map(rank => rank.map(square => if (start == Some(square)) "·" else b.pieces.find(_.square == square).fold(" ")(_.print))).map(rank => ("│"+:rank:+"│").mkString(" ")) :+
+        "└─────────────────┘").mkString("\n")
+    }
   }
 }
 

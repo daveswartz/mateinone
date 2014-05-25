@@ -108,16 +108,23 @@ def negamax(node: Board, depth: Int, color: Int): Int =
   if (depth == 0 || node.boards.isEmpty) color * node.value
   else node.boards.map(-negamax(_, depth - 1, -color)).max
 
-var board = Board.initial
+var (move: Option[MoveBase], board: Board) = (None, Board.initial)
+var start = System.currentTimeMillis
 @tailrec def step(depth: Int, color: Int) {
-  println(board.print)
+  println(board.print(move))
+  val end = System.currentTimeMillis
+  println("Score: %d | Elapsed: %.3f".format(board.value, (end - start)/1000d))
+  start = end
+
   if (board.isCheckmate) println("Checkmate "+board.turn.other.toString+" wins")
   else if (board.isStalemate) println("Stalemate")
   else if (board.isInsufficientMaterial) println("Insufficient mating material")
   else if (board.isThreefoldRepetition) println(board.turn.toString+" claimed draw by threefold repetition")
   else if (board.isFiftyMoveRule) println(board.turn.toString+" claimed draw by fifty-move rule")
   else {
-    board = board.boards.par.maxBy(-negamax(_, depth - 1, -color))
+    val (m, b) = board.leaves.par.maxBy(l => -negamax(l._2, depth - 1, -color))
+    move = Some(m)
+    board = b
     step(depth, -color)
   }
 }

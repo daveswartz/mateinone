@@ -1,24 +1,24 @@
 package mateinone
 
 object File {
-  val files: Vector[File] = Vector.range(0, 8).map(File.apply)
+  val files: Vector[File] = Vector.range(0: Byte, 8: Byte).map(File.apply)
   private val fileOption = files.lift
   private val fileIter = files.iterator
   val A, B, C, D, E, F, G, H = fileIter.next()
 }
-case class File private(n: Int) extends Ordered[File] {
-  def +(rhs: Int): Option[File] = File.fileOption(n + rhs)
+case class File private(n: Byte) extends Ordered[File] {
+  def +(rhs: Byte): Option[File] = File.fileOption(n + rhs)
   def compare(that: File): Int = n.compare(that.n)
 }
 
 object Rank {
-  val ranks: Vector[Rank] = Vector.range(0, 8).map(Rank.apply)
+  val ranks: Vector[Rank] = Vector.range(0: Byte, 8: Byte).map(Rank.apply)
   private val rankOption = ranks.lift
   private val rankIter = ranks.iterator
   val _1, _2, _3, _4, _5, _6, _7, _8 = rankIter.next()
 }
-case class Rank private(n: Int) extends Ordered[Rank] {
-  def +(rhs: Int): Option[Rank] = Rank.rankOption(n + rhs)
+case class Rank private(n: Byte) extends Ordered[Rank] {
+  def +(rhs: Byte): Option[Rank] = Rank.rankOption(n + rhs)
   def compare(that: Rank): Int = n.compare(that.n)
 }
 
@@ -37,6 +37,7 @@ object Square {
   private val fileStrings = Vector("a", "b", "c", "d", "e", "f", "g", "h")
 }
 case class Square private(file: File, rank: Rank) {
-  def +(rhs: (Int, Int)): Option[Square] = (file + rhs._1).flatMap(fo => (rank + rhs._2).map(ro => Square.square(fo, ro)))
+  def +(rhs: (Byte, Byte)): Option[Square] =
+    (file + rhs._1).flatMap(fo => (rank + rhs._2).map(ro => Square.square(fo, ro)))
   override def toString(): String = Square.fileStrings(file.n) + (rank.n + 1).toString
 }
