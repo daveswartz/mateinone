@@ -6,7 +6,7 @@ import Rank._
 
 object Board {
 
-  val initial: Board = {
+  def initial: Board = {
     def pieces(side: Side, second: File => Square, back: File => Square): Set[Piece] = {
       def piece(`type`: PieceType, rank: File => Square, files: Set[File]) = files.map(f => Piece(side, `type`, rank(f), hasMoved = false))
       piece(Pawn, second, files.toSet) ++ piece(Rook, back, Set(A, H)) ++ piece(Knight, back, Set(B, G)) ++ piece(Bishop, back, Set(C, F)) ++
