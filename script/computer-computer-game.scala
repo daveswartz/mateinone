@@ -119,10 +119,12 @@ var start = System.currentTimeMillis
   else if (board.isFiftyMoveRule) println(board.turn.toString+" claimed draw by fifty-move rule")
   else {
     val (m, b) = board.leaves.par.maxBy(l => -negamax(l._2, depth - 1, -color))
+    val nOfLeaves = board.leaves.size
     board = b
     println(board.print(Some(m)))
     val end = System.currentTimeMillis
-    println("Score: %d | Leaves: %d | Evaluations: %d | Elapsed: %.3f".format(board.value, board.leaves.size, evaluations, (end - start)/1000d))
+    val elapsed = (end - start)/1000d
+    println("Score: %d | Leaves: %d | Evaluations: %d | Elapsed: %.3f | Evaluations/Second: %.3f".format(board.value, nOfLeaves, evaluations, elapsed, evaluations / elapsed))
     evaluations = 0
     start = end
     step(depth, -color)
