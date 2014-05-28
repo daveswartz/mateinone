@@ -1,3 +1,4 @@
+import java.util.concurrent.atomic.AtomicInteger
 import mateinone._
 import scala.annotation.tailrec
 import TerminalPrinter._
@@ -104,28 +105,28 @@ implicit def boardWithValue(b: Board) = new {
   }
 }
 
-var evaluations = 0
+var evaluations = new AtomicInteger(0)
 def negamax(node: Board, depth: Int, color: Int): Int =
-  if (depth == 0 || node.boards.isEmpty) { evaluations += 1; color * node.value }
-  else node.boards.map(-negamax(_, depth - 1, -color)).max
+  if (depth == 0 || node.boards.isEmpty) { evaluations.getAndIncrement; color * node.value }
+  else node.boards.par.map(-negamax(_, depth - 1, -color)).max
 
 var board = Board.initial
 var start = System.currentTimeMillis
 @tailrec def step(depth: Int, color: Int) {
+  evaluations = new AtomicInteger(0)
   if (board.isCheckmate) println("Checkmate "+board.turn.other.toString+" wins")
   else if (board.isStalemate) println("Stalemate")
   else if (board.isInsufficientMaterial) println("Insufficient mating material")
   else if (board.isThreefoldRepetition) println(board.turn.toString+" claimed draw by threefold repetition")
   else if (board.isFiftyMoveRule) println(board.turn.toString+" claimed draw by fifty-move rule")
   else {
-    val (m, b) = board.leaves.par.maxBy(l => -negamax(l._2, depth - 1, -color))
+    val (m, b) = board.leaves.maxBy(l => -negamax(l._2, depth - 1, -color))
     val nOfLeaves = board.leaves.size
     board = b
     println(board.print(Some(m)))
     val end = System.currentTimeMillis
     val elapsed = (end - start)/1000d
-    println("Score: %d | Leaves: %d | Evaluations: %d | Elapsed: %.3f | Evaluations/Second: %.3f".format(board.value, nOfLeaves, evaluations, elapsed, evaluations / elapsed))
-    evaluations = 0
+    println("Score: %d | Leaves: %d | Evaluations: %d | Elapsed: %.3f | Evaluations/Second: %.3f".format(board.value, nOfLeaves, evaluations.intValue, elapsed, evaluations.intValue / elapsed))
     start = end
     step(depth, -color)
   }
