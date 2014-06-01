@@ -37,12 +37,9 @@ object Board {
     val opponents: Set[Square] = board.pieces.filter(_.side == board.turn.other).map(_.square)
     val openOrOpponent: Set[Square] = open union opponents
 
-    def forOne(start: Square, offsets: Vector[(Byte, Byte)], fn: Square => Boolean): Vector[Square] =
-      offsets.flatMap(start + _).filter(fn)
-    def forAll(start: Square, offset: (Byte, Byte)): Vector[Square] =
+    def ends(start: Square, offset: (Byte, Byte)): Vector[Square] =
       Iterator.iterate(start + offset)(_.flatMap(_ + offset)).takeWhile(_.isDefined).toVector.flatten
-    def openToOpponent(start: Square, offsets: Vector[(Byte, Byte)]): Vector[Square] =
-      offsets.flatMap(forAll(start, _).span(open.contains) match { case (l, r) => l ++ r.take(1).filter(opponents.contains) })
+        .span(open.contains) match { case (l, r) => l ++ r.take(1).filter(opponents.contains) }
 
     def toMoves(start: Square, ends: Vector[Square]): Vector[MoveBase] =
       ends.map(e => Move.move(start, e))
@@ -58,10 +55,9 @@ object Board {
         } yield stepSquare
       def toPromotions(start: Square, ends: Vector[Square]): Vector[MoveBase] =
         ends.flatMap(e => PromotionType.all.map(t => Promotion(start, e, t)))
-      def forTwo(start: Square, offsets: Vector[(Byte, Byte)], fn: Square => Boolean): Vector[Square] =
-        { val ones = forOne(start, offsets, fn); ones ++ ones.flatMap(forOne(_, offsets, fn)) }
-      val captureEnds = forOne(start, captures, opponents.contains)
-      val advanceEnds = if (start.rank == initial) forTwo(start, advance, open.contains) else forOne(start, advance, open.contains)
+      val captureEnds = captures.flatMap(start + _).filter(opponents.contains)
+      def advanceOne(s: Square) = advance.flatMap(s + _).filter(open.contains)
+      val advanceEnds = if (start.rank == initial) { val ones = advanceOne(start); ones ++ ones.flatMap(advanceOne) } else advanceOne(start)
       if (start.rank == promotion) toPromotions(start, captureEnds ++ advanceEnds)
       else if (start.rank == enPassant) toMoves(start, captureEnds ++ advanceEnds ++ enPassantCaptures.zip(captures).flatMap { case (c, m) => enPassantEnd(c, m) })
       else toMoves(start, captureEnds ++ advanceEnds)
@@ -70,11 +66,11 @@ object Board {
     val moves = board.pieces filter(_.side == board.turn) flatMap {
       case Piece(White, Pawn, start, _) => pawnMoves(start, whitePawnAdvance, whitePawnCaptures, `_2`, `_7`, `_5`)
       case Piece(Black, Pawn, start, _) => pawnMoves(start, blackPawnAdvance, blackPawnCaptures, `_7`, `_2`, `_4`)
-      case Piece(_, Knight, start, _) => toMoves(start, forOne(start, knight, openOrOpponent.contains))
-      case Piece(_, Bishop, start, _) => toMoves(start, openToOpponent(start, diagonals))
-      case Piece(_, Rook, start, _) => toMoves(start, openToOpponent(start, rook))
-      case Piece(_, Queen, start, _) => toMoves(start, openToOpponent(start, queen))
-      case Piece(_, King, start, _) => toMoves(start, forOne(start, adjacent, openOrOpponent.contains))
+      case Piece(_, Knight, start, _) => toMoves(start, knight.flatMap(start + _).filter(openOrOpponent.contains))
+      case Piece(_, Bishop, start, _) => toMoves(start, diagonals.flatMap(ends(start, _)))
+      case Piece(_, Rook, start, _) => toMoves(start, rook.flatMap(ends(start, _)))
+      case Piece(_, Queen, start, _) => toMoves(start, queen.flatMap(ends(start, _)))
+      case Piece(_, King, start, _) => toMoves(start, adjacent.flatMap(start + _).filter(openOrOpponent.contains))
     }
 
     val castles: Vector[MoveBase] = {
