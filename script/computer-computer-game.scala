@@ -120,10 +120,10 @@ var start = System.currentTimeMillis
   else if (board.isThreefoldRepetition) println(board.turn.toString+" claimed draw by threefold repetition")
   else if (board.isFiftyMoveRule) println(board.turn.toString+" claimed draw by fifty-move rule")
   else {
-    val (m, b) = board.leaves.maxBy(l => -negamax(l._2, depth - 1, -color))
+    val (bestMove, bestBoard) = board.leaves.minBy { case (_, b) => negamax(b, depth - 1, -color) }
     val nOfLeaves = board.leaves.size
-    board = b
-    println(board.print(Some(m)))
+    board = bestBoard
+    println(board.print(Some(bestMove)))
     val end = System.currentTimeMillis
     val elapsed = (end - start)/1000d
     println("Score: %d | Leaves: %d | Evaluations: %d | Elapsed: %.3f | Evaluations/Second: %.3f".format(board.value, nOfLeaves, evaluations.intValue, elapsed, evaluations.intValue / elapsed))
