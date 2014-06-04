@@ -106,31 +106,50 @@ implicit def boardWithValue(b: Board) = new {
 }
 
 var evaluations = new AtomicInteger(0)
-def negamax(node: Board, depth: Int, color: Int): Int =
+def negamax(node: Board, depth: Int, color: Int, a: Int, b: Int): Int =
   if (depth == 0 || node.boards.isEmpty) { evaluations.getAndIncrement; color * node.value }
-  else node.boards.par.map(-negamax(_, depth - 1, -color)).max
+  else {
+    var v = Int.MinValue
+    var a0 = a
+    for (c <- node.boards) {
+      v = math.max(v, -negamax(c, depth - 1, -color, -b, -a0))
+      a0 = math.max(a0, v)
+      if (v >= b) return v
+    }
+    v
+  }
 
-var board = Board.initial
+var current = Board.initial
 var start = System.currentTimeMillis
 @tailrec def step(depth: Int, color: Int) {
   evaluations = new AtomicInteger(0)
-  if (board.isCheckmate) println("Checkmate "+board.turn.other.toString+" wins")
-  else if (board.isStalemate) println("Stalemate")
-  else if (board.isInsufficientMaterial) println("Insufficient mating material")
-  else if (board.isThreefoldRepetition) println(board.turn.toString+" claimed draw by threefold repetition")
-  else if (board.isFiftyMoveRule) println(board.turn.toString+" claimed draw by fifty-move rule")
+  if (current.isCheckmate) println("Checkmate "+current.turn.other.toString+" wins")
+  else if (current.isStalemate) println("Stalemate")
+  else if (current.isInsufficientMaterial) println("Insufficient mating material")
+  else if (current.isThreefoldRepetition) println(current.turn.toString+" claimed draw by threefold repetition")
+  else if (current.isFiftyMoveRule) println(current.turn.toString+" claimed draw by fifty-move rule")
   else {
-    val (bestMove, bestBoard) = board.leaves.minBy { case (_, b) => negamax(b, depth - 1, -color) }
-    val nOfLeaves = board.leaves.size
-    board = bestBoard
-    println(board.print(Some(bestMove)))
+    val (bestMove, bestBoard, bestScore) = {
+      var v = -10000
+      var a0 = -10000
+      var (m0, b0) = current.leaves.head
+      for ((m, b) <- current.leaves) {
+        val v0 = math.max(v, -negamax(b, depth - 1, -color, -10000, -a0))
+        a0 = math.max(a0, v0)
+        if (v0 > v) { m0 = m; b0 = b }
+        v = math.max(v, v0)
+      }
+      (m0, b0, v)
+    }
+    val nOfLeaves = current.leaves.size
+    current = bestBoard
+    println(current.print(Some(bestMove)))
     val end = System.currentTimeMillis
     val elapsed = (end - start)/1000d
-    println("Score: %d | Leaves: %d | Evaluations: %d | Elapsed: %.3f | Evaluations/Second: %.3f".format(board.value, nOfLeaves, evaluations.intValue, elapsed, evaluations.intValue / elapsed))
+    println("Score: %d | Leaves: %d | Evaluations: %d | Elapsed: %.3f | Evaluations/Second: %.3f".format(bestScore, nOfLeaves, evaluations.intValue, elapsed, evaluations.intValue / elapsed))
     start = end
     step(depth, -color)
   }
 }
 
-println(board.print(None))
 step(depth = 4, color = 1)
