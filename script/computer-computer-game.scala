@@ -132,7 +132,7 @@ var start = System.currentTimeMillis
     val (bestMove, bestBoard, bestScore) = {
       var v = -10000
       var a0 = -10000
-      var (m0, b0) = current.leaves.head
+      var (m0, b0): (MoveBase, Board) = (null, null)
       for ((m, b) <- current.leaves) {
         val v0 = math.max(v, -negamax(b, depth - 1, -color, -10000, -a0))
         a0 = math.max(a0, v0)

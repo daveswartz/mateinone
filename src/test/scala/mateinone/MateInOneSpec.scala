@@ -199,7 +199,7 @@ class MateInOneSpec extends Specification {
     def recur(board: Option[Board], remaining: List[MoveBase]): Result = {
       (board, remaining) match {
         case (Some(b), last :: Nil) =>
-          b.moves must not contain(last)
+          b.moves.toSet must not contain(last)
           recur(b.move(last), Nil)
         case (Some(b), head :: tail) =>
           b.moves must contain(head)
@@ -227,6 +227,6 @@ class MateInOneSpec extends Specification {
   }
 
   def moveAndCheckMoves(moves: MoveBase*)(expectedMoves: MoveBase*) =
-    Board.initial.move(moves.toList) must beSome.which(_.moves must containTheSameElementsAs(expectedMoves))
+    Board.initial.move(moves.toList) must beSome.which(_.moves.toSet must containTheSameElementsAs(expectedMoves))
 
 }
