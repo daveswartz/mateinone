@@ -9,44 +9,14 @@ import org.specs2.execute.Result
 
 class MateInOneSpec extends Specification {
 
-  "File" should {
-    "+" in {
-      A + -1 must beNone
-      H + 1 must beNone
-      A + 2 must beEqualTo(Some(C))
-    }
-    "compareTo" in {
-      A.compare(B) must beEqualTo(-1)
-      B.compare(A) must beEqualTo(1)
-      A.compare(A) must beEqualTo(0)
-    }
-  }
-
-  "Rank" should {
-    "+" in {
-      _1 + -1 must beNone
-      _8 + 1 must beNone
-      _1 + 2 must beEqualTo(Some(_3))
-    }
-    "compareTo" in {
-      _1.compare(_2) must beEqualTo(-1)
-      _2.compare(_1) must beEqualTo(1)
-      _1.compare(_1) must beEqualTo(0)
-    }
-  }
-
   "Square" should {
     "square" in { E3 must beEqualTo(square(E,_3)) }
     "+" in {
-      A1 + (-1, 1) must beNone
-      A1 + (1, -1) must beNone
-      H8 + (0, 1) must beNone
-      H8 + (1, 0) must beNone
-      A1 + (2, 2) must beEqualTo(Some(C3))
-      A1 + (7, 7) must beEqualTo(Some(H8))
-      C3 + (-2, -2) must beEqualTo(Some(A1))
-      H8 + (-7, -7) must beEqualTo(Some(A1))
-      H8 + (0, -1) must beEqualTo(Some(H7))
+      A1 + (2, 2) must beEqualTo(C3)
+      A1 + (7, 7) must beEqualTo(H8)
+      C3 + (-2, -2) must beEqualTo(A1)
+      H8 + (-7, -7) must beEqualTo(A1)
+      H8 + (0, -1) must beEqualTo(H7)
     }
   }
 

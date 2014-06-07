@@ -88,7 +88,7 @@ object PieceSquareTables {
     case King => if (isEndGame) kingEndGame else kingMiddleGame }
 
   def squareValue(side: Side, `type`: PieceType, square: Square, isEndGame: Boolean = false): Int =
-    squareValues(`type`, isEndGame)(if (side == White) 7 - square.rank.n else square.rank.n)(square.file.n)
+    squareValues(`type`, isEndGame)(if (side == White) 7 - square.rank else square.rank)(square.file)
 
 }
 import PieceSquareTables._
@@ -100,7 +100,7 @@ implicit def boardWithValue(b: Board) = new {
   val value: Int = {
     val isEndGame = b.pieces.count(_.`type` == Queen) == 0
     def value(piece: Piece): Int = squareValue(piece.side,  piece.`type`, piece.square, isEndGame) + pieceTypeValue(piece.`type`)
-    b.pieces.toVector.map(p => (if (White == p.side) 1 else -1) * value(p)).sum
+    b.pieces.map(p => (if (White == p.side) 1 else -1) * value(p)).sum
   }
 }
 
@@ -153,4 +153,4 @@ var start = System.currentTimeMillis
   }
 }
 
-step(depth = 4, color = 1)
+step(depth = 6, color = 1)
