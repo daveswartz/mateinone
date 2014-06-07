@@ -153,7 +153,7 @@ case class Board private(
     }
   }
 
-  def leaves: Vector[(MoveBase, Board)] = {
+  lazy val leaves: Vector[(MoveBase, Board)] = {
     def castlesThroughCheck(between: Vector[Square]): Boolean =
       this.copy(same = same ++ between.map(Piece.piece(turn, King, _, hasMoved = true))).isCheck
     legalAndIllegal
@@ -167,7 +167,7 @@ case class Board private(
   private def position: Position = (pieces, twoSquarePawnAdvance)
 
   def moves: Vector[MoveBase] = leaves.map(_._1)
-  lazy val boards: Vector[Board] = leaves.map(_._2)
+  def boards: Vector[Board] = leaves.map(_._2)
 
   def isCheck: Boolean = this.copy(same = opponent, opponent = same, turn = turn.other).canCaptureKing
   def isCheckmate: Boolean = moves.isEmpty && isCheck

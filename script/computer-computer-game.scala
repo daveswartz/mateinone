@@ -1,4 +1,3 @@
-import java.util.concurrent.atomic.AtomicInteger
 import mateinone._
 import scala.annotation.tailrec
 import TerminalPrinter._
@@ -105,13 +104,14 @@ implicit def boardWithValue(b: Board) = new {
   }
 }
 
-var evaluations = new AtomicInteger(0)
+var evaluations = 0
 def negamax(node: Board, depth: Int, color: Int, a: Int, b: Int): Int =
-  if (depth == 0 || node.boards.isEmpty) { evaluations.getAndIncrement; color * node.value }
+  if (depth == 0 || node.boards.isEmpty) color * node.value
   else {
     var v = Int.MinValue
     var a0 = a
-    for (c <- node.boards) {
+    evaluations += node.boards.size
+    for (c <- node.boards.sortBy(c => -color * c.value)) {
       v = math.max(v, -negamax(c, depth - 1, -color, -b, -a0))
       a0 = math.max(a0, v)
       if (v >= b) return v
@@ -122,7 +122,7 @@ def negamax(node: Board, depth: Int, color: Int, a: Int, b: Int): Int =
 var current = Board.initial
 var start = System.currentTimeMillis
 @tailrec def step(depth: Int, color: Int) {
-  evaluations = new AtomicInteger(0)
+  evaluations = 0
   if (current.isCheckmate) println("Checkmate "+current.turn.other.toString+" wins")
   else if (current.isStalemate) println("Stalemate")
   else if (current.isInsufficientMaterial) println("Insufficient mating material")
@@ -133,7 +133,8 @@ var start = System.currentTimeMillis
       var v = -10000
       var a0 = -10000
       var (m0, b0): (MoveBase, Board) = (null, null)
-      for ((m, b) <- current.leaves) {
+      evaluations += current.leaves.size
+      for ((m, b) <- current.leaves.sortBy { case (_, c) => -color * c.value }) {
         val v0 = math.max(v, -negamax(b, depth - 1, -color, -10000, -a0))
         a0 = math.max(a0, v0)
         if (v0 > v) { m0 = m; b0 = b }
