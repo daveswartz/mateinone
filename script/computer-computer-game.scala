@@ -107,7 +107,8 @@ object BoardValue {
   private def boardValue(b: Board): Int = {
     val isEndGame = b.pieces.count(_.`type` == Queen) == 0
     var v = 0
-    for (p <- b.pieces) v += pieceValue(p, isEndGame)
+    for (p <- b.same) v += pieceValue(p, isEndGame)
+    for (p <- b.opponent) v += pieceValue(p, isEndGame)
     v
   }
 

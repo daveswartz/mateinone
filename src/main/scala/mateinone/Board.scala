@@ -41,8 +41,8 @@ import Board._
 
 case class Board private(
   turn: Side,
-  private val same: Vector[Piece],
-  private val opponent: Vector[Piece],
+  same: Vector[Piece],
+  opponent: Vector[Piece],
   private val open: Set[Square],
   private val moved: Set[Square],
   private val lastPawnMoveOrCapture: Int,
