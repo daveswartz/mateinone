@@ -5,9 +5,10 @@ import TerminalPrinter._
 
 object BoardValue {
 
-  private def groupByRank(v: Vector[Int]): Vector[Vector[Int]] = v.grouped(8).toVector
+  def sides(squareValues: Vector[Int], pieceValue: Int): (Vector[Int], Vector[Int]) =
+    (squareValues.map(_ + pieceValue).grouped(8).toVector.reverse.flatten, squareValues.map(-_ - pieceValue))
 
-  private val pawn: Vector[Vector[Int]] = groupByRank(Vector(
+  private val (whitePawn, blackPawn) = sides(Vector(
       0,   0,   0,   0,   0,   0,   0,   0,
      50,  50,  50,  50,  50,  50,  50,  50,
      10,  10,  20,  30,  30,  20,  10,  10,
@@ -16,9 +17,9 @@ object BoardValue {
       5,  -5, -10,   0,   0, -10,  -5,   5,
       5,  10,  10, -20, -20,  10,  10,   5,
       0,   0,   0,   0,   0,   0,   0,   0
-  ))
+  ), 100)
 
-  private val knight: Vector[Vector[Int]] = groupByRank(Vector(
+  private val (whiteKnight, blackKnight) = sides(Vector(
     -50, -40, -30, -30, -30, -30, -40, -50,
     -40, -20,   0,   0,   0,   0, -20, -40,
     -30,   0,  10,  15,  15,  10,   0, -30,
@@ -27,9 +28,9 @@ object BoardValue {
     -30,   5,  10,  15,  15,  10,   5, -30,
     -40, -20,   0,   5,   5,   0, -20, -40,
     -50, -40, -30, -30, -30, -30, -40, -50
-  ))
+  ), 320)
 
-  private val bishop: Vector[Vector[Int]] = groupByRank(Vector(
+  private val (whiteBishop, blackBishop) = sides(Vector(
     -20, -10, -10, -10, -10, -10, -10, -20,
     -10,   0,   0,   0,   0,   0,   0, -10,
     -10,   0,   5,  10,  10,   5,   0, -10,
@@ -38,9 +39,9 @@ object BoardValue {
     -10,  10,  10,  10,  10,  10,  10, -10,
     -10,   5,   0,   0,   0,   0,   5, -10,
     -20, -10, -10, -10, -10, -10, -10, -20
-  ))
+  ), 330)
 
-  private val rook: Vector[Vector[Int]] = groupByRank(Vector(
+  private val (whiteRook, blackRook) = sides(Vector(
       0,   0,   0,   0,   0,   0,   0,   0,
       5,  10,  10,  10,  10,  10,  10,   5,
      -5,   0,   0,   0,   0,   0,   0,  -5,
@@ -49,9 +50,9 @@ object BoardValue {
      -5,   0,   0,   0,   0,   0,   0,  -5,
      -5,   0,   0,   0,   0,   0,   0,  -5,
       0,   0,   0,   5,   5,   0,   0,   0
-  ))
+  ), 500)
 
-  private val queen: Vector[Vector[Int]] = groupByRank(Vector(
+  private val (whiteQueen, blackQueen) = sides(Vector(
     -20, -10, -10,  -5,  -5, -10, -10, -20,
     -10,   0,   0,   0,   0,   0,   0, -10,
     -10,   0,   5,   5,   5,   5,   0, -10,
@@ -60,9 +61,9 @@ object BoardValue {
     -10,   5,   5,   5,   5,   5,   0, -10,
     -10,   0,   5,   0,   0,   0,   0, -10,
     -20, -10, -10,  -5,  -5, -10, -10, -20
-  ))
+  ), 900)
 
-  private val kingMiddleGame: Vector[Vector[Int]] = groupByRank(Vector(
+  private val (whiteKingMiddle, blackKingMiddle) = sides(Vector(
     -30, -40, -40, -50, -50, -40, -40, -30,
     -30, -40, -40, -50, -50, -40, -40, -30,
     -30, -40, -40, -50, -50, -40, -40, -30,
@@ -71,34 +72,42 @@ object BoardValue {
     -10, -20, -20, -20, -20, -20, -20, -10,
      20,  20,   0,   0,   0,   0,  20,  20,
      20,  30,  10,   0,   0,  10,  30,  20
-  ))
+  ), 0)
 
-  private val kingEndGame: Vector[Vector[Int]] = groupByRank(Vector(
-    -50, -40, -30, -20, -20, -30, -40, -50,
-    -30, -20, -10,   0,   0, -10, -20, -30,
-    -30, -10,  20,  30,  30,  20, -10, -30,
-    -30, -10,  30,  40,  40,  30, -10, -30,
-    -30, -10,  30,  40,  40,  30, -10, -30,
-    -30, -10,  20,  30,  30,  20, -10, -30,
-    -30, -30,   0,   0,   0,   0, -30, -30,
-    -50, -30, -30, -30, -30, -30, -30, -50
-  ))
+  private val (whiteKingEnd, blackKingEnd) = sides(Vector(
+     -50, -40, -30, -20, -20, -30, -40, -50,
+     -30, -20, -10,   0,   0, -10, -20, -30,
+     -30, -10,  20,  30,  30,  20, -10, -30,
+     -30, -10,  30,  40,  40,  30, -10, -30,
+     -30, -10,  30,  40,  40,  30, -10, -30,
+     -30, -10,  20,  30,  30,  20, -10, -30,
+     -30, -30,   0,   0,   0,   0, -30, -30,
+     -50, -30, -30, -30, -30, -30, -30, -50
+  ), 0)
 
-  private def squareValues(`type`: PieceType, isEndGame: Boolean): Vector[Vector[Int]] = `type` match {
-    case Pawn => pawn; case Knight => knight; case Bishop => bishop; case Rook => rook; case Queen => queen;
-    case King => if (isEndGame) kingEndGame else kingMiddleGame }
+  private def index(square: Square): Int = 8 * square.rank + square.file
 
-  private def squareValue(side: Side, `type`: PieceType, square: Square, isEndGame: Boolean = false): Int =
-    squareValues(`type`, isEndGame)(if (side == White) 7 - square.rank else square.rank)(square.file)
-
-  private def pieceTypeValue(t: PieceType): Int =
-    t match { case Pawn => 100; case Knight => 320; case Bishop => 330; case Rook => 500; case Queen => 900; case King => 0 }
+  private def pieceValue(piece: Piece, isEndGame: Boolean): Int = piece match {
+    case Piece(White, Pawn, square) => whitePawn(index(square))
+    case Piece(Black, Pawn, square) => blackPawn(index(square))
+    case Piece(White, Knight, square) => whiteKnight(index(square))
+    case Piece(Black, Knight, square) => blackKnight(index(square))
+    case Piece(White, Bishop, square) => whiteBishop(index(square))
+    case Piece(Black, Bishop, square) => blackBishop(index(square))
+    case Piece(White, Rook, square) => whiteRook(index(square))
+    case Piece(Black, Rook, square) => blackRook(index(square))
+    case Piece(White, Queen, square) => whiteQueen(index(square))
+    case Piece(Black, Queen, square) => blackQueen(index(square))
+    case Piece(White, King, square) if !isEndGame => whiteKingMiddle(index(square))
+    case Piece(Black, King, square) if !isEndGame => blackKingMiddle(index(square))
+    case Piece(White, King, square) if isEndGame => whiteKingEnd(index(square))
+    case Piece(Black, King, square) if isEndGame => blackKingEnd(index(square))
+  }
 
   private def boardValue(b: Board): Int = {
     val isEndGame = b.pieces.count(_.`type` == Queen) == 0
     var v = 0
-    for (p <- b.pieces)
-      v += (if (p.side == White) 1 else -1) * (squareValue(p.side,  p.`type`, p.square, isEndGame) + pieceTypeValue(p.`type`))
+    for (p <- b.pieces) v += pieceValue(p, isEndGame)
     v
   }
 
