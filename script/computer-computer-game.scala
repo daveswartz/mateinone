@@ -1,8 +1,9 @@
 import mateinone._
 import scala.annotation.tailrec
+import scala.collection.mutable
 import TerminalPrinter._
 
-object PieceSquareTables {
+object BoardValue {
 
   private def groupByRank(v: Vector[Int]): Vector[Vector[Int]] = v.grouped(8).toVector
 
@@ -87,36 +88,47 @@ object PieceSquareTables {
     case Pawn => pawn; case Knight => knight; case Bishop => bishop; case Rook => rook; case Queen => queen;
     case King => if (isEndGame) kingEndGame else kingMiddleGame }
 
-  def squareValue(side: Side, `type`: PieceType, square: Square, isEndGame: Boolean = false): Int =
+  private def squareValue(side: Side, `type`: PieceType, square: Square, isEndGame: Boolean = false): Int =
     squareValues(`type`, isEndGame)(if (side == White) 7 - square.rank else square.rank)(square.file)
 
-}
-import PieceSquareTables._
+  private def pieceTypeValue(`type`: PieceType): Int =
+    `type` match { case Pawn => 100; case Knight => 320; case Bishop => 330; case Rook => 500; case Queen => 900; case King => 0 }
 
-def pieceTypeValue(`type`: PieceType): Int =
-  `type` match { case Pawn => 100; case Knight => 320; case Bishop => 330; case Rook => 500; case Queen => 900; case King => 0 }
-
-implicit def boardWithValue(b: Board) = new {
-  val value: Int = {
-    val isEndGame = b.pieces.count(_.`type` == Queen) == 0
-    def value(piece: Piece): Int = squareValue(piece.side,  piece.`type`, piece.square, isEndGame) + pieceTypeValue(piece.`type`)
-    b.pieces.map(p => (if (White == p.side) 1 else -1) * value(p)).sum
+  implicit def boardWithValue(b: Board) = new {
+    val value: Int = {
+      val isEndGame = b.pieces.count(_.`type` == Queen) == 0
+      def value(piece: Piece): Int = squareValue(piece.side,  piece.`type`, piece.square, isEndGame) + pieceTypeValue(piece.`type`)
+      b.pieces.map(p => (if (White == p.side) 1 else -1) * value(p)).sum
+    }
   }
+
 }
+import BoardValue._
+
+case class TranspositionValue(depth: Int, a: Int, b: Int, value: Int)
+val transpositionTable = mutable.Map.empty[Vector[Piece], TranspositionValue]
 
 var evaluations = 0
 def negamax(node: Board, depth: Int, color: Int, a: Int, b: Int): Int =
   if (depth == 0 || node.boards.isEmpty) color * node.value
   else {
-    var v = Int.MinValue
-    var a0 = a
-    evaluations += node.boards.size
-    for (c <- node.boards.sortBy(c => -color * c.value)) {
-      v = math.max(v, -negamax(c, depth - 1, -color, -b, -a0))
-      a0 = math.max(a0, v)
-      if (v >= b) return v
+    val tOpt = transpositionTable.get(node.pieces)
+    if (tOpt.exists(t => (t.a < t.value && t.value < t.b) || (t.a <= a && b <= t.b) && t.depth >= depth)) tOpt.get.value
+    else {
+      var v = Int.MinValue
+      var a0 = a
+      evaluations += node.boards.size
+      for (c <- node.boards.sortBy(c => -color * c.value)) {
+        v = math.max(v, -negamax(c, depth - 1, -color, -b, -a0))
+        a0 = math.max(a0, v)
+        if (v >= b) {
+          transpositionTable += node.pieces -> TranspositionValue(depth, a, b, v)
+          return v
+        }
+      }
+      transpositionTable += node.pieces -> TranspositionValue(depth, a, b, v)
+      v
     }
-    v
   }
 
 var current = Board.initial
@@ -153,4 +165,4 @@ var start = System.currentTimeMillis
   }
 }
 
-step(depth = 6, color = 1)
+step(depth = 7, color = 1)
