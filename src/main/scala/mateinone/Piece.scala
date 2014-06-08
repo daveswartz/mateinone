@@ -19,9 +19,9 @@ case object Black extends Side { val other: Side = White }
 
 object Piece {
   private val cache: mutable.Map[Piece, Piece] = mutable.Map()
-  def piece(side: Side, `type`: PieceType, square: Square, hasMoved: Boolean): Piece = {
-    val key = Piece(side, `type`, square, hasMoved)
+  def piece(side: Side, `type`: PieceType, square: Square): Piece = {
+    val key = Piece(side, `type`, square)
     cache.getOrElseUpdate(key, key)
   }
 }
-case class Piece private(side: Side, `type`: PieceType, square: Square, hasMoved: Boolean)
+case class Piece private(side: Side, `type`: PieceType, square: Square)
