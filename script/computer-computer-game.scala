@@ -91,16 +91,18 @@ object BoardValue {
   private def squareValue(side: Side, `type`: PieceType, square: Square, isEndGame: Boolean = false): Int =
     squareValues(`type`, isEndGame)(if (side == White) 7 - square.rank else square.rank)(square.file)
 
-  private def pieceTypeValue(`type`: PieceType): Int =
-    `type` match { case Pawn => 100; case Knight => 320; case Bishop => 330; case Rook => 500; case Queen => 900; case King => 0 }
+  private def pieceTypeValue(t: PieceType): Int =
+    t match { case Pawn => 100; case Knight => 320; case Bishop => 330; case Rook => 500; case Queen => 900; case King => 0 }
 
-  implicit def boardWithValue(b: Board) = new {
-    val value: Int = {
-      val isEndGame = b.pieces.count(_.`type` == Queen) == 0
-      def value(piece: Piece): Int = squareValue(piece.side,  piece.`type`, piece.square, isEndGame) + pieceTypeValue(piece.`type`)
-      b.pieces.map(p => (if (White == p.side) 1 else -1) * value(p)).sum
-    }
+  private def boardValue(b: Board): Int = {
+    val isEndGame = b.pieces.count(_.`type` == Queen) == 0
+    var v = 0
+    for (p <- b.pieces)
+      v += (if (p.side == White) 1 else -1) * (squareValue(p.side,  p.`type`, p.square, isEndGame) + pieceTypeValue(p.`type`))
+    v
   }
+
+  implicit def boardWithValue(b: Board) = new { val value: Int = boardValue(b) }
 
 }
 import BoardValue._
@@ -165,4 +167,4 @@ var start = System.currentTimeMillis
   }
 }
 
-step(depth = 7, color = 1)
+step(depth = 6, color = 1)
