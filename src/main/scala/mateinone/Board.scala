@@ -126,12 +126,10 @@ case class Board private(
     }
 
     val castles: Vector[MoveBase] = {
-      val isWhite: Boolean = turn == White
-      val stationary: Vector[Square] = same.filter(!_.hasMoved).map(_.square)
-      def hasMoved(s: Square): Boolean = !stationary.contains(s)
-      val kingMoved = hasMoved(if (isWhite) E1 else E8)
-      val kingside: Boolean = !hasMoved(if (isWhite) H1 else H8) && !kingMoved && (if (isWhite) Vector(F1, G1) else Vector(F8, G8)).forall(open.contains)
-      val queenside: Boolean = !hasMoved(if (isWhite) A1 else A8) && !kingMoved && (if (isWhite) Vector(B1, C1, D1) else Vector(B8, C8, D8)).forall(open.contains)
+      def hasMoved(s: Square): Boolean = same.exists(p => p.square == s && p.hasMoved)
+      def canCastle(rookStart: Square, between: Set[Square]): Boolean = !hasMoved(E1) && !hasMoved(rookStart) && between.forall(open.contains)
+      val kingside = if (turn == White) canCastle(H1, Set(F1, G1)) else canCastle(H8, Set(F8, G8))
+      val queenside = if (turn == White) canCastle(A1, Set(B1, C1, D1)) else canCastle(A8, Set(B8, C8, D8))
       if (kingside && queenside) Vector(`O-O`, `O-O-O`) else if (kingside) Vector(`O-O`) else if (queenside) Vector(`O-O-O`) else Vector()
     }
 
