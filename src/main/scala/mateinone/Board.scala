@@ -39,6 +39,26 @@ object Board {
     Board(White, same, opponent, open, Set.empty[Square], 0, Vector.empty[Position], None)
   }
 
+  private def canCaptureKing(offense: Vector[Piece], defense: Vector[Piece], open: Set[Square]): Boolean = {
+    def canCapture(start: Square, offset: (Int, Int), end: Square): Boolean = {
+      var current = start + offset
+      while (open.contains(current)) current = current + offset
+      end == current
+    }
+    val king = defense.filter(_.`type` == King).map(_.square)
+    def canCaptureKing(offset: (Int, Int), end: Square): Boolean = king.exists(canCapture(_, offset, end))
+    def canCaptureKingInOne(offset: (Int, Int), end: Square): Boolean = king.exists(_ + offset == end)
+    offense.exists {
+      case Piece(White, Pawn, start) => Offsets.blackPawnCaptures.exists(canCaptureKingInOne(_, start))
+      case Piece(Black, Pawn, start) => Offsets.whitePawnCaptures.exists(canCaptureKingInOne(_, start))
+      case Piece(_, Knight, start) => Offsets.knight.exists(canCaptureKingInOne(_, start))
+      case Piece(_, Bishop, start) => Offsets.diagonals.exists(canCaptureKing(_, start))
+      case Piece(_, Rook, start) => Offsets.rook.exists(canCaptureKing(_, start))
+      case Piece(_, Queen, start) => Offsets.queen.exists(canCaptureKing(_, start))
+      case Piece(_, King, start) => Offsets.adjacent.exists(canCaptureKingInOne(_, start))
+    }
+  }
+
 }
 import Board._
 
@@ -55,25 +75,7 @@ case class Board private(
 
   def pieces: Vector[Piece] = same ++ opponent
 
-  private lazy val canCaptureKing: Boolean = {
-    def canCapture(start: Square, offset: (Int, Int), end: Square): Boolean = {
-      var current = start + offset
-      while (open.contains(current)) current = current + offset
-      end == current
-    }
-    val opponentsKing = opponent.filter(_.`type` == King).map(_.square)
-    def canCaptureKing(offset: (Int, Int), end: Square): Boolean = opponentsKing.exists(canCapture(_, offset, end))
-    def canCaptureKingInOne(offset: (Int, Int), end: Square): Boolean = opponentsKing.exists(_ + offset == end)
-    same.exists {
-      case Piece(White, Pawn, start) => Offsets.blackPawnCaptures.exists(canCaptureKingInOne(_, start))
-      case Piece(Black, Pawn, start) => Offsets.whitePawnCaptures.exists(canCaptureKingInOne(_, start))
-      case Piece(_, Knight, start) => Offsets.knight.exists(canCaptureKingInOne(_, start))
-      case Piece(_, Bishop, start) => Offsets.diagonals.exists(canCaptureKing(_, start))
-      case Piece(_, Rook, start) => Offsets.rook.exists(canCaptureKing(_, start))
-      case Piece(_, Queen, start) => Offsets.queen.exists(canCaptureKing(_, start))
-      case Piece(_, King, start) => Offsets.adjacent.exists(canCaptureKingInOne(_, start))
-    }
-  }
+  private def position: Position = (pieces, twoSquarePawnAdvance)
 
   lazy val leaves: Vector[(MoveBase, Board)] = {
 
@@ -167,7 +169,7 @@ case class Board private(
       this.copy(same = same ++ between.map(Piece.piece(turn, King, _))).isCheck
 
     legalAndIllegal
-      .filter(!_._2.canCaptureKing)
+      .filterNot { case (_, b) => canCaptureKing(b.same, b.opponent, b.open) }
       .filter {
       case (`O-O`, _) => !castlesThroughCheck(if (turn == White) Vector(F1) else Vector(F8))
       case (`O-O-O`, _) => !castlesThroughCheck(if (turn == White) Vector(C1, D1) else Vector(C8, D8))
@@ -175,12 +177,10 @@ case class Board private(
 
   }
 
-  private lazy val position: Position = (pieces, twoSquarePawnAdvance)
-
   def moves: Vector[MoveBase] = leaves.map(_._1)
   def boards: Vector[Board] = leaves.map(_._2)
 
-  def isCheck: Boolean = this.copy(same = opponent, opponent = same, turn = turn.other).canCaptureKing
+  def isCheck: Boolean = canCaptureKing(opponent, same, open)
   def isCheckmate: Boolean = moves.isEmpty && isCheck
 
   def isStalemate: Boolean = moves.isEmpty && !isCheck
