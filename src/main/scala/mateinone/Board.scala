@@ -55,92 +55,6 @@ case class Board private(
 
   def pieces: Vector[Piece] = same ++ opponent
 
-  private def isOpponentSquare(s: Square): Boolean = opponent.exists(_.square == s)
-
-  private def legalAndIllegal: Vector[(MoveBase, Board)] = {
-
-    def toMoves(start: Square, ends: Vector[Square]): Vector[MoveBase] = ends.map(e => Move.move(start, e))
-
-    def ends(start: Square, offset: (Int, Int)): Vector[Square] = {
-      val result = new mutable.Stack[Square]
-      var current = start + offset
-      while (open.contains(current)) { result.push(current); current = current + offset }
-      (if (isOpponentSquare(current)) result.push(current) else result).toVector
-    }
-
-    def pawnMoves(start: Square, advance: Vector[(Int, Int)], captures: Vector[(Int, Int)], initial: Int, promotion: Int, enPassant: Int): Vector[MoveBase] = {
-      def enPassantEnd(captureOffset: (Int, Int), moveOffset: (Int, Int)): Option[Square] =
-        for {
-          last <- twoSquarePawnAdvance
-          captureSquare = start + captureOffset
-          if isOpponentSquare(captureSquare)
-          if captureSquare.file == last
-          stepSquare = start + moveOffset
-        } yield stepSquare
-      def toPromotions(start: Square, ends: Vector[Square]): Vector[MoveBase] =
-        ends.flatMap(e => PromotionType.all.map(t => Promotion(start, e, t)))
-      val captureEnds: Vector[Square] = captures.map(start + _).filter(isOpponentSquare)
-      def advanceOne(s: Square): Vector[Square] = advance.map(s + _).filter(open.contains)
-      val advanceEnds: Vector[Square] =
-        if (start.rank == initial) { val ones = advanceOne(start); ones ++ ones.flatMap(advanceOne) } else advanceOne(start)
-      if (start.rank == promotion) toPromotions(start, captureEnds ++ advanceEnds)
-      else if (start.rank == enPassant) toMoves(start, captureEnds ++ advanceEnds ++ Offsets.enPassantCaptures.zip(captures).flatMap { case (c, m) => enPassantEnd(c, m) })
-      else toMoves(start, captureEnds ++ advanceEnds)
-    }
-
-    def doMove(move: MoveBase): Board = {
-      def castleBoard(kingStart: Square, kingEnd: Square, rookStart: Square, rookEnd: Square): Board =
-        Board(turn.other, opponent, same.filterNot(_.square == kingStart).filterNot(_.square == rookStart) ++ Vector(Piece.piece(turn, King, kingEnd), Piece.piece(turn, Rook, rookEnd)), open + kingStart + rookStart - kingEnd - rookEnd, moved + kingEnd + rookEnd, lastPawnMoveOrCapture + 1, Vector.empty[Position], None)
-      move match {
-        case Move(start, end) =>
-          val `type` = same.find(_.square == start).get.`type`
-          val capture = opponent.map(_.square).contains(end)
-          Board(
-            turn.other,
-            if (capture) opponent.filterNot(_.square == end) else opponent,
-            same.filterNot(_.square == start) :+ Piece.piece(turn, `type`, end),
-            open + start - end,
-            moved + end,
-            if (capture || `type` == Pawn) 0 else lastPawnMoveOrCapture + 1,
-            positions :+ position,
-            if (`type` == Pawn && math.abs(end.rank - start.rank) == 2) Some(end.file) else None)
-        case Promotion(start, end, promotion) =>
-          Board(
-            turn.other,
-            opponent.filterNot(_.square == end),
-            same.filterNot(_.square == start) :+ Piece.piece(turn, promotion, end),
-            open + start - end,
-            moved + end,
-            0,
-            Vector.empty[Position],
-            None)
-        case `O-O` if turn == White => castleBoard(E1, G1, H1, F1)
-        case `O-O` if turn == Black => castleBoard(E8, G8, H8, F8)
-        case `O-O-O` if turn == White => castleBoard(E1, C1, A1, D1)
-        case `O-O-O` if turn == Black => castleBoard(E8, C8, A8, D8)
-      }
-    }
-
-    val moves: Vector[MoveBase] = same.flatMap {
-      case Piece(White, Pawn, start) => pawnMoves(start, Offsets.whitePawnAdvance, Offsets.whitePawnCaptures, `_2`, `_7`, `_5`)
-      case Piece(Black, Pawn, start) => pawnMoves(start, Offsets.blackPawnAdvance, Offsets.blackPawnCaptures, `_7`, `_2`, `_4`)
-      case Piece(_, Knight, start) => toMoves(start, Offsets.knight.map(start + _).filter(s => open.contains(s) || isOpponentSquare(s)))
-      case Piece(_, Bishop, start) => toMoves(start, Offsets.diagonals.flatMap(ends(start, _)))
-      case Piece(_, Rook, start) => toMoves(start, Offsets.rook.flatMap(ends(start, _)))
-      case Piece(_, Queen, start) => toMoves(start, Offsets.queen.flatMap(ends(start, _)))
-      case Piece(_, King, start) => toMoves(start, Offsets.adjacent.map(start + _).filter(s => open.contains(s) || isOpponentSquare(s)))
-    }
-
-    val castles: Vector[MoveBase] = {
-      def canCastle(rookStart: Square, between: Set[Square]): Boolean = !moved.contains(E1) && !moved.contains(rookStart) && between.forall(open.contains)
-      val kingside = if (turn == White) canCastle(H1, Set(F1, G1)) else canCastle(H8, Set(F8, G8))
-      val queenside = if (turn == White) canCastle(A1, Set(B1, C1, D1)) else canCastle(A8, Set(B8, C8, D8))
-      if (kingside && queenside) Vector(`O-O`, `O-O-O`) else if (kingside) Vector(`O-O`) else if (queenside) Vector(`O-O-O`) else Vector()
-    }
-
-    (moves ++ castles).map(m => (m, doMove(m)))
-  }
-
   private lazy val canCaptureKing: Boolean = {
     def canCapture(start: Square, offset: (Int, Int), end: Square): Boolean = {
       var current = start + offset
@@ -162,14 +76,103 @@ case class Board private(
   }
 
   lazy val leaves: Vector[(MoveBase, Board)] = {
+
+    def legalAndIllegal: Vector[(MoveBase, Board)] = {
+
+      def isOpponentSquare(s: Square): Boolean = opponent.exists(_.square == s)
+
+      def toMoves(start: Square, ends: Vector[Square]): Vector[MoveBase] = ends.map(e => Move.move(start, e))
+
+      def ends(start: Square, offset: (Int, Int)): Vector[Square] = {
+        val result = new mutable.Stack[Square]
+        var current = start + offset
+        while (open.contains(current)) { result.push(current); current = current + offset }
+        (if (isOpponentSquare(current)) result.push(current) else result).toVector
+      }
+
+      def pawnMoves(start: Square, advance: Vector[(Int, Int)], captures: Vector[(Int, Int)], initial: Int, promotion: Int, enPassant: Int): Vector[MoveBase] = {
+        def enPassantEnd(captureOffset: (Int, Int), moveOffset: (Int, Int)): Option[Square] =
+          for {
+            last <- twoSquarePawnAdvance
+            captureSquare = start + captureOffset
+            if isOpponentSquare(captureSquare)
+            if captureSquare.file == last
+            stepSquare = start + moveOffset
+          } yield stepSquare
+        def toPromotions(start: Square, ends: Vector[Square]): Vector[MoveBase] =
+          ends.flatMap(e => PromotionType.all.map(t => Promotion(start, e, t)))
+        val captureEnds: Vector[Square] = captures.map(start + _).filter(isOpponentSquare)
+        def advanceOne(s: Square): Vector[Square] = advance.map(s + _).filter(open.contains)
+        val advanceEnds: Vector[Square] =
+          if (start.rank == initial) { val ones = advanceOne(start); ones ++ ones.flatMap(advanceOne) } else advanceOne(start)
+        if (start.rank == promotion) toPromotions(start, captureEnds ++ advanceEnds)
+        else if (start.rank == enPassant) toMoves(start, captureEnds ++ advanceEnds ++ Offsets.enPassantCaptures.zip(captures).flatMap { case (c, m) => enPassantEnd(c, m) })
+        else toMoves(start, captureEnds ++ advanceEnds)
+      }
+
+      def doMove(move: MoveBase): Board = {
+        def castleBoard(kingStart: Square, kingEnd: Square, rookStart: Square, rookEnd: Square): Board =
+          Board(turn.other, opponent, same.filterNot(_.square == kingStart).filterNot(_.square == rookStart) ++ Vector(Piece.piece(turn, King, kingEnd), Piece.piece(turn, Rook, rookEnd)), open + kingStart + rookStart - kingEnd - rookEnd, moved + kingEnd + rookEnd, lastPawnMoveOrCapture + 1, Vector.empty[Position], None)
+        move match {
+          case Move(start, end) =>
+            val `type` = same.find(_.square == start).get.`type`
+            val capture = opponent.map(_.square).contains(end)
+            Board(
+              turn.other,
+              if (capture) opponent.filterNot(_.square == end) else opponent,
+              same.filterNot(_.square == start) :+ Piece.piece(turn, `type`, end),
+              open + start - end,
+              moved + end,
+              if (capture || `type` == Pawn) 0 else lastPawnMoveOrCapture + 1,
+              positions :+ position,
+              if (`type` == Pawn && math.abs(end.rank - start.rank) == 2) Some(end.file) else None)
+          case Promotion(start, end, promotion) =>
+            Board(
+              turn.other,
+              opponent.filterNot(_.square == end),
+              same.filterNot(_.square == start) :+ Piece.piece(turn, promotion, end),
+              open + start - end,
+              moved + end,
+              0,
+              Vector.empty[Position],
+              None)
+          case `O-O` if turn == White => castleBoard(E1, G1, H1, F1)
+          case `O-O` if turn == Black => castleBoard(E8, G8, H8, F8)
+          case `O-O-O` if turn == White => castleBoard(E1, C1, A1, D1)
+          case `O-O-O` if turn == Black => castleBoard(E8, C8, A8, D8)
+        }
+      }
+
+      val moves: Vector[MoveBase] = same.flatMap {
+        case Piece(White, Pawn, start) => pawnMoves(start, Offsets.whitePawnAdvance, Offsets.whitePawnCaptures, `_2`, `_7`, `_5`)
+        case Piece(Black, Pawn, start) => pawnMoves(start, Offsets.blackPawnAdvance, Offsets.blackPawnCaptures, `_7`, `_2`, `_4`)
+        case Piece(_, Knight, start) => toMoves(start, Offsets.knight.map(start + _).filter(s => open.contains(s) || isOpponentSquare(s)))
+        case Piece(_, Bishop, start) => toMoves(start, Offsets.diagonals.flatMap(ends(start, _)))
+        case Piece(_, Rook, start) => toMoves(start, Offsets.rook.flatMap(ends(start, _)))
+        case Piece(_, Queen, start) => toMoves(start, Offsets.queen.flatMap(ends(start, _)))
+        case Piece(_, King, start) => toMoves(start, Offsets.adjacent.map(start + _).filter(s => open.contains(s) || isOpponentSquare(s)))
+      }
+
+      val castles: Vector[MoveBase] = {
+        def canCastle(rookStart: Square, between: Set[Square]): Boolean = !moved.contains(E1) && !moved.contains(rookStart) && between.forall(open.contains)
+        val kingside = if (turn == White) canCastle(H1, Set(F1, G1)) else canCastle(H8, Set(F8, G8))
+        val queenside = if (turn == White) canCastle(A1, Set(B1, C1, D1)) else canCastle(A8, Set(B8, C8, D8))
+        if (kingside && queenside) Vector(`O-O`, `O-O-O`) else if (kingside) Vector(`O-O`) else if (queenside) Vector(`O-O-O`) else Vector()
+      }
+
+      (moves ++ castles).map(m => (m, doMove(m)))
+    }
+
     def castlesThroughCheck(between: Vector[Square]): Boolean =
       this.copy(same = same ++ between.map(Piece.piece(turn, King, _))).isCheck
+
     legalAndIllegal
       .filter(!_._2.canCaptureKing)
       .filter {
-        case (`O-O`, _) => !castlesThroughCheck(if (turn == White) Vector(F1) else Vector(F8))
-        case (`O-O-O`, _) => !castlesThroughCheck(if (turn == White) Vector(C1, D1) else Vector(C8, D8))
-        case _ => true }
+      case (`O-O`, _) => !castlesThroughCheck(if (turn == White) Vector(F1) else Vector(F8))
+      case (`O-O-O`, _) => !castlesThroughCheck(if (turn == White) Vector(C1, D1) else Vector(C8, D8))
+      case _ => true }
+
   }
 
   private lazy val position: Position = (pieces, twoSquarePawnAdvance)
