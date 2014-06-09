@@ -22,19 +22,6 @@ class MateInOneSpec extends Specification {
 
   "Board" should {
 
-    "have the correct initial pieces" in {
-      val expectedPieces: Seq[Piece] =
-        Seq(
-          Rook->A1, Pawn->A2, Knight->B1, Pawn->B2, Bishop->C1, Pawn->C2, Queen->D1, Pawn->D2,
-          King->E1, Pawn->E2, Bishop->F1, Pawn->F2, Knight->G1, Pawn->G2, Rook->H1, Pawn->H2
-        ).map { case (side, square) => Piece.piece(White, side, square) } ++
-        Seq(
-          Rook->A8, Pawn->A7, Knight->B8, Pawn->B7, Bishop->C8, Pawn->C7, Queen->D8, Pawn->D7,
-          King->E8, Pawn->E7, Bishop->F8, Pawn->F7, Knight->G8, Pawn->G7, Rook->H8, Pawn->H7
-        ).map { case (side, square) => Piece.piece(Black, side, square) }
-      Board.initial.pieces must containTheSameElementsAs(expectedPieces)
-    }
-
     "have the correct initial moves for white" in
       moveAndCheckMoves()(A2->A3, A2->A4, B1->A3, B1->C3, B2->B3, B2->B4, C2->C3, C2->C4, D2->D3, D2->D4, E2->E3, E2->E4, F2->F3, F2->F4, G1->F3, G1->H3, G2->G3, G2->G4, H2->H3, H2->H4)
 

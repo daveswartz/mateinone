@@ -1,7 +1,6 @@
 package mateinone
 
 import Square._
-import File._
 import Rank._
 import scala.collection.mutable
 
@@ -24,16 +23,20 @@ object Board {
     val enPassantCaptures = Vector(left, right)
   }
 
-  def initial: Board = { // TODO just hard code initial board state and moves
-    def sidePieces(side: Side, second: Int => Square, back: Int => Square): Vector[Piece] = {
-      def piece(`type`: PieceType, rank: Int => Square, files: Vector[Int]) = files.map(f => Piece.piece(side, `type`, rank(f)))
-      piece(Pawn, second, files) ++ piece(Rook, back, Vector(A, H)) ++ piece(Knight, back, Vector(B, G)) ++ piece(Bishop, back, Vector(C, F)) ++
-        piece(King, back, Vector(E)) ++ piece(Queen, back, Vector(D))
-    }
-    val whitePieces = sidePieces(White, square(_, _2), square(_, _1))
-    val blackPieces = sidePieces(Black, square(_, _7), square(_, _8))
-    val open: Set[Square] = Square.squares.flatten.toSet diff (whitePieces ++ blackPieces).map(_.square).toSet
-    Board(White, whitePieces, blackPieces, open, Set.empty[Square], 0, Vector.empty[Position], None)
+  def initial: Board = {
+    import Piece.piece
+    val same = Vector(
+      piece(White, Rook, A1), piece(White, Pawn, A2), piece(White, Knight, B1), piece(White, Pawn, B2),
+      piece(White, Bishop, C1), piece(White, Pawn, C2), piece(White, Queen, D1), piece(White, Pawn, D2),
+      piece(White, King, E1), piece(White, Pawn, E2), piece(White, Bishop, F1), piece(White, Pawn, F2),
+      piece(White, Knight, G1), piece(White, Pawn, G2), piece(White, Rook, H1), piece(White, Pawn, H2))
+    val opponent = Vector(
+      piece(Black, Rook, A8), piece(Black, Pawn, A7), piece(Black, Knight, B8), piece(Black, Pawn, B7),
+      piece(Black, Bishop, C8), piece(Black, Pawn, C7), piece(Black, Queen, D8), piece(Black, Pawn, D7),
+      piece(Black, King, E8), piece(Black, Pawn, E7), piece(Black, Bishop, F8), piece(Black, Pawn, F7),
+      piece(Black, Knight, G8), piece(Black, Pawn, G7), piece(Black, Rook, H8), piece(Black, Pawn, H7))
+    val open = Set(A3, A4, A5, A6, B3, B4, B5, B6, C3, C4, C5, C6, D3, D4, D5, D6, E3, E4, E5, E6, F3, F4, F5, F6, G3, G4, G5, G6, H3, H4, H5, H6)
+    Board(White, same, opponent, open, Set.empty[Square], 0, Vector.empty[Position], None)
   }
 
 }
@@ -41,8 +44,8 @@ import Board._
 
 case class Board private(
   turn: Side,
-  same: Vector[Piece],
-  opponent: Vector[Piece],
+  private val same: Vector[Piece],
+  private val opponent: Vector[Piece],
   private val open: Set[Square],
   private val moved: Set[Square],
   private val lastPawnMoveOrCapture: Int,
@@ -54,7 +57,7 @@ case class Board private(
 
   private def isOpponentSquare(s: Square): Boolean = opponent.exists(_.square == s)
 
-  private def legalAndIllegal: Vector[(MoveBase, Board)] = { // TODO much duplication here, figure out how to hard code initial moves and simplify to update
+  private def legalAndIllegal: Vector[(MoveBase, Board)] = {
 
     def toMoves(start: Square, ends: Vector[Square]): Vector[MoveBase] = ends.map(e => Move.move(start, e))
 
