@@ -6,18 +6,18 @@ import Square._
 object Printers {
   implicit def pieceToPrintablePiece(p: Piece) = new {
     def print = p match {
-      case Piece(White, Pawn, _, _) => "♙"
-      case Piece(White, Rook, _, _) => "♖"
-      case Piece(White, Knight, _, _) => "♘"
-      case Piece(White, Bishop, _, _) => "♗"
-      case Piece(White, Queen, _, _) => "♕"
-      case Piece(White, King, _, _) => "♔"
-      case Piece(Black, Pawn, _, _) => "♟"
-      case Piece(Black, Rook, _, _) => "♜"
-      case Piece(Black, Knight, _, _) => "♞"
-      case Piece(Black, Bishop, _, _) => "♝"
-      case Piece(Black, Queen, _, _) => "♛"
-      case Piece(Black, King, _, _) => "♚"
+      case Piece(White, Pawn, _) => "♙"
+      case Piece(White, Rook, _) => "♖"
+      case Piece(White, Knight, _) => "♘"
+      case Piece(White, Bishop, _) => "♗"
+      case Piece(White, Queen, _) => "♕"
+      case Piece(White, King, _) => "♔"
+      case Piece(Black, Pawn, _) => "♟"
+      case Piece(Black, Rook, _) => "♜"
+      case Piece(Black, Knight, _) => "♞"
+      case Piece(Black, Bishop, _) => "♝"
+      case Piece(Black, Queen, _) => "♛"
+      case Piece(Black, King, _) => "♚"
     }
   }
 }
@@ -45,18 +45,18 @@ object GithubFlavoredMarkdownPrinter {
         squares.transpose.reverse
           .map(_.map(square => b.pieces.find(_.square == square)))
           .map(_.map {
-          case Some(Piece(White, Pawn, _, _)) => " ♙ |"
-          case Some(Piece(White, Rook, _, _)) => " ♖ |"
-          case Some(Piece(White, Knight, _, _)) => " ♘ |"
-          case Some(Piece(White, Bishop, _, _)) => " ♗ |"
-          case Some(Piece(White, Queen, _, _)) => " ♕ |"
-          case Some(Piece(White, King, _, _)) => " ♔ |"
-          case Some(Piece(Black, Pawn, _, _)) => " ♟ |"
-          case Some(Piece(Black, Rook, _, _)) => " ♜ |"
-          case Some(Piece(Black, Knight, _, _)) => " ♞ |"
-          case Some(Piece(Black, Bishop, _, _)) => " ♝ |"
-          case Some(Piece(Black, Queen, _, _)) => " ♛ |"
-          case Some(Piece(Black, King, _, _)) => " ♚ |"
+          case Some(Piece(White, Pawn, _)) => " ♙ |"
+          case Some(Piece(White, Rook, _)) => " ♖ |"
+          case Some(Piece(White, Knight, _)) => " ♘ |"
+          case Some(Piece(White, Bishop, _)) => " ♗ |"
+          case Some(Piece(White, Queen, _)) => " ♕ |"
+          case Some(Piece(White, King, _)) => " ♔ |"
+          case Some(Piece(Black, Pawn, _)) => " ♟ |"
+          case Some(Piece(Black, Rook, _)) => " ♜ |"
+          case Some(Piece(Black, Knight, _)) => " ♞ |"
+          case Some(Piece(Black, Bishop, _)) => " ♝ |"
+          case Some(Piece(Black, Queen, _)) => " ♛ |"
+          case Some(Piece(Black, King, _)) => " ♚ |"
           case None => "   |"
         }).zip(8.to(1, -1)).map { case (rank, i) => rank.reduce(_+_)+" **"+i+"**" }.reduce(_+"\n"+_)
     }
