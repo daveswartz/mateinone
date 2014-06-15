@@ -22,6 +22,9 @@ object Board {
     val blackPawnCaptures = Vector(downLeft, downRight)
     val blackPawnAdvance = Vector(down)
     val enPassantCaptures = Vector(left, right)
+    val u_l_d_r = Vector(up, right, down, left)
+    val ul_ur = Vector(upLeft, upRight)
+    val dl_dr = Vector(downLeft, downRight)
   }
 
   def initial: Board = {
@@ -41,6 +44,35 @@ object Board {
     Board(White, same, opponent, open, Set.empty[Square], isCheck = false, 0, Vector.empty[Position], None)
   }
 
+  private def isCheck(attackers: Vector[Piece], kings: Vector[Piece], same: Set[Square], open: Set[Square]): Boolean = {
+    import Offsets._
+
+    def givingCheck(king: Square, offset: (Int, Int), inOneStep: Piece => Boolean, inAnySteps: Piece => Boolean): Boolean = {
+      var current = king + offset
+      if (current == outside || same.contains(current)) false
+      else {
+        var steps = 1
+        while (open.contains(current)) { current = current + offset; steps += 1 }
+        if (current == outside || same.contains(current)) false
+        else if (steps == 1) attackers.filter(_.square == current).exists(inOneStep)
+        else attackers.filter(_.square == current).exists(inAnySteps)
+      }
+    }
+
+    def isKing(p: Piece) = p.`type` == King
+    def isRookOrQueen(p: Piece) = p.`type` == Rook || p.`type` == Queen
+    def isBlackPawn(p: Piece) = p.`type` == Pawn && p.side == Black
+    def isWhitePawn(p: Piece) = p.`type` == Pawn && p.side == White
+    def isBishopOrQueen(p: Piece) = p.`type` == Bishop || p.`type` == Queen
+
+    kings.exists { case Piece(_, King, king) =>
+      u_l_d_r.exists(givingCheck(king, _, p => isKing(p) || isRookOrQueen(p), isRookOrQueen)) ||
+        ul_ur.exists(givingCheck(king, _, p => isKing(p) || isBlackPawn(p) || isBishopOrQueen(p), isBishopOrQueen)) ||
+        dl_dr.exists(givingCheck(king, _, p => isKing(p) || isWhitePawn(p) || isBishopOrQueen(p), isBishopOrQueen)) ||
+        knight.exists { offset => val current = king + offset; attackers.exists(a => a.`type` == Knight && a.square == current) }
+    }
+  }
+
 }
 import Board._
 
@@ -56,30 +88,11 @@ case class Board private(
   private val twoSquarePawnAdvance: Option[Int]
 ) {
 
-  def pieces: Vector[Piece] = same ++ opponent
+  lazy val pieces: Vector[Piece] = same ++ opponent
 
   private def position: Position = (pieces, twoSquarePawnAdvance)
 
   lazy val leaves: Vector[(MoveBase, Board)] = {
-
-    def isCheck(attackers: Vector[Piece], kings: Vector[Piece], open: Set[Square]): Boolean = {
-      def canCapture(start: Square, offset: (Int, Int), end: Square): Boolean = {
-        var current = start + offset
-        while (open.contains(current)) current = current + offset
-        end == current
-      }
-      def canCaptureKing(offset: (Int, Int), end: Square): Boolean = kings.exists(k => canCapture(k.square, offset, end))
-      def canCaptureKingInOne(offset: (Int, Int), end: Square): Boolean = kings.exists(_.square + offset == end)
-      attackers.exists {
-        case Piece(White, Pawn, start) => Offsets.blackPawnCaptures.exists(canCaptureKingInOne(_, start))
-        case Piece(Black, Pawn, start) => Offsets.whitePawnCaptures.exists(canCaptureKingInOne(_, start))
-        case Piece(_, Knight, start) => Offsets.knight.exists(canCaptureKingInOne(_, start))
-        case Piece(_, Bishop, start) => Offsets.diagonals.exists(canCaptureKing(_, start))
-        case Piece(_, Rook, start) => Offsets.rook.exists(canCaptureKing(_, start))
-        case Piece(_, Queen, start) => Offsets.queen.exists(canCaptureKing(_, start))
-        case Piece(_, King, start) => Offsets.adjacent.exists(canCaptureKingInOne(_, start))
-      }
-    }
 
     def createBoard(start: Square, end: Square, `type`: PieceType, last: Int, positions: Vector[Position], two: Option[Int]) = {
       val pieceAfter = Piece.piece(turn, `type`, end)
@@ -87,7 +100,7 @@ case class Board private(
       val opponentAfter = opponent.filterNot(_.square == end)
       val openAfter = open + start - end
       // TODO Only new moves can lead to check! (e.g., piece that moved and any pieces with more moves)
-      val isCheckAfter = isCheck(sameAfter, opponentAfter.filter(_.`type` == King), openAfter)
+      val isCheckAfter = Board.isCheck(sameAfter, opponentAfter.filter(_.`type` == King), opponentAfter.map(_.square).toSet, openAfter)
       Board(turn.other, opponentAfter, sameAfter, openAfter, moved + end, isCheckAfter, last, positions, two)
     }
 
@@ -108,7 +121,7 @@ case class Board private(
                      createBoard: M => Board): Vector[(M, Board)] =
       somePieces // TODO only pieces that could capture the moved piece can cause check!
         .flatMap(p => offsets.flatMap(createEnds(p.square, _)).flatMap(end => createMoves(p.square, end)).map(m => (m, createBoard(m))))
-        .filterNot { case (_, b) => isCheck(b.same, b.opponent.filter(_.`type` == King), b.open) }
+        .filterNot { case (_, b) => Board.isCheck(b.same, b.opponent.filter(_.`type` == King), b.opponent.map(_.square).toSet, b.open) }
 
     def openOrCapture(start: Square, offset: (Int, Int)): Vector[Square] = {
       val end = start + offset
@@ -175,10 +188,10 @@ case class Board private(
         val opponentNext = same.filterNot(_.square == kingStart).filterNot(_.square == rookStart) ++ Vector(Piece.piece(turn, King, kingEnd), Piece.piece(turn, Rook, rookEnd))
         val openNext = open + kingStart + rookStart - kingEnd - rookEnd
         val movedNext = moved + kingEnd + rookEnd
-        Board(turn.other, sameNext, opponentNext, openNext, movedNext, isCheck(opponentNext, sameNext.filter(_.`type` == King), openNext), lastPawnMoveOrCapture + 1, Vector.empty[Position], None) }
+        Board(turn.other, sameNext, opponentNext, openNext, movedNext, Board.isCheck(opponentNext, sameNext.filter(_.`type` == King), sameNext.map(_.square).toSet, openNext), lastPawnMoveOrCapture + 1, Vector.empty[Position], None) }
 
       def castlesThroughCheck(between: Vector[Square]): Boolean =
-       isCheck(opponent, same.filter(_.`type` == King) ++ between.map(Piece.piece(turn, King, _)), open -- between)
+        Board.isCheck(opponent, same.filter(_.`type` == King) ++ between.map(Piece.piece(turn, King, _)), same.map(_.square).toSet, open -- between)
 
       castleMoves
         .filter {
