@@ -38,8 +38,8 @@ object Board {
       def pbqk(s: Square): Boolean = offender.pawns.contains(s) || bqk(s)
       rook.exists(givingCheck(rqk, rq)) ||
         knight.exists(offset => offender.knights.contains(king + offset)) ||
-        whitePawnCaptures.exists(givingCheck(if (defender == Black) pbqk else bqk, bq)) ||
-        blackPawnCaptures.exists(givingCheck(if (defender == White) pbqk else bqk, bq))
+        blackPawnCaptures.exists(givingCheck(if (defender == Black) pbqk else bqk, bq)) ||
+        whitePawnCaptures.exists(givingCheck(if (defender == White) pbqk else bqk, bq))
     }
 
 }
