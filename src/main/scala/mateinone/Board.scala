@@ -24,22 +24,22 @@ object Board {
 
   private def isCheck(defender: Side, defenderKings: Set[Square], offender: Pieces, open: Set[Square]): Boolean =
     defenderKings.exists { king =>
-      def givingCheck(inOneStep: Set[Square], inAnySteps: Set[Square])(offset: (Int, Int)): Boolean = {
+      def givingCheck(inOneStep: Square => Boolean, inAnySteps: Square => Boolean)(offset: (Int, Int)): Boolean = {
         var current = king + offset; var isGivingCheck = inOneStep
         while (open.contains(current)) { current = current + offset; isGivingCheck = inAnySteps }
-        isGivingCheck.contains(current)
+        isGivingCheck(current)
       }
-      def viaRook = {
-        val rq = offender.rooks ++ offender.queens; val rqk = rq ++ offender.kings
-        rook.exists(givingCheck(rqk, rq))
-      }
-      def viaKnight = knight.exists(offset => offender.knights.contains(king + offset))
-      lazy val (viaUpDiagonals, viaDownDiagonals) = {
-        val bq = offender.bishops ++ offender.queens; val bqk = bq ++ offender.kings; val pbqk = bqk ++ offender.pawns
-        (whitePawnCaptures.exists(givingCheck(if (defender == Black) pbqk else bqk, bq)),
-          blackPawnCaptures.exists(givingCheck(if (defender == White) pbqk else bqk, bq)))
-      }
-      viaRook || viaKnight || viaUpDiagonals || viaDownDiagonals
+      def q(s: Square): Boolean = offender.queens.contains(s)
+      def k(s: Square): Boolean = offender.kings.contains(s)
+      def rq(s: Square): Boolean = offender.rooks.contains(s) || q(s)
+      def rqk(s: Square): Boolean = rq(s) || k(s)
+      def bq(s: Square): Boolean = offender.bishops.contains(s) || q(s)
+      def bqk(s: Square): Boolean = bq(s) || k(s)
+      def pbqk(s: Square): Boolean = offender.pawns.contains(s) || bqk(s)
+      rook.exists(givingCheck(rqk, rq)) ||
+        knight.exists(offset => offender.knights.contains(king + offset)) ||
+        whitePawnCaptures.exists(givingCheck(if (defender == Black) pbqk else bqk, bq)) ||
+        blackPawnCaptures.exists(givingCheck(if (defender == White) pbqk else bqk, bq))
     }
 
 }
