@@ -45,7 +45,7 @@ object Board {
 }
 import Board._
 
-case class Pieces(pawns: Set[Square], knights: Set[Square], bishops: Set[Square], rooks: Set[Square], queens: Set[Square], kings: Set[Square]) { // TODO factor out common
+case class Pieces(pawns: Set[Square], knights: Set[Square], bishops: Set[Square], rooks: Set[Square], queens: Set[Square], kings: Set[Square]) {
   private def typeOf(s: Square): Option[PieceType] = if (pawns.contains(s)) Some(Pawn) else if (knights.contains(s)) Some(Knight)
     else if (bishops.contains(s)) Some(Bishop) else if (rooks.contains(s)) Some(Rook) else if (queens.contains(s)) Some(Queen)
     else if (kings.contains(s)) Some(King) else None
