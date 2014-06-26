@@ -29,5 +29,6 @@ object Square {
 }
 case class Square private(file: Int, rank: Int) {
   def +(rhs: (Int, Int)): Square = Square.square(file + rhs._1, rank + rhs._2)
+  override lazy val hashCode: Int = scala.runtime.ScalaRunTime._hashCode(this)
   override def toString: String = Square.fileStrings(file) + (rank + 1).toString
 }

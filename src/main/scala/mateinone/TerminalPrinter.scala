@@ -14,12 +14,12 @@ object TerminalPrinter {
       def print(s: Square): String = {
         val white = b.turn == White && b.same.contains(s)
         if (s == start) "·"
-        else if (b.pawns.contains(s)) if (white) "♙" else "♟"
-        else if (b.knights.contains(s)) if (white) "♘" else "♞"
-        else if (b.bishops.contains(s)) if (white) "♗" else "♝"
-        else if (b.rooks.contains(s)) if (white) "♖" else "♜"
-        else if (b.queens.contains(s)) if (white) "♕" else "♛"
-        else if (b.kings.contains(s)) if (white) "♔" else "♚"
+        else if (b.same.pawns.contains(s) || b.opponent.pawns.contains(s)) if (white) "♙" else "♟"
+        else if (b.same.knights.contains(s) || b.opponent.knights.contains(s))  if (white) "♘" else "♞"
+        else if (b.same.bishops.contains(s) || b.opponent.bishops.contains(s))  if (white) "♗" else "♝"
+        else if (b.same.rooks.contains(s) || b.opponent.rooks.contains(s))  if (white) "♖" else "♜"
+        else if (b.same.queens.contains(s) || b.opponent.queens.contains(s))  if (white) "♕" else "♛"
+        else if (b.same.kings.contains(s) || b.opponent.kings.contains(s))  if (white) "♔" else "♚"
         else " "
       }
       ("┌─────────────────┐" +:

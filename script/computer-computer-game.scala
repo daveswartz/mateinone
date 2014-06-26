@@ -96,38 +96,39 @@ object BoardValue {
   private val (whiteKingEnd, blackKingEnd) = sides(kingEndSquareTable, 0)
 
   private def boardValue(b: Board): Int = {
+    val isEndGame = b.same.queens.isEmpty || b.opponent.queens.isEmpty
     if (b.turn == White) {
-      (b.same & b.pawns).foldLeft(0)(_ + whitePawn(_)) + (b.opponent & b.pawns).foldLeft(0)(_ + blackPawn(_)) +
-        (b.same & b.knights).foldLeft(0)(_ + whiteKnight(_)) + (b.opponent & b.knights).foldLeft(0)(_ + blackKnight(_)) +
-        (b.same & b.bishops).foldLeft(0)(_ + whiteBishop(_)) + (b.opponent & b.bishops).foldLeft(0)(_ + blackBishop(_)) +
-        (b.same & b.rooks).foldLeft(0)(_ + whiteRook(_)) + (b.opponent & b.rooks).foldLeft(0)(_ + blackRook(_)) +
-        (b.same & b.queens).foldLeft(0)(_ + whiteQueen(_)) + (b.opponent & b.queens).foldLeft(0)(_ + blackQueen(_)) +
-        (if (b.queens.isEmpty) (b.same & b.kings).foldLeft(0)(_ + whiteKingMiddle(_)) + (b.opponent & b.kings).foldLeft(0)(_ + blackKingMiddle(_))
-        else (b.same & b.kings).foldLeft(0)(_ + whiteKingEnd(_)) + (b.opponent & b.kings).foldLeft(0)(_ + blackKingEnd(_)))
+      b.same.pawns.foldLeft(0)(_ + whitePawn(_)) + b.opponent.pawns.foldLeft(0)(_ + blackPawn(_)) +
+        b.same.knights.foldLeft(0)(_ + whiteKnight(_)) + b.opponent.knights.foldLeft(0)(_ + blackKnight(_)) +
+        b.same.bishops.foldLeft(0)(_ + whiteBishop(_)) + b.opponent.bishops.foldLeft(0)(_ + blackBishop(_)) +
+        b.same.rooks.foldLeft(0)(_ + whiteRook(_)) + b.opponent.rooks.foldLeft(0)(_ + blackRook(_)) +
+        b.same.queens.foldLeft(0)(_ + whiteQueen(_)) + b.opponent.queens.foldLeft(0)(_ + blackQueen(_)) +
+        (if (isEndGame) b.same.kings.foldLeft(0)(_ + whiteKingMiddle(_)) + b.opponent.kings.foldLeft(0)(_ + blackKingMiddle(_))
+        else b.same.kings.foldLeft(0)(_ + whiteKingEnd(_)) + b.opponent.kings.foldLeft(0)(_ + blackKingEnd(_)))
     } else {
-      (b.same & b.pawns).foldLeft(0)(_ + blackPawn(_)) + (b.opponent & b.pawns).foldLeft(0)(_ + whitePawn(_)) +
-        (b.same & b.knights).foldLeft(0)(_ + blackKnight(_)) + (b.opponent & b.knights).foldLeft(0)(_ + whiteKnight(_)) +
-        (b.same & b.bishops).foldLeft(0)(_ + blackBishop(_)) + (b.opponent & b.bishops).foldLeft(0)(_ + whiteBishop(_)) +
-        (b.same & b.rooks).foldLeft(0)(_ + blackRook(_)) + (b.opponent & b.rooks).foldLeft(0)(_ + whiteRook(_)) +
-        (b.same & b.queens).foldLeft(0)(_ + blackQueen(_)) + (b.opponent & b.queens).foldLeft(0)(_ + whiteQueen(_)) +
-        (if (b.queens.isEmpty) (b.same & b.kings).foldLeft(0)(_ + blackKingMiddle(_)) + (b.opponent & b.kings).foldLeft(0)(_ + whiteKingMiddle(_))
-        else (b.same & b.kings).foldLeft(0)(_ + blackKingEnd(_)) + (b.opponent & b.kings).foldLeft(0)(_ + whiteKingEnd(_)))
+      b.same.pawns.foldLeft(0)(_ + blackPawn(_)) + b.opponent.pawns.foldLeft(0)(_ + whitePawn(_)) +
+        b.same.knights.foldLeft(0)(_ + blackKnight(_)) + b.opponent.knights.foldLeft(0)(_ + whiteKnight(_)) +
+        b.same.bishops.foldLeft(0)(_ + blackBishop(_)) + b.opponent.bishops.foldLeft(0)(_ + whiteBishop(_)) +
+        b.same.rooks.foldLeft(0)(_ + blackRook(_)) + b.opponent.rooks.foldLeft(0)(_ + whiteRook(_)) +
+        b.same.queens.foldLeft(0)(_ + blackQueen(_)) + b.opponent.queens.foldLeft(0)(_ + whiteQueen(_)) +
+        (if (isEndGame) b.same.kings.foldLeft(0)(_ + blackKingMiddle(_)) + b.opponent.kings.foldLeft(0)(_ + whiteKingMiddle(_))
+        else b.same.kings.foldLeft(0)(_ + blackKingEnd(_)) + b.opponent.kings.foldLeft(0)(_ + whiteKingEnd(_)))
     }
   }
 
-  implicit def boardWithValue(b: Board) = new { val value: Int = boardValue(b) } // TODO Optimize since this is where 80% of the time is spent.
+  implicit def boardWithValue(b: Board) = new { def value: Int = boardValue(b) }
 
 }
 import BoardValue._
 
 case class TranspositionValue(depth: Int, a: Int, b: Int, value: Int)
-val transpositionTable = mutable.Map.empty[Set[(Side, PieceType, Square)], TranspositionValue]
+val transpositionTable = mutable.Map.empty[(Pieces, Pieces), TranspositionValue]
 
 var evaluations = 0
 def negamax(node: Board, depth: Int, color: Int, a: Int, b: Int): Int =
   if (depth == 0 || node.boards.isEmpty) color * node.value
   else {
-    val tOpt = transpositionTable.get(node.pieces)
+    val tOpt = transpositionTable.get((node.same, node.opponent))
     if (tOpt.exists(t => (t.a < t.value && t.value < t.b) || (t.a <= a && b <= t.b) && t.depth >= depth)) tOpt.get.value
     else {
       var v = Int.MinValue
@@ -137,11 +138,11 @@ def negamax(node: Board, depth: Int, color: Int, a: Int, b: Int): Int =
         v = math.max(v, -negamax(c, depth - 1, -color, -b, -a0))
         a0 = math.max(a0, v)
         if (v >= b) {
-          transpositionTable += node.pieces -> TranspositionValue(depth, a, b, v)
+          transpositionTable += (node.same, node.opponent) -> TranspositionValue(depth, a, b, v)
           return v
         }
       }
-      transpositionTable += node.pieces -> TranspositionValue(depth, a, b, v)
+      transpositionTable += (node.same, node.opponent) -> TranspositionValue(depth, a, b, v)
       v
     }
   }
@@ -180,4 +181,4 @@ var start = System.currentTimeMillis
   }
 }
 
-step(depth = 4, color = 1)
+step(depth = 6, color = 1)
