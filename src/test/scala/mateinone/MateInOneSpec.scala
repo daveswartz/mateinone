@@ -135,6 +135,35 @@ class MateInOneSpec extends Specification {
 
   }
 
+  "TerminalPrinter" should {
+    "print the board" in {
+      import TerminalPrinter._
+      val expected =
+        """|┌─────────────────┐
+           |│ ♜ ♞ ♝ ♛ ♚ ♝ ♞ ♜ │
+           |│ ♟ ♟ ♟ ♟ ♟ ♟ ♟ ♟ │
+           |│                 │
+           |│                 │
+           |│ ♙               │
+           |│                 │
+           |│ · ♙ ♙ ♙ ♙ ♙ ♙ ♙ │
+           |│ ♖ ♘ ♗ ♕ ♔ ♗ ♘ ♖ │
+           |└─────────────────┘""".stripMargin
+      val move = Move.move(A2, A4)
+      Board.initial.move(move).get.print(move) must beEqualTo(expected)
+    }
+  }
+
+  "Evaluation" should {
+    "evaluate the initial board" in { Evaluation.value(Board.initial) must beEqualTo(0) }
+    "evaluate after a pawn move" in {
+      val m = Move.move(A2, A4)
+      val b = Board.initial.move(m).get
+      Evaluation.value(b) must beEqualTo(-5)
+      Evaluation.deltaValue(Board.initial, m) must beEqualTo(-5)
+    }
+  }
+
   // Checks each move is generated and allowed
   def movesAllowed(moves: MoveBase*)(movedPieces: Set[(Side, PieceType, Square)] = Set(), nCaptured: Int = 0) = {
     def recur(board: Option[Board], remaining: List[MoveBase]): Result = {

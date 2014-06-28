@@ -10,7 +10,7 @@ object Board {
     val same = Pieces(Set(A2, B2, C2, D2, E2, F2, G2, H2), Set(B1, G1), Set(C1, F1), Set(A1, H1), Set(D1), Set(E1))
     val opponent = Pieces(Set(A7, B7, C7, D7, E7, F7, G7, H7), Set(B8, G8), Set(C8, F8), Set(A8, H8), Set(D8), Set(E8))
     val open = Set(A3, A4, A5, A6, B3, B4, B5, B6, C3, C4, C5, C6, D3, D4, D5, D6, E3, E4, E5, E6, F3, F4, F5, F6, G3, G4, G5, G6, H3, H4, H5, H6)
-    Board(White, same, opponent, open, Set(), 0, None)
+    Board(White, same, opponent, open, Set.empty[Square])
   }
 
   private val (up, upRight, right, downRight, down, downLeft, left, upLeft) = ((0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1), (-1, 0), (-1, 1))
@@ -46,7 +46,7 @@ object Board {
 import Board._
 
 case class Pieces(pawns: Set[Square], knights: Set[Square], bishops: Set[Square], rooks: Set[Square], queens: Set[Square], kings: Set[Square]) {
-  private def typeOf(s: Square): Option[PieceType] = if (pawns.contains(s)) Some(Pawn) else if (knights.contains(s)) Some(Knight)
+  def typeOf(s: Square): Option[PieceType] = if (pawns.contains(s)) Some(Pawn) else if (knights.contains(s)) Some(Knight)
     else if (bishops.contains(s)) Some(Bishop) else if (rooks.contains(s)) Some(Rook) else if (queens.contains(s)) Some(Queen)
     else if (kings.contains(s)) Some(King) else None
   def add(s: Square, t: PieceType): Pieces = t match {
@@ -62,10 +62,10 @@ case class Pieces(pawns: Set[Square], knights: Set[Square], bishops: Set[Square]
     case Pawn => pawns.contains(s); case Knight => knights.contains(s); case Bishop => bishops.contains(s);
     case Rook => rooks.contains(s); case Queen => queens.contains(s); case King => kings.contains(s) }
   def contains(s: Square): Boolean = typeOf(s).isDefined
+  override lazy val hashCode: Int = scala.runtime.ScalaRunTime._hashCode(this)
 }
 
-case class Board private(turn: Side, same: Pieces, opponent: Pieces, open: Set[Square], moved: Set[Square],
-                         lastPawnMoveOrCapture: Int, twoSquarePawnAdvance: Option[Int]) {
+case class Board private(turn: Side, same: Pieces, opponent: Pieces, open: Set[Square], moved: Set[Square]) {
 
   private def ofType(fn: Pieces => Set[Square]): Set[Square] = fn(same) ++ fn(opponent)
 
@@ -81,15 +81,11 @@ case class Board private(turn: Side, same: Pieces, opponent: Pieces, open: Set[S
 
   lazy val leaves: Vector[(MoveBase, Board)] = {
 
-    def doMove(m: Move): Board = {
-      val isPawn = same.pawns.contains(m.start)
-      val last = if (opponent.contains(m.end) || isPawn) 0 else lastPawnMoveOrCapture + 1
-      val two = if (isPawn && math.abs(m.end.rank - m.start.rank) == 2) Some(m.end.file) else None
-      Board(turn.other, opponent.remove(m.end), same.move(m.start, m.end), open + m.start - m.end, moved + m.end, last, two)
-    }
+    def doMove(m: Move): Board =
+      Board(turn.other, opponent.remove(m.end), same.move(m.start, m.end), open + m.start - m.end, moved + m.end)
 
     def doPromotion(p: Promotion): Board =
-      Board(turn.other, opponent.remove(p.end), same.remove(p.start).add(p.end, p.`type`), open + p.start - p.end, moved, 0, None)
+      Board(turn.other, opponent.remove(p.end), same.remove(p.start).add(p.end, p.`type`), open + p.start - p.end, moved)
 
     def createLeaves[M <: MoveBase](starts: Set[Square],
                                     offsets: Vector[(Int, Int)],
@@ -155,7 +151,7 @@ case class Board private(turn: Side, same: Pieces, opponent: Pieces, open: Set[S
 
       def castleBoard(kingStart: Square, kingEnd: Square, rookStart: Square, rookEnd: Square) =
         Board(turn.other, opponent, same.copy(rooks = same.rooks - rookStart + rookEnd, kings = same.kings - kingStart + kingEnd),
-          open + kingStart + rookStart - kingEnd - rookEnd, moved + kingEnd + rookEnd, lastPawnMoveOrCapture + 1, None)
+          open + kingStart + rookStart - kingEnd - rookEnd, moved + kingEnd + rookEnd)
 
       def castlesThroughCheck(between: Set[Square]): Boolean = Board.isCheck(turn, same.kings ++ between, opponent, open &~ between)
 
@@ -195,7 +191,7 @@ case class Board private(turn: Side, same: Pieces, opponent: Pieces, open: Set[S
   lazy val isAutomaticDraw: Boolean = isStalemate || isInsufficientMaterial
 
   lazy val isThreefoldRepetition: Boolean = false
-  lazy val isFiftyMoveRule: Boolean = lastPawnMoveOrCapture >= 100
+  lazy val isFiftyMoveRule: Boolean = false
   lazy val mayClaimDraw: Boolean = isThreefoldRepetition || isFiftyMoveRule
 
   def move(movesToMake: List[MoveBase]): Option[Board] = movesToMake match { case h :: t => leaves.find(_._1 == h).flatMap(_._2.move(t)); case _ => Some(this) }
