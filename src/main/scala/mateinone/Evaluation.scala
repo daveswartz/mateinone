@@ -122,7 +122,8 @@ object Evaluation {
   def value(b: Board): Int = {
     val isWhite = b.turn == White
     def v(ofType: Pieces => Set[Square], whiteValues: Map[Square, Int], blackValues: Map[Square, Int]): Int = {
-      ofType(b.same).foldLeft(0)(_ + (if (isWhite) whiteValues else blackValues)(_)) + ofType(b.opponent).foldLeft(0)(_ + (if (isWhite) blackValues else whiteValues)(_))
+      ofType(b.same).foldLeft(0)(_ + (if (isWhite) whiteValues else blackValues)(_)) +
+        ofType(b.opponent).foldLeft(0)(_ + (if (isWhite) blackValues else whiteValues)(_))
     }
     val endGame = isEndGame(b)
     v(_.squares(Pawn), whitePawn, blackPawn) +
@@ -134,7 +135,7 @@ object Evaluation {
   }
 
   private def castleDelta(side: Side, kingStart: Square, kingEnd: Square, rookStart: Square, rookEnd: Square): Int =
-    -pieceSquareTable(side, King)(kingStart) - pieceSquareTable(side, King)(rookStart) + pieceSquareTable(side, King)(kingEnd) + pieceSquareTable(side, King)(rookEnd)
+    -pieceSquareTable(side, King)(kingStart) - pieceSquareTable(side, Rook)(rookStart) + pieceSquareTable(side, King)(kingEnd) + pieceSquareTable(side, Rook)(rookEnd)
 
   private def captureDelta(b: Board, s: Square): Int =
     if (b.opponent.contains(s)) pieceSquareTable(b.turn.other, b.opponent.`type`(s))(s) else 0

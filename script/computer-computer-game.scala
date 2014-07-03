@@ -12,7 +12,7 @@ object BoardWithValue {
 
 case class BoardWithValue(b: Board, value: Int) {
   lazy val leaves: Vector[(MoveBase, BoardWithValue)] =
-    b.leaves.map { case (cm, cb) => (cm, BoardWithValue(cb, Evaluation.value(cb) /*value + Evaluation.deltaValue(b, cm)*/)) }
+    b.leaves.map { case (cm, cb) => (cm, BoardWithValue(cb, value + Evaluation.deltaValue(b, cm))) } // TODO reevaluate on end game in Evaluation
 //  lazy val tranpositionKey: TranspositionKey = (b.same, b.opponent)
 }
 
