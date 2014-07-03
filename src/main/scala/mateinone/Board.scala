@@ -48,13 +48,11 @@ case class Pieces private(private val squareToType: Map[Square, PieceType], priv
   def `type`(s: Square): PieceType = squareToType(s)
   def squares(t: PieceType): Set[Square] = typeToSquares(t)
   def contains(s: Square): Boolean = squareToType.contains(s)
-  def contains(s: Square, t: PieceType*): Boolean = contains(s) && t.exists(typeToSquares(_).contains(s))
+  def contains(s: Square, t: PieceType*): Boolean = t.exists(typeToSquares(_).contains(s))
   def add(s: Square, t: PieceType): Pieces =
     copy(squareToType = squareToType + (s -> t), typeToSquares = typeToSquares + (t -> (typeToSquares(t) + s)))
-  def remove(s: Square): Pieces =
-    squareToType.get(s).fold(this)(t => copy(squareToType = squareToType - s, typeToSquares = typeToSquares + (t -> (typeToSquares(t) - s))))
-  def move(s: Square, e: Square): Pieces = add(e, squareToType(s)).remove(s)
-  override lazy val hashCode: Int = scala.runtime.ScalaRunTime._hashCode(this)
+  def remove(s: Square, t: PieceType): Pieces =
+    copy(squareToType = squareToType - s, typeToSquares = typeToSquares + (t -> (typeToSquares(t) - s)))
 }
 
 case class Board private(turn: Side, same: Pieces, opponent: Pieces, moved: Set[Square]) {
@@ -71,7 +69,7 @@ case class Board private(turn: Side, same: Pieces, opponent: Pieces, moved: Set[
       toPieces(turn, same.squares(King), King) ++ toPieces(turn.other, opponent.squares(King), King)
   }
 
-  lazy val leaves: Vector[(MoveBase, Board)] = {
+  def leaves: Vector[(MoveBase, Board)] = {
 
     def oneStep(start: Square, offset: (Int, Int), filter: Square => Boolean): Set[Square] =
     { val end = start + offset; if (end != Outside && filter(end)) Set(end) else Set.empty[Square] }
@@ -89,19 +87,21 @@ case class Board private(turn: Side, same: Pieces, opponent: Pieces, moved: Set[
     def toMoves(start: Square, end: Square): Vector[Move] = Vector(Move.move(start, end))
     def toPromotions(start: Square, end: Square): Vector[Promotion] = PromotionType.all.map(t => Promotion(start, end, t))
 
-    def doMove(m: Move): Board =
-      Board(turn.other, opponent.remove(m.end), same.move(m.start, m.end), moved + m.end)
+    def captureIfPresent(s: Square): Pieces = if (opponent.contains(s)) opponent.remove(s, opponent.`type`(s)) else opponent
+    def doMove(m: Move): Board = {
+      val t = same.`type`(m.start)
+      Board(turn.other, captureIfPresent(m.end), same.add(m.end, t).remove(m.start, t), moved + m.end)
+    }
     def doPromotion(p: Promotion): Board =
-      Board(turn.other, opponent.remove(p.end), same.remove(p.start).add(p.end, p.`type`), moved)
+      Board(turn.other, captureIfPresent(p.end), same.remove(p.start, Pawn).add(p.end, p.`type`), moved)
 
+    def placesKingInCheck(b : Board) = Board.isCheck(b.turn.other, b.opponent, b.same)
     def createLeaves[M <: MoveBase](starts: Set[Square],
                                     offsets: Vector[(Int, Int)],
                                     createEnds: (Square, (Int, Int)) => Set[Square],
                                     createMoves: (Square, Square) => Vector[M],
-                                    createBoard: M => Board): Vector[(M, Board)] = {
-      def placesKingInCheck(b : Board) = Board.isCheck(b.turn.other, b.opponent, b.same)
+                                    createBoard: M => Board): Vector[(M, Board)] =
       starts.toVector.flatMap(s => offsets.flatMap(createEnds(s, _)).flatMap(e => createMoves(s, e)).map(m => (m, createBoard(m)))).filterNot(l => placesKingInCheck(l._2))
-    }
 
     val pawnLeaves = {
       val pawns = same.squares(Pawn)
@@ -126,7 +126,7 @@ case class Board private(turn: Side, same: Pieces, opponent: Pieces, moved: Set[
       }
 
       def castleBoard(kingStart: Square, kingEnd: Square, rookStart: Square, rookEnd: Square) =
-        Board(turn.other, opponent, same.move(rookStart, rookEnd).move(kingStart, kingEnd), moved + kingEnd + rookEnd)
+        Board(turn.other, opponent, same.remove(rookStart, Rook).remove(kingStart, King).add(rookEnd, Rook).add(kingEnd, King), moved + kingEnd + rookEnd)
 
       def castlesThroughCheck(between: Set[Square]): Boolean =
         Board.isCheck(turn, between.foldLeft(same)(_.add(_, King)), opponent)
@@ -154,21 +154,21 @@ case class Board private(turn: Side, same: Pieces, opponent: Pieces, moved: Set[
   def moves: Vector[MoveBase] = leaves.map(_._1)
   def boards: Vector[Board] = leaves.map(_._2)
 
-  lazy val isCheck: Boolean = Board.isCheck(turn, same, opponent)
-  lazy val isCheckmate: Boolean = moves.isEmpty && isCheck
+  def isCheck: Boolean = Board.isCheck(turn, same, opponent)
+  def isCheckmate: Boolean = moves.isEmpty && isCheck
 
-  lazy val isStalemate: Boolean = moves.isEmpty && !isCheck
-  lazy val isInsufficientMaterial: Boolean = {
+  def isStalemate: Boolean = moves.isEmpty && !isCheck
+  def isInsufficientMaterial: Boolean = {
     val (knights, bishops) = (squares(Knight), squares(Bishop))
     (squares(Pawn).isEmpty || squares(Rook).isEmpty || squares(Queen).isEmpty) &&
       ((knights.isEmpty || bishops.isEmpty) || (knights.size == 1 && bishops.isEmpty) ||
        (knights.isEmpty && (bishops.forall(blackSquares.contains) || !bishops.exists(blackSquares.contains))))
   }
-  lazy val isAutomaticDraw: Boolean = isStalemate || isInsufficientMaterial
+  def isAutomaticDraw: Boolean = isStalemate || isInsufficientMaterial
 
-  lazy val isThreefoldRepetition: Boolean = false
-  lazy val isFiftyMoveRule: Boolean = false
-  lazy val mayClaimDraw: Boolean = isThreefoldRepetition || isFiftyMoveRule
+  def isThreefoldRepetition: Boolean = false
+  def isFiftyMoveRule: Boolean = false
+  def mayClaimDraw: Boolean = isThreefoldRepetition || isFiftyMoveRule
 
   def move(movesToMake: List[MoveBase]): Option[Board] = movesToMake match { case h :: t => leaves.find(_._1 == h).flatMap(_._2.move(t)); case _ => Some(this) }
   def move(movesToMake: MoveBase*): Option[Board] = move(movesToMake.toList)
