@@ -25,6 +25,7 @@ object Square {
       A2, B2, C2, D2, E2, F2, G2, H2,
       A1, B1, C1, D1, E1, F1, G1, H1 = squareIter.next()
   def square(file: Int, rank: Int): Square = if (file > 7 || file < 0 || rank > 7 || rank < 0) Outside else Squares(7 - rank)(file)
+  def rank(r: Int): Set[Square] = File.Files.map(square(_, r)).toSet
   private val fileStrings = Vector("a", "b", "c", "d", "e", "f", "g", "h")
 }
 case class Square private(file: Int, rank: Int) {

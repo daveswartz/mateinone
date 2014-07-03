@@ -12,20 +12,28 @@ object BoardWithValue {
 
 case class BoardWithValue(b: Board, value: Int) {
   lazy val leaves: Vector[(MoveBase, BoardWithValue)] =
-    b.leaves.map { case (cm, cb) => (cm, BoardWithValue(cb, value + Evaluation.deltaValue(b, cm))) }
-  lazy val tranpositionKey = (b.same, b.opponent)
+    b.leaves.map { case (cm, cb) => (cm, BoardWithValue(cb, Evaluation.value(cb) /*value + Evaluation.deltaValue(b, cm)*/)) }
+//  lazy val tranpositionKey: TranspositionKey = (b.same, b.opponent)
 }
 
-case class TranspositionValue(depth: Int, a: Int, b: Int, value: Int)
-val transpositionTable = mutable.Map.empty[(Pieces, Pieces), TranspositionValue]
+//type TranspositionKey = (Pieces, Pieces)
+//case class TranspositionValue(depth: Int, a: Int, b: Int, value: Int)
+//class TranspositionTable(private val map: mutable.Map[TranspositionKey, TranspositionValue] = mutable.Map.empty[TranspositionKey, TranspositionValue]) {
+//  def get(k: TranspositionKey): Option[TranspositionValue] = map.get(k)
+//  def put(k: TranspositionKey, v: TranspositionValue) = {
+//    if (map.size > 1000) map.remove(map.head._1)
+//    map += k -> v
+//  }
+//}
+//val transpositionTable = new TranspositionTable()
 
 var evaluations = 0
 def negamax(node: BoardWithValue, depth: Int, color: Int, a: Int, b: Int): Int =
   if (depth == 0 || node.leaves.isEmpty) color * node.value
   else {
-    val tOpt = transpositionTable.get(node.tranpositionKey)
-    if (tOpt.exists(t => (t.a < t.value && t.value < t.b) || (t.a <= a && b <= t.b) && t.depth >= depth)) tOpt.get.value
-    else {
+//    val tOpt = transpositionTable.get(node.tranpositionKey)
+//    if (tOpt.exists(t => (t.a < t.value && t.value < t.b) || (t.a <= a && b <= t.b) && t.depth >= depth)) tOpt.get.value
+//    else {
       var v = Int.MinValue
       var a0 = a
       evaluations += node.leaves.size
@@ -33,13 +41,13 @@ def negamax(node: BoardWithValue, depth: Int, color: Int, a: Int, b: Int): Int =
         v = math.max(v, -negamax(c._2, depth - 1, -color, -b, -a0))
         a0 = math.max(a0, v)
         if (v >= b) {
-          transpositionTable += node.tranpositionKey -> TranspositionValue(depth, a, b, v)
+//          transpositionTable.put(node.tranpositionKey, TranspositionValue(depth, a, b, v))
           return v
         }
       }
-      transpositionTable += node.tranpositionKey -> TranspositionValue(depth, a, b, v)
+//      transpositionTable.put(node.tranpositionKey, TranspositionValue(depth, a, b, v))
       v
-    }
+//    }
   }
 
 var current = BoardWithValue.initial
@@ -70,7 +78,7 @@ var start = System.currentTimeMillis
     println(current.b.print(bestMove))
     val end = System.currentTimeMillis
     val elapsed = (end - start)/1000d
-    println("Score: %d | Leaves: %d | Evaluations: %d | Elapsed: %,.3f | Evaluations/Second: %,.1f".format(bestScore, nOfLeaves, evaluations.intValue, elapsed, evaluations.intValue / elapsed))
+    println("Negamax Score: %d | Leaves: %d | Evaluations: %,d | Elapsed: %.3f | Evaluations/Second: %,.1f".format(bestScore, nOfLeaves, evaluations.intValue, elapsed, evaluations.intValue / elapsed))
     start = end
     step(depth, -color)
   }

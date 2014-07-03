@@ -10,14 +10,14 @@ object Evaluation {
     (blackSquares.zip(pieceSquareTable.map(_ + pieceValue)).toMap, whiteSquares.zip(pieceSquareTable.map(-_ - pieceValue)).toMap)
 
   private val pawnSquareTable = Vector(
-    0,   0,   0,   0,   0,   0,   0,   0,
-    50,  50,  50,  50,  50,  50,  50,  50,
-    10,  10,  20,  30,  30,  20,  10,  10,
-    5,   5,  10,  25,  25,  10,   5,   5,
-    0,   0,   0,  20,  20,   0,   0,   0,
-    5,  -5, -10,   0,   0, -10,  -5,   5,
-    5,  10,  10, -20, -20,  10,  10,   5,
-    0,   0,   0,   0,   0,   0,   0,   0
+      0,   0,   0,   0,   0,   0,   0,   0,
+     50,  50,  50,  50,  50,  50,  50,  50,
+     10,  10,  20,  30,  30,  20,  10,  10,
+      5,   5,  10,  25,  25,  10,   5,   5,
+      0,   0,   0,  20,  20,   0,   0,   0,
+      5,  -5, -10,   0,   0, -10,  -5,   5,
+      5,  10,  10, -20, -20,  10,  10,   5,
+      0,   0,   0,   0,   0,   0,   0,   0
   )
 
   private val knightSquareTable = Vector(
@@ -43,22 +43,22 @@ object Evaluation {
   )
 
   private val rookSquareTable = Vector(
-    0,   0,   0,   0,   0,   0,   0,   0,
-    5,  10,  10,  10,  10,  10,  10,   5,
-    -5,   0,   0,   0,   0,   0,   0,  -5,
-    -5,   0,   0,   0,   0,   0,   0,  -5,
-    -5,   0,   0,   0,   0,   0,   0,  -5,
-    -5,   0,   0,   0,   0,   0,   0,  -5,
-    -5,   0,   0,   0,   0,   0,   0,  -5,
-    0,   0,   0,   5,   5,   0,   0,   0
+      0,   0,   0,   0,   0,   0,   0,   0,
+      5,  10,  10,  10,  10,  10,  10,   5,
+     -5,   0,   0,   0,   0,   0,   0,  -5,
+     -5,   0,   0,   0,   0,   0,   0,  -5,
+     -5,   0,   0,   0,   0,   0,   0,  -5,
+     -5,   0,   0,   0,   0,   0,   0,  -5,
+     -5,   0,   0,   0,   0,   0,   0,  -5,
+      0,   0,   0,   5,   5,   0,   0,   0
   )
 
   private val queenSquareTable = Vector(
     -20, -10, -10,  -5,  -5, -10, -10, -20,
     -10,   0,   0,   0,   0,   0,   0, -10,
     -10,   0,   5,   5,   5,   5,   0, -10,
-    -5,   0,   5,   5,   5,   5,   0,  -5,
-    0,   0,   5,   5,   5,   5,   0,  -5,
+     -5,   0,   5,   5,   5,   5,   0,  -5,
+      0,   0,   5,   5,   5,   5,   0,  -5,
     -10,   5,   5,   5,   5,   5,   0, -10,
     -10,   0,   5,   0,   0,   0,   0, -10,
     -20, -10, -10,  -5,  -5, -10, -10, -20
@@ -71,8 +71,8 @@ object Evaluation {
     -30, -40, -40, -50, -50, -40, -40, -30,
     -20, -30, -30, -40, -40, -30, -30, -20,
     -10, -20, -20, -20, -20, -20, -20, -10,
-    20,  20,   0,   0,   0,   0,  20,  20,
-    20,  30,  10,   0,   0,  10,  30,  20
+     20,  20,   0,   0,   0,   0,  20,  20,
+     20,  30,  10,   0,   0,  10,  30,  20
   )
 
   private val kingEndSquareTable = Vector(
@@ -117,7 +117,7 @@ object Evaluation {
       }
   }
 
-  private def isEndGame(b: Board) = b.same.queens.isEmpty || b.opponent.queens.isEmpty
+  private def isEndGame(b: Board) = b.same.squares(Queen).isEmpty || b.opponent.squares(Queen).isEmpty
 
   def value(b: Board): Int = {
     val isWhite = b.turn == White
@@ -125,26 +125,30 @@ object Evaluation {
       ofType(b.same).foldLeft(0)(_ + (if (isWhite) whiteValues else blackValues)(_)) + ofType(b.opponent).foldLeft(0)(_ + (if (isWhite) blackValues else whiteValues)(_))
     }
     val endGame = isEndGame(b)
-    v(_.pawns, whitePawn, blackPawn) + v(_.knights, whiteKnight, blackKnight) + v(_.bishops, whiteBishop, blackBishop) +
-      v(_.rooks, whiteRook, blackRook) + v(_.queens, whiteQueen, blackQueen) +
-      v(_.kings, if (endGame) whiteKingEnd else whiteKingMiddle, if (endGame) blackKingEnd else blackKingMiddle)
+    v(_.squares(Pawn), whitePawn, blackPawn) +
+      v(_.squares(Knight), whiteKnight, blackKnight) +
+      v(_.squares(Bishop), whiteBishop, blackBishop) +
+      v(_.squares(Rook), whiteRook, blackRook) +
+      v(_.squares(Queen), whiteQueen, blackQueen) +
+      v(_.squares(King), if (endGame) whiteKingEnd else whiteKingMiddle, if (endGame) blackKingEnd else blackKingMiddle)
   }
 
   private def castleDelta(side: Side, kingStart: Square, kingEnd: Square, rookStart: Square, rookEnd: Square): Int =
     -pieceSquareTable(side, King)(kingStart) - pieceSquareTable(side, King)(rookStart) + pieceSquareTable(side, King)(kingEnd) + pieceSquareTable(side, King)(rookEnd)
 
-  private def captureDelta(b: Board, s: Square): Int = -b.opponent.typeOf(s).fold(0)(pieceSquareTable(b.turn.other, _)(s))
+  private def captureDelta(b: Board, s: Square): Int =
+    if (b.opponent.contains(s)) pieceSquareTable(b.turn.other, b.opponent.`type`(s))(s) else 0
 
-  def deltaValue(b: Board, m: MoveBase): Int = { // TODO if last queen captured then in end game now and reevaluate!
+  def deltaValue(b: Board, m: MoveBase): Int = { // TODO if last queen captured then in end game and need to reevaluate.
     m match {
       case Move(s: Square, e: Square) =>
-        val t = b.same.typeOf(s).get
-        -pieceSquareTable(b.turn, t)(s) + pieceSquareTable(b.turn, t)(e) + captureDelta(b, e)
+        val t = b.same.`type`(s)
+        -pieceSquareTable(b.turn, t)(s) + pieceSquareTable(b.turn, t)(e) - captureDelta(b, e)
       case Promotion(s: Square, e: Square, t) =>
-        -pieceSquareTable(b.turn, Pawn)(s) + pieceSquareTable(b.turn, t)(e) + captureDelta(b, e)
+        -pieceSquareTable(b.turn, Pawn)(s) + pieceSquareTable(b.turn, t)(e) - captureDelta(b, e)
       case `O-O` if b.turn == White => castleDelta(White, E1, G1, H1, F1)
       case `O-O` => castleDelta(Black, E8, G8, H8, F8)
-      case `O-O-O` => castleDelta(White, E1, C1, A1, D1)
+      case `O-O-O` if b.turn == White => castleDelta(White, E1, C1, A1, D1)
       case `O-O-O` => castleDelta(Black, E8, C8, A8, D8)
     }
   }

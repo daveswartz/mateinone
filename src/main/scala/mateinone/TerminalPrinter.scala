@@ -18,24 +18,24 @@ object TerminalPrinter {
       def print(s: Square): String = {
         val white = b.turn == White
         if (s == start) "·"
-        else if (b.same.pawns.contains(s)) if (white) "♙" else "♟"
-        else if (b.opponent.pawns.contains(s)) if (white) "♟" else "♙"
-        else if (b.same.knights.contains(s)) if (white) "♘" else "♞"
-        else if (b.opponent.knights.contains(s)) if (white) "♞" else "♘"
-        else if (b.same.bishops.contains(s)) if (white) "♗" else "♝"
-        else if (b.opponent.bishops.contains(s)) if (white) "♝" else "♗"
-        else if (b.same.rooks.contains(s)) if (white) "♖" else "♜"
-        else if (b.opponent.rooks.contains(s)) if (white) "♜" else "♖"
-        else if (b.same.queens.contains(s)) if (white) "♕" else "♛"
-        else if (b.opponent.queens.contains(s)) if (white) "♛" else "♕"
-        else if (b.same.kings.contains(s)) if (white) "♔" else "♚"
-        else if (b.opponent.kings.contains(s)) if (white) "♚" else "♔"
+        else if (b.same.squares(Pawn).contains(s)) if (white) "♙" else "♟"
+        else if (b.opponent.squares(Pawn).contains(s)) if (white) "♟" else "♙"
+        else if (b.same.squares(Knight).contains(s)) if (white) "♘" else "♞"
+        else if (b.opponent.squares(Knight).contains(s)) if (white) "♞" else "♘"
+        else if (b.same.squares(Bishop).contains(s)) if (white) "♗" else "♝"
+        else if (b.opponent.squares(Bishop).contains(s)) if (white) "♝" else "♗"
+        else if (b.same.squares(Rook).contains(s)) if (white) "♖" else "♜"
+        else if (b.opponent.squares(Rook).contains(s)) if (white) "♜" else "♖"
+        else if (b.same.squares(Queen).contains(s)) if (white) "♕" else "♛"
+        else if (b.opponent.squares(Queen).contains(s)) if (white) "♛" else "♕"
+        else if (b.same.squares(King).contains(s)) if (white) "♔" else "♚"
+        else if (b.opponent.squares(King).contains(s)) if (white) "♚" else "♔"
         else " "
       }
 
       ("┌─────────────────┐" +:
-        Squares.map(rank => rank.map(print)).map(rank => ("│"+:rank:+"│").mkString(" ")) :+
-        "└─────────────────┘").mkString("\n")
+       Squares.map(rank => rank.map(print)).map(rank => ("│"+:rank:+"│").mkString(" ")) :+
+       "└─────────────────┘").mkString("\n")
 
     }
 

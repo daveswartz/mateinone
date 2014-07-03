@@ -162,6 +162,12 @@ class MateInOneSpec extends Specification {
       Evaluation.value(b) must beEqualTo(-5)
       Evaluation.deltaValue(Board.initial, m) must beEqualTo(-5)
     }
+    "evaluate after a knight move" in {
+      val m = Move.move(C6, D4)
+      val b = Board.initial.move(Move.move(B1, C3), Move.move(B8, C6), Move.move(G1, F3), Move.move(G8, F6), Move.move(D2, D4)).get
+      Evaluation.value(b.move(m).get) must beEqualTo(-90)
+      Evaluation.deltaValue(b, m) must beEqualTo(-130)
+    }
   }
 
   // Checks each move is generated and allowed
