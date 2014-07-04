@@ -12,11 +12,11 @@ object TerminalPrinter {
       val start = last match {
         case Move(s, _) => s
         case Promotion(s, _, _) => s
-        case _: Castle => if (b.turn == White) E8 else E1
+        case _: Castle => if (b.same.color == White) E8 else E1
       }
 
       def print(s: Square): String = {
-        val white = b.turn == White
+        val white = b.same.color == White
         if (s == start) "·"
         else if (b.same.squares(Pawn).contains(s)) if (white) "♙" else "♟"
         else if (b.opponent.squares(Pawn).contains(s)) if (white) "♟" else "♙"

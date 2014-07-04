@@ -54,11 +54,11 @@ var current = BoardWithValue.initial
 var start = System.currentTimeMillis
 @tailrec def step(depth: Int, color: Int) {
   evaluations = 0
-  if (current.b.isCheckmate) println("Checkmate "+current.b.turn.other.toString+" wins")
+  if (current.b.isCheckmate) println("Checkmate "+current.b.opponent.color.toString+" wins")
   else if (current.b.isStalemate) println("Stalemate")
   else if (current.b.isInsufficientMaterial) println("Insufficient mating material")
-  else if (current.b.isThreefoldRepetition) println(current.b.turn.toString+" claimed draw by threefold repetition")
-  else if (current.b.isFiftyMoveRule) println(current.b.turn.toString+" claimed draw by fifty-move rule")
+  else if (current.b.isThreefoldRepetition) println(current.b.same.color.toString+" claimed draw by threefold repetition")
+  else if (current.b.isFiftyMoveRule) println(current.b.same.color.toString+" claimed draw by fifty-move rule")
   else {
     val (bestMove, bestBoard, bestScore) = {
       var v = -10000

@@ -11,6 +11,6 @@ case object Rook extends PromotionType
 case object Bishop extends PromotionType
 case object Queen extends PromotionType
 
-sealed trait Side { val other: Side }
-case object White extends Side { val other: Side = Black }
-case object Black extends Side { val other: Side = White }
+sealed trait Color
+case object White extends Color
+case object Black extends Color

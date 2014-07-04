@@ -94,7 +94,7 @@ object Evaluation {
   private val (whiteKingMiddle, blackKingMiddle) = sides(kingMiddleSquareTable, 0)
   private val (whiteKingEnd, blackKingEnd) = sides(kingEndSquareTable, 0)
 
-  private def pieceSquareTable(side: Side, pieceType: PieceType, endGame: Boolean = false): Map[Square, Int] = side match {
+  private def pieceSquareTable(color: Color, pieceType: PieceType, endGame: Boolean = false): Map[Square, Int] = color match {
     case White =>
       pieceType match {
         case Pawn => whitePawn
@@ -120,8 +120,8 @@ object Evaluation {
   private def isEndGame(b: Board) = b.same.squares(Queen).isEmpty || b.opponent.squares(Queen).isEmpty
 
   def value(b: Board): Int = {
-    val isWhite = b.turn == White
-    def v(ofType: Pieces => Set[Square], whiteValues: Map[Square, Int], blackValues: Map[Square, Int]): Int = {
+    val isWhite = b.same.color == White
+    def v(ofType: Side => Set[Square], whiteValues: Map[Square, Int], blackValues: Map[Square, Int]): Int = {
       ofType(b.same).foldLeft(0)(_ + (if (isWhite) whiteValues else blackValues)(_)) +
         ofType(b.opponent).foldLeft(0)(_ + (if (isWhite) blackValues else whiteValues)(_))
     }
@@ -134,22 +134,22 @@ object Evaluation {
       v(_.squares(King), if (endGame) whiteKingEnd else whiteKingMiddle, if (endGame) blackKingEnd else blackKingMiddle)
   }
 
-  private def castleDelta(side: Side, kingStart: Square, kingEnd: Square, rookStart: Square, rookEnd: Square): Int =
-    -pieceSquareTable(side, King)(kingStart) - pieceSquareTable(side, Rook)(rookStart) + pieceSquareTable(side, King)(kingEnd) + pieceSquareTable(side, Rook)(rookEnd)
+  private def castleDelta(color: Color, kingStart: Square, kingEnd: Square, rookStart: Square, rookEnd: Square): Int =
+    -pieceSquareTable(color, King)(kingStart) - pieceSquareTable(color, Rook)(rookStart) + pieceSquareTable(color, King)(kingEnd) + pieceSquareTable(color, Rook)(rookEnd)
 
   private def captureDelta(b: Board, s: Square): Int =
-    if (b.opponent.contains(s)) pieceSquareTable(b.turn.other, b.opponent.`type`(s))(s) else 0
+    if (b.opponent.contains(s)) pieceSquareTable(b.opponent.color, b.opponent.`type`(s))(s) else 0
 
   def deltaValue(b: Board, m: MoveBase): Int = { // TODO if last queen captured then in end game and need to reevaluate.
     m match {
       case Move(s: Square, e: Square) =>
         val t = b.same.`type`(s)
-        -pieceSquareTable(b.turn, t)(s) + pieceSquareTable(b.turn, t)(e) - captureDelta(b, e)
+        -pieceSquareTable(b.same.color, t)(s) + pieceSquareTable(b.same.color, t)(e) - captureDelta(b, e)
       case Promotion(s: Square, e: Square, t) =>
-        -pieceSquareTable(b.turn, Pawn)(s) + pieceSquareTable(b.turn, t)(e) - captureDelta(b, e)
-      case `O-O` if b.turn == White => castleDelta(White, E1, G1, H1, F1)
+        -pieceSquareTable(b.same.color, Pawn)(s) + pieceSquareTable(b.same.color, t)(e) - captureDelta(b, e)
+      case `O-O` if b.same.color == White => castleDelta(White, E1, G1, H1, F1)
       case `O-O` => castleDelta(Black, E8, G8, H8, F8)
-      case `O-O-O` if b.turn == White => castleDelta(White, E1, C1, A1, D1)
+      case `O-O-O` if b.same.color == White => castleDelta(White, E1, C1, A1, D1)
       case `O-O-O` => castleDelta(Black, E8, C8, A8, D8)
     }
   }

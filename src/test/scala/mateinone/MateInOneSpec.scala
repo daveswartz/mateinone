@@ -171,7 +171,7 @@ class MateInOneSpec extends Specification {
   }
 
   // Checks each move is generated and allowed
-  def movesAllowed(moves: MoveBase*)(movedPieces: Set[(Side, PieceType, Square)] = Set(), nCaptured: Int = 0) = {
+  def movesAllowed(moves: MoveBase*)(movedPieces: Set[(Color, PieceType, Square)] = Set(), nCaptured: Int = 0) = {
     def recur(board: Option[Board], remaining: List[MoveBase]): Result = {
       (board, remaining) match {
         case (Some(b), head :: tail) =>
@@ -191,7 +191,7 @@ class MateInOneSpec extends Specification {
     def recur(board: Option[Board], remaining: List[MoveBase]): Result = {
       (board, remaining) match {
         case (Some(b), last :: Nil) =>
-          b.moves.toSet must not contain(last)
+          b.moves.toSet must not contain last
           recur(b.move(last), Nil)
         case (Some(b), head :: tail) =>
           b.moves must contain(head)
@@ -207,13 +207,23 @@ class MateInOneSpec extends Specification {
     recur(Some(Board.initial), moves.toList)
   }
 
-  def onlyTheseMoved(movedPieces: Set[(Side, PieceType, Square)] = Set(), nCaptured: Int = 0): Board => Result = {
-    val initialPieces = Board.initial.pieces
+  def pieces(b: Board): Set[(Color, PieceType, Square)] = {
+    def toPieces(color: Color, squares: Set[Square], `type`: PieceType) = squares.map((color, `type`, _))
+    toPieces(b.same.color, b.same.squares(Pawn), Pawn) ++ toPieces(b.opponent.color, b.opponent.squares(Pawn), Pawn) ++
+      toPieces(b.same.color, b.same.squares(Knight), Knight) ++ toPieces(b.opponent.color, b.opponent.squares(Knight), Knight) ++
+      toPieces(b.same.color, b.same.squares(Bishop), Bishop) ++ toPieces(b.opponent.color, b.opponent.squares(Bishop), Bishop) ++
+      toPieces(b.same.color, b.same.squares(Rook), Rook) ++ toPieces(b.opponent.color, b.opponent.squares(Rook), Rook) ++
+      toPieces(b.same.color, b.same.squares(Queen), Queen) ++ toPieces(b.opponent.color, b.opponent.squares(Queen), Queen) ++
+      toPieces(b.same.color, b.same.squares(King), King) ++ toPieces(b.opponent.color, b.opponent.squares(King), King)
+  }
+
+  def onlyTheseMoved(movedPieces: Set[(Color, PieceType, Square)] = Set(), nCaptured: Int = 0): Board => Result = {
+    val initialPieces = pieces(Board.initial)
     (board) => {
-      val stationaryPieces = board.pieces & initialPieces
+      val stationaryPieces = pieces(board) & initialPieces
       stationaryPieces.size + movedPieces.size + nCaptured must beEqualTo(32)
       stationaryPieces &~ initialPieces must beEmpty
-      movedPieces &~ board.pieces must beEmpty
+      movedPieces &~ pieces(board) must beEmpty
     }
   }
 
