@@ -49,15 +49,12 @@ object Board {
     val blackSquares: Set[Square] = Square.Squares.flatten.toSet.filter(s => s.file % 2 == 0 && s.file % 2 == 0)
     val rank7: Set[Square] = rank(_7)
     val rank2: Set[Square] = rank(_2)
-    val kingToKingsRookWhite = Set(F1, G1)
-    val kingToQueensRookWhite = Set(B1, C1, D1)
-    val kingToKingsRookBlack = Set(F8, G8)
-    val kingToQueensRookBlack = Set(B8, C8, D8)
-    val throughKingsideWhite = Set(F1)
-    val throughKingsideBlack = Set(F8)
-    val throughQueensideWhite = Set(C1, D1)
-    val throughQueensideBlack = Set(C8, D8)
   }
+
+  private case class CastleConstants(move: Castle, rookStart: Square, kingEnd: Square, between: Set[Square], through: Set[Square], rookEnd: Square)
+  private val (whiteQueens, whiteKings, blackQueens, blackKings) =
+    (CastleConstants(`O-O-O`, A1, C1, Set(B1, C1, D1), Set(C1, D1), D1), CastleConstants(`O-O`, H1, G1, Set(F1, G1), Set(F1), F1),
+      CastleConstants(`O-O-O`, A8, C8, Set(B8, C8, D8), Set(C8, D8), D8), CastleConstants(`O-O`, H8, G8, Set(F8, G8), Set(F8), F8))
 
   def initial = Board(Side(White, rank(_2), Set(B1, G1), Set(C1, F1), Set(A1, H1), Set(D1), Set(E1)),
     Side(Black, rank(_7), Set(B8, G8), Set(C8, F8), Set(A8, H8), Set(D8), Set(E8)))
@@ -111,55 +108,41 @@ case class Board private(same: Side, opponent: Side) {
     def doPromotion(p: Promotion): Board =
       Board(captureIfPresent(p.end), same.remove(p.start, Pawn).add(p.end, p.`type`))
 
-    def placesKingInCheck(b : Board) = Board.isCheck(b.opponent, b.same)
     def createLeaves[M <: MoveBase](starts: Set[Square],
                                     offsets: Vector[(Int, Int)],
                                     createEnds: (Square, (Int, Int)) => Set[Square],
                                     createMoves: (Square, Set[Square]) => Set[M],
                                     createBoard: M => Board): Vector[(M, Board)] =
-      starts.toVector.flatMap(s => offsets.flatMap(o => createMoves(s, createEnds(s, o))).map(m => (m, createBoard(m)))).filterNot(l => placesKingInCheck(l._2))
+      starts.toVector.flatMap(s => offsets.flatMap(o => createMoves(s, createEnds(s, o))).map(m => (m, createBoard(m))))
 
-    createLeaves(same.squares(Knight), knight, openOrCapture, toMoves, doMove) ++
+    (createLeaves(same.squares(Knight), knight, openOrCapture, toMoves, doMove) ++
       createLeaves(same.squares(Bishop), diagonals, openUntilCapture, toMoves, doMove) ++
       createLeaves(same.squares(Rook), verticalHorizontal, openUntilCapture, toMoves, doMove) ++
       createLeaves(same.squares(Queen), adjacent, openUntilCapture, toMoves, doMove) ++
       createLeaves(same.squares(King), adjacent, openOrCapture, toMoves, doMove) ++
       {
-        val pawns = same.squares(Pawn)
-        val promotionRank = if (same.color == White) rank7 else rank2
-        val advance = if (same.color == White) upOnly else downOnly
-        val captures = if (same.color == White) upLeftUpRight else downLeftDownRight
-        createLeaves(pawns & promotionRank, advance, openOnly1, toPromotions, doPromotion) ++
-          createLeaves(pawns & promotionRank, captures, captureOnly, toPromotions, doPromotion) ++
-          createLeaves(pawns.filterNot(same.moved), advance, openOnly2, toMoves, doMove) ++
-          createLeaves(pawns.filter(same.moved) &~ promotionRank, advance, openOnly1, toMoves, doMove) ++
-          createLeaves(pawns &~ promotionRank, captures, captureOnly, toMoves, doMove)
+        val (promotionRank, advance, captures) = if (same.color == White) (rank7, upOnly, upLeftUpRight) else (rank2, downOnly, downLeftDownRight)
+        val (promoters, movers) = same.squares(Pawn).partition(promotionRank.contains)
+        createLeaves(promoters, advance, openOnly1, toPromotions, doPromotion) ++
+          createLeaves(promoters, captures, captureOnly, toPromotions, doPromotion) ++
+          createLeaves(movers.filterNot(same.moved), advance, openOnly2, toMoves, doMove) ++
+          createLeaves(movers.filter(same.moved), advance, openOnly1, toMoves, doMove) ++
+          createLeaves(movers, captures, captureOnly, toMoves, doMove)
       } ++
       {
-        val castleMoves = {
-          def canCastle(kingStart: Square, rookStart: Square, between: Set[Square]): Boolean =
-            !same.moved(kingStart) && !same.moved(rookStart) && between.forall(b => !same.contains(b) && !opponent.contains(b))
-          val kingside = if (same.color == White) canCastle(E1, H1, kingToKingsRookWhite) else canCastle(E8, H8, kingToKingsRookBlack)
-          val queenside = if (same.color == White) canCastle(D1, A1, kingToQueensRookWhite) else canCastle(E8, A8, kingToQueensRookBlack)
-          if (kingside && queenside) Vector(`O-O`, `O-O-O`) else if (kingside) Vector(`O-O`) else if (queenside) Vector(`O-O-O`) else Vector.empty[Castle]
+        val (kingStart, kingside, queenside) = if (same.color == White) (E1, whiteKings, whiteQueens) else (E8, blackKings, blackQueens)
+        var castleLeaves = Vector.empty[(Castle, Board)]
+        if (!same.moved(kingStart) && !isCheck) {
+          def createLeaf(cc: CastleConstants): Unit = {
+            def betweenOccupied = cc.between.exists(b => same.contains(b) || opponent.contains(b))
+            def throughCheck = Board.isCheck(cc.through.foldLeft(same)(_.add(_, King)), opponent)
+            def board = Board(opponent, same.remove(cc.rookStart, Rook).remove(kingStart, King).add(cc.rookEnd, Rook).add(cc.kingEnd, King))
+            if (!same.moved(cc.rookStart) && !betweenOccupied && !throughCheck) castleLeaves = castleLeaves :+(cc.move, board)
+          }
+          createLeaf(kingside); createLeaf(queenside)
         }
-
-        def castleBoard(kingStart: Square, kingEnd: Square, rookStart: Square, rookEnd: Square) =
-          Board(opponent, same.remove(rookStart, Rook).remove(kingStart, King).add(rookEnd, Rook).add(kingEnd, King))
-
-        def castlesThroughCheck(between: Set[Square]): Boolean =
-          Board.isCheck(between.foldLeft(same)(_.add(_, King)), opponent)
-
-        castleMoves
-          .filter {
-            case `O-O` => !castlesThroughCheck(if (same.color == White) throughKingsideWhite else throughKingsideBlack)
-            case `O-O-O` => !castlesThroughCheck(if (same.color == White) throughQueensideWhite else throughQueensideBlack) }
-          .map {
-            case `O-O` if same.color == White => `O-O` -> castleBoard(E1, G1, H1, F1)
-            case `O-O` if same.color == Black => `O-O` -> castleBoard(E8, G8, H8, F8)
-            case `O-O-O` if same.color == White => `O-O-O` -> castleBoard(E1, C1, A1, D1)
-            case `O-O-O` if same.color == Black => `O-O-O` -> castleBoard(E8, C8, A8, D8) }
-      }
+        castleLeaves
+      }).filterNot { case (_, b) => Board.isCheck(b.opponent, b.same) }
 
   }
 
