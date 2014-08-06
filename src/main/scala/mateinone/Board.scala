@@ -42,7 +42,7 @@ object Board {
     val blackKings = CastleConstants(`O-O`, H8, G8, Set(F8, G8), Set(F8), F8)
   }
 
-  def initial = Board(Side(White, rank(_2), Set(B1, G1), Set(C1, F1), Set(A1, H1), Set(D1), Set(E1)), Side(Black, rank(_7), Set(B8, G8), Set(C8, F8), Set(A8, H8), Set(D8), Set(E8)), None, 0)
+  def initial = Board(Side(White, rank(_2), Set(B1, G1), Set(C1, F1), Set(A1, H1), Set(D1), Set(E1)), Side(Black, rank(_7), Set(B8, G8), Set(C8, F8), Set(A8, H8), Set(D8), Set(E8)), None, Vector.empty[(Side, Side)], 0)
 
   private def isCheck(defender: Side, offender: Side): Boolean = {
     import OffsetConstants._
@@ -63,7 +63,7 @@ object Board {
 }
 import Board._
 
-case class Board private(same: Side, opponent: Side, private val twoSquarePawn: Option[Move], pawnOrCapture: Int) {
+case class Board private(same: Side, opponent: Side, private val twoSquarePawn: Option[Move], private val positions: Vector[(Side, Side)], private val pawnOrCapture: Int) {
 
   def leaves: Vector[(MoveBase, Board)] = {
     import OffsetConstants._
@@ -89,9 +89,13 @@ case class Board private(same: Side, opponent: Side, private val twoSquarePawn: 
     // Functions that generate a board from the current board and the specified move
     def doMove(`type`: PieceType, isTwoSquare: Boolean = false)(m: Move): Board = {
       val isCapture = opponent.contains(m.end)
-      Board(if (isCapture) opponent.remove(m.end, opponent.`type`(m.end)) else opponent, same.add(m.end, `type`).remove(m.start, `type`), if (isTwoSquare) Some(m) else None, if (`type` == Pawn || isCapture) 0 else pawnOrCapture + 1)
+      Board(if (isCapture) opponent.remove(m.end, opponent.`type`(m.end)) else opponent,
+            same.add(m.end, `type`).remove(m.start, `type`),
+            if (isTwoSquare) Some(m) else None,
+            if (`type` == Pawn || isCapture) Vector.empty[(Side, Side)] else positions :+ (same, opponent),
+            if (`type` == Pawn || isCapture) 0 else pawnOrCapture + 1)
     }
-    def doPromotion(p: Promotion): Board = Board(if (opponent.contains(p.end)) opponent.remove(p.end, opponent.`type`(p.end)) else opponent, same.remove(p.start, Pawn).add(p.end, p.`type`), None, 0)
+    def doPromotion(p: Promotion): Board = Board(if (opponent.contains(p.end)) opponent.remove(p.end, opponent.`type`(p.end)) else opponent, same.remove(p.start, Pawn).add(p.end, p.`type`), None, Vector.empty[(Side, Side)], 0)
 
     def createLeaves[M <: MoveBase](starts: Set[Square],
                                     offsets: Vector[(Int, Int)],
@@ -124,7 +128,7 @@ case class Board private(same: Side, opponent: Side, private val twoSquarePawn: 
           def createLeaf(cc: CastleConstants): Unit = {
             def betweenOccupied = cc.between.exists(b => same.contains(b) || opponent.contains(b))
             def throughCheck = Board.isCheck(cc.through.foldLeft(same)(_.add(_, King)), opponent)
-            def board = Board(opponent, same.remove(cc.rookStart, Rook).remove(kingStart, King).add(cc.rookEnd, Rook).add(cc.kingEnd, King), None, pawnOrCapture + 1)
+            def board = Board(opponent, same.remove(cc.rookStart, Rook).remove(kingStart, King).add(cc.rookEnd, Rook).add(cc.kingEnd, King), None, Vector.empty[(Side, Side)], pawnOrCapture + 1)
             if (!same.moved(cc.rookStart) && !betweenOccupied && !throughCheck) castleLeaves = castleLeaves :+(cc.move, board)
           }
           createLeaf(kingside); createLeaf(queenside)
@@ -150,7 +154,12 @@ case class Board private(same: Side, opponent: Side, private val twoSquarePawn: 
   }
   def isAutomaticDraw: Boolean = isStalemate || isInsufficientMaterial
 
-  def isThreefoldRepetition: Boolean = false
+  def isThreefoldRepetition: Boolean = {
+    def castlingRights(s: Side) = Set(King, Rook).map(t => s.squares(t).map(sq => (t, sq, s.moved(sq))))
+    def otherPieces(s: Side) = Set(Pawn, Knight, Bishop, Queen).map(t => s.squares(t).map(sq => (t, sq)))
+    def samePosition(a: Side, b: Side) = castlingRights(a) == castlingRights(b) && otherPieces(a) == otherPieces(b)
+    positions.count { case (otherSame, otherOpponent) => samePosition(otherSame, same) && samePosition(otherOpponent, opponent) } == 2
+  }
   def isFiftyMoveRule: Boolean = pawnOrCapture >= 100
   def mayClaimDraw: Boolean = isThreefoldRepetition || isFiftyMoveRule
 
