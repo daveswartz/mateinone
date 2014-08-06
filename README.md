@@ -24,7 +24,7 @@ println(Board.initial)
 
 The `toString` method outputs the following:
 
-    Board(White,Vector(Piece(White,Pawn,Square(File(0),Rank(1)),false), Piece(White,Pawn,Square(File(1),Rank(1)),false), Piece(White,Pawn,Square(File(2),Rank(1)),false), Piece(White,Pawn,Square(File(3),Rank(1)),false), Piece(White,Pawn,Square(File(4),Rank(1)),false), Piece(White,Pawn,Square(File(5),Rank(1)),false), Piece(White,Pawn,Square(File(6),Rank(1)),false), Piece(White,Pawn,Square(File(7),Rank(1)),false), Piece(White,Rook,Square(File(0),Rank(0)),false), Piece(White,Rook,Square(File(7),Rank(0)),false), Piece(White,Knight,Square(File(1),Rank(0)),false), Piece(White,Knight,Square(File(6),Rank(0)),false), Piece(White,Bishop,Square(File(2),Rank(0)),false), Piece(White,Bishop,Square(File(5),Rank(0)),false), Piece(White,King,Square(File(4),Rank(0)),false), Piece(White,Queen,Square(File(3),Rank(0)),false), Piece(Black,Pawn,Square(File(0),Rank(6)),false), Piece(Black,Pawn,Square(File(1),Rank(6)),false), Piece(Black,Pawn,Square(File(2),Rank(6)),false), Piece(Black,Pawn,Square(File(3),Rank(6)),false), Piece(Black,Pawn,Square(File(4),Rank(6)),false), Piece(Black,Pawn,Square(File(5),Rank(6)),false), Piece(Black,Pawn,Square(File(6),Rank(6)),false), Piece(Black,Pawn,Square(File(7),Rank(6)),false), Piece(Black,Rook,Square(File(0),Rank(7)),false), Piece(Black,Rook,Square(File(7),Rank(7)),false), Piece(Black,Knight,Square(File(1),Rank(7)),false), Piece(Black,Knight,Square(File(6),Rank(7)),false), Piece(Black,Bishop,Square(File(2),Rank(7)),false), Piece(Black,Bishop,Square(File(5),Rank(7)),false), Piece(Black,King,Square(File(4),Rank(7)),false), Piece(Black,Queen,Square(File(3),Rank(7)),false)))
+    Board(Side(White,Map(h2 -> Pawn, f1 -> Bishop, a1 -> Rook, f2 -> Pawn, e1 -> King, d2 -> Pawn, g2 -> Pawn, e2 -> Pawn, c1 -> Bishop, d1 -> Queen, b2 -> Pawn, a2 -> Pawn, c2 -> Pawn, g1 -> Knight, b1 -> Knight, h1 -> Rook),Map(Knight -> Set(b1, g1), King -> Set(e1), Bishop -> Set(c1, f1), Queen -> Set(d1), Rook -> Set(a1, h1), Pawn -> Set(h2, f2, d2, g2, e2, b2, a2, c2)),Set()),Side(Black,Map(h7 -> Pawn, g8 -> Knight, h8 -> Rook, e8 -> King, g7 -> Pawn, a8 -> Rook, b7 -> Pawn, d7 -> Pawn, e7 -> Pawn, c7 -> Pawn, f8 -> Bishop, c8 -> Bishop, d8 -> Queen, b8 -> Knight, f7 -> Pawn, a7 -> Pawn),Map(Knight -> Set(b8, g8), King -> Set(e8), Bishop -> Set(c8, f8), Queen -> Set(d8), Rook -> Set(a8, h8), Pawn -> Set(h7, g7, b7, d7, e7, c7, f7, a7)),Set()),None,Vector(),0)
 
 ### Pretty Print
 
@@ -51,10 +51,6 @@ Outputs the following:
 └─────────────────┘
 </pre>
 
-Note: in the terminal the varying width of unicode characters is handled properly.
-
-The `print` implicit method of the `GithubFlavoredMarkdownPrinter` is used to generate the markdown representing the board for subsequent examples.
-
 ### Make Moves
 
 More things must be brought into scope so that squares and moves can be expressed.
@@ -75,16 +71,18 @@ Play a simple trap known as the **Scholar's mate**:
 println(Board.initial.move(E2->E4, E7->E5, D1->H5, B8->C6, F1->C4, G8->F6, H5->F7).get.print)
 ```
 
- a | b | c | d | e | f | g | h | ∙
-:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:
- ♜ |   | ♝ | ♛ | ♚ | ♝ |   | ♜ | **8**
- ♟ | ♟ | ♟ | ♟ |   | ♕ | ♟ | ♟ | **7**
-   |   | ♞ |   |   | ♞ |   |   | **6**
-   |   |   |   | ♟ |   |   |   | **5**
-   |   | ♗ |   | ♙ |   |   |   | **4**
-   |   |   |   |   |   |   |   | **3**
- ♙ | ♙ | ♙ | ♙ |   | ♙ | ♙ | ♙ | **2**
- ♖ | ♘ | ♗ |   | ♔ |   | ♘ | ♖ | **1**
+<pre>
+┌─────────────────┐
+│ ♜   ♝ ♛ ♚ ♝   ♜ │
+│ ♟ ♟ ♟ ♟   ♕ ♟ ♟ │
+│     ♞     ♞     │
+│         ♟       │
+│     ♗   ♙       │
+│                 │
+│ ♙ ♙ ♙ ♙   ♙ ♙ ♙ │
+│ ♖ ♘ ♗   ♔   ♘ ♖ │
+└─────────────────┘
+</pre>
 
 Both sides play to quickly **castle kingside**:
 
@@ -97,16 +95,18 @@ Both sides play to quickly **castle kingside**:
 println(Board.initial.move(G1->F3, G8->F6, G2->G3, G7->G6, F1->H3, F8->H6, `O-O`, `O-O`).get.print)
 ```
 
- a | b | c | d | e | f | g | h | ∙
-:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:
- ♜ | ♞ | ♝ | ♛ |   | ♜ | ♚ |   | **8**
- ♟ | ♟ | ♟ | ♟ | ♟ | ♟ |   | ♟ | **7**
-   |   |   |   |   | ♞ | ♟ | ♝ | **6**
-   |   |   |   |   |   |   |   | **5**
-   |   |   |   |   |   |   |   | **4**
-   |   |   |   |   | ♘ | ♙ | ♗ | **3**
- ♙ | ♙ | ♙ | ♙ | ♙ | ♙ |   | ♙ | **2**
- ♖ | ♘ | ♗ | ♕ |   | ♖ | ♔ |   | **1**
+<pre>
+┌─────────────────┐
+│ ♜ ♞ ♝ ♛   ♜ ♚   │
+│ ♟ ♟ ♟ ♟ ♟ ♟   ♟ │
+│           ♞ ♟ ♝ │
+│                 │
+│                 │
+│           ♘ ♙ ♗ │
+│ ♙ ♙ ♙ ♙ ♙ ♙   ♙ │
+│ ♖ ♘ ♗ ♕   ♖ ♔   │
+└─────────────────┘
+</pre>
 
 Make some **exchanges**:
 
@@ -119,16 +119,18 @@ Make some **exchanges**:
 println(Board.initial.move(D2->D4, E7->E5, D4->E5, D7->D6, C1->G5, D6->E5, G5->D8).get.print)
 ```
 
- a | b | c | d | e | f | g | h | ∙
-:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:
- ♜ | ♞ | ♝ | ♗ | ♚ | ♝ | ♞ | ♜ | **8**
- ♟ | ♟ | ♟ |   |   | ♟ | ♟ | ♟ | **7**
-   |   |   |   |   |   |   |   | **6**
-   |   |   |   | ♟ |   |   |   | **5**
-   |   |   |   |   |   |   |   | **4**
-   |   |   |   |   |   |   |   | **3**
- ♙ | ♙ | ♙ |   | ♙ | ♙ | ♙ | ♙ | **2**
- ♖ | ♘ |   | ♕ | ♔ | ♗ | ♘ | ♖ | **1**
+<pre>
+┌─────────────────┐
+│ ♜ ♞ ♝ ♗ ♚ ♝ ♞ ♜ │
+│ ♟ ♟ ♟     ♟ ♟ ♟ │
+│                 │
+│         ♟       │
+│                 │
+│                 │
+│ ♙ ♙ ♙   ♙ ♙ ♙ ♙ │
+│ ♖ ♘   ♕ ♔ ♗ ♘ ♖ │
+└─────────────────┘
+</pre>
 
 ### Generate Moves
 
@@ -140,7 +142,7 @@ println(Board.initial.moves)
 
 Outputs the following:
 
-    Set(c2->c3, f2->f3, f2->f4, b2->b4, a2->a3, c2->c4, d2->d3, b2->b3, g2->g4, h2->h3, b1->c3, e2->e4, d2->d4, g2->g3, a2->a4, h2->h4, g1->h3, b1->a3, g1->f3, e2->e3)
+    Vector(b1->c3, b1->a3, g1->h3, g1->f3, h2->h4, f2->f4, d2->d4, g2->g4, e2->e4, b2->b4, a2->a4, c2->c4, h2->h3, f2->f3, d2->d3, g2->g3, e2->e3, b2->b3, a2->a3, c2->c3)
 
 Scripts ♖
 ---------

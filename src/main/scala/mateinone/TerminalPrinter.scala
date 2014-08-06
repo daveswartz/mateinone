@@ -7,9 +7,12 @@ object TerminalPrinter {
 
   implicit def boardToTerminalBoard(b: Board) = new {
 
-    def print(last: MoveBase): String = {
+    def print: String = print(None)
+    def print(last: MoveBase): String = print(Some(last))
 
-      val start = last match {
+    private def print(last: Option[MoveBase]): String = {
+
+      val start = last.map {
         case Move(s, _) => s
         case Promotion(s, _, _) => s
         case _: Castle => if (b.same.color == White) E8 else E1
@@ -17,7 +20,7 @@ object TerminalPrinter {
 
       def print(s: Square): String = {
         val white = b.same.color == White
-        if (s == start) "·"
+        if (Some(s) == start) "·"
         else if (b.same.squares(Pawn).contains(s)) if (white) "♙" else "♟"
         else if (b.opponent.squares(Pawn).contains(s)) if (white) "♟" else "♙"
         else if (b.same.squares(Knight).contains(s)) if (white) "♘" else "♞"
