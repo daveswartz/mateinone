@@ -18,7 +18,7 @@ case class Side private(color: Color,
   def squares(t: PieceType): Set[Square] = typeToSquares(t)
   def moved(s: Square): Boolean = moved.contains(s)
   def contains(s: Square): Boolean = squareToType.contains(s)
-  def contains(t: Set[PieceType])(s: Square): Boolean = t.exists(typeToSquares(_).contains(s))
+  def contains(t: Set[PieceType], s: Square): Boolean = t.exists(typeToSquares(_).contains(s))
   def add(s: Square, t: PieceType): Side = copy(squareToType = squareToType + (s -> t), typeToSquares = typeToSquares + (t -> (typeToSquares(t) + s)), moved = moved + s)
   def remove(s: Square, t: PieceType): Side = copy(squareToType = squareToType - s, typeToSquares = typeToSquares + (t -> (typeToSquares(t) - s)))
 }
@@ -27,27 +27,12 @@ object Board {
 
   private object OffsetConstants {
     val (up, upRight, right, downRight, down, downLeft, left, upLeft) = ((0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1), (-1, 0), (-1, 1))
-    val (upOnly, downOnly) = (Vector(up), Vector(down))
-    val (upLeftUpRight, downLeftDownRight) = (Vector(upLeft, upRight), Vector(downLeft, downRight))
     val (diagonals, verticalHorizontal) = (Vector(upRight, downRight, downLeft, upLeft), Vector(up, left, down, right))
     val adjacent = diagonals ++ verticalHorizontal
     val knight = Vector((2, 1), (2, -1), (1, 2), (1, -2), (-2, 1), (-2, -1), (-1, 2), (-1, -2))
   }
 
-  private object PieceTypeConstants {
-    val k: Set[PieceType] = Set(Knight)
-    val rq: Set[PieceType] = Set(Rook, Queen)
-    val rqk: Set[PieceType] = Set(Rook, Queen, King)
-    val pbqk: Set[PieceType] = Set(Pawn, Bishop, Queen, King)
-    val bqk: Set[PieceType] = Set(Bishop, Queen, King)
-    val bq: Set[PieceType] = Set(Bishop, Queen)
-  }
-
-  private object SquareConstants {
-    val blackSquares: Set[Square] = Square.Squares.flatten.toSet.filter(s => s.file % 2 == 0 && s.file % 2 == 0)
-    val rank7: Set[Square] = rank(_7)
-    val rank2: Set[Square] = rank(_2)
-  }
+  private val blackSquares: Set[Square] = Square.Squares.flatten.toSet.filter(s => s.file % 2 == 0 && s.file % 2 == 0)
 
   private case class CastleConstants(move: Castle, rookStart: Square, kingEnd: Square, between: Set[Square], through: Set[Square], rookEnd: Square)
   private object CastleConstants {
@@ -57,31 +42,31 @@ object Board {
     val blackKings = CastleConstants(`O-O`, H8, G8, Set(F8, G8), Set(F8), F8)
   }
 
-  def initial = Board(Side(White, rank(_2), Set(B1, G1), Set(C1, F1), Set(A1, H1), Set(D1), Set(E1)), Side(Black, rank(_7), Set(B8, G8), Set(C8, F8), Set(A8, H8), Set(D8), Set(E8)), None)
+  def initial = Board(Side(White, rank(_2), Set(B1, G1), Set(C1, F1), Set(A1, H1), Set(D1), Set(E1)), Side(Black, rank(_7), Set(B8, G8), Set(C8, F8), Set(A8, H8), Set(D8), Set(E8)), None, 0)
 
   private def isCheck(defender: Side, offender: Side): Boolean = {
     import OffsetConstants._
-    import PieceTypeConstants._
+    val n: Set[PieceType] = Set(Knight); val rq: Set[PieceType] = Set(Rook, Queen); val rqk: Set[PieceType] = Set(Rook, Queen, King)
+    val pbqk: Set[PieceType] = Set(Pawn, Bishop, Queen, King); val bqk: Set[PieceType] = Set(Bishop, Queen, King); val bq: Set[PieceType] = Set(Bishop, Queen)
     defender.squares(King).exists { king =>
       def givingCheck(inOneStep: Set[PieceType], inAnySteps: Set[PieceType])(offset: (Int, Int)): Boolean = {
         var c = king + offset; var g = inOneStep
         while (c != Outside && !defender.contains(c) && !offender.contains(c)) { c = c + offset; g = inAnySteps }
-        c != Outside && offender.contains(g)(c)
+        c != Outside && offender.contains(g, c)
       }
-      verticalHorizontal.exists(givingCheck(rqk, rq)) || knight.exists(offset => offender.contains(k)(king + offset)) ||
-        downLeftDownRight.exists(givingCheck(if (defender.color == Black) pbqk else bqk, bq)) ||
-        upLeftUpRight.exists(givingCheck(if (defender.color == White) pbqk else bqk, bq))
+      verticalHorizontal.exists(givingCheck(rqk, rq)) || knight.exists(offset => offender.contains(n, king + offset)) ||
+        Vector(downLeft, downRight).exists(givingCheck(if (defender.color == Black) pbqk else bqk, bq)) ||
+        Vector(upLeft, upRight).exists(givingCheck(if (defender.color == White) pbqk else bqk, bq))
     }
   }
 
 }
 import Board._
 
-case class Board private(same: Side, opponent: Side, private val lastIfPawn2: Option[Move]) {
+case class Board private(same: Side, opponent: Side, private val twoSquarePawn: Option[Move], pawnOrCapture: Int) {
 
   def leaves: Vector[(MoveBase, Board)] = {
     import OffsetConstants._
-    import SquareConstants._
     import CastleConstants._
 
     // Functions that generate ends from the specified start and offset and filters illegal ends
@@ -102,10 +87,11 @@ case class Board private(same: Side, opponent: Side, private val lastIfPawn2: Op
     def toPromotions(start: Square, ends: Set[Square]): Set[Promotion] = ends.flatMap(e => PromotionType.all.map(t => Promotion(start, e, t)))
 
     // Functions that generate a board from the current board and the specified move
-    def captureIfPresent(s: Square): Side = if (opponent.contains(s)) opponent.remove(s, opponent.`type`(s)) else opponent
-    def doMove(t: PieceType)(m: Move): Board = Board(captureIfPresent(m.end), same.add(m.end, t).remove(m.start, t), None)
-    def doTwoSquarePawnAdvance(m: Move): Board = Board(opponent, same.add(m.end, Pawn).remove(m.start, Pawn), Some(m))
-    def doPromotion(p: Promotion): Board = Board(captureIfPresent(p.end), same.remove(p.start, Pawn).add(p.end, p.`type`), None)
+    def doMove(`type`: PieceType, isTwoSquare: Boolean = false)(m: Move): Board = {
+      val isCapture = opponent.contains(m.end)
+      Board(if (isCapture) opponent.remove(m.end, opponent.`type`(m.end)) else opponent, same.add(m.end, `type`).remove(m.start, `type`), if (isTwoSquare) Some(m) else None, if (`type` == Pawn || isCapture) 0 else pawnOrCapture + 1)
+    }
+    def doPromotion(p: Promotion): Board = Board(if (opponent.contains(p.end)) opponent.remove(p.end, opponent.`type`(p.end)) else opponent, same.remove(p.start, Pawn).add(p.end, p.`type`), None, 0)
 
     def createLeaves[M <: MoveBase](starts: Set[Square],
                                     offsets: Vector[(Int, Int)],
@@ -120,14 +106,14 @@ case class Board private(same: Side, opponent: Side, private val lastIfPawn2: Op
       createLeaves(same.squares(Queen), adjacent, openUntilCapture, toMoves, doMove(Queen)) ++
       createLeaves(same.squares(King), adjacent, openOrCapture, toMoves, doMove(King)) ++
       {
-        val (promotionRank, advance, captures) = if (same.color == White) (rank7, upOnly, upLeftUpRight) else (rank2, downOnly, downLeftDownRight)
+        val (promotionRank, advance, captures) = if (same.color == White) (rank(_7), Vector(up), Vector(upLeft, upRight)) else (rank(_2), Vector(down), Vector(downLeft, downRight))
         val (promoters, movers) = same.squares(Pawn).partition(promotionRank.contains)
         createLeaves(promoters, advance, openOnly1, toPromotions, doPromotion) ++
           createLeaves(promoters, captures, captureOnly, toPromotions, doPromotion) ++
           createLeaves(movers, captures, openOnly1, toMoves, doMove(Pawn))
-            .filter { case (m, b) => lastIfPawn2.exists(l => l.end.file == m.end.file && l.end.rank == m.start.rank) }
-            .map { case (m, b) => (m, b.copy(same = b.same.remove(lastIfPawn2.get.end, Pawn))) } ++
-          createLeaves(movers.filterNot(same.moved), advance, openOnly2, toMoves, doTwoSquarePawnAdvance) ++
+            .filter { case (m, b) => twoSquarePawn.exists(l => l.end.file == m.end.file && l.end.rank == m.start.rank) }
+            .map { case (m, b) => (m, b.copy(same = b.same.remove(twoSquarePawn.get.end, Pawn))) } ++
+          createLeaves(movers.filterNot(same.moved), advance, openOnly2, toMoves, doMove(Pawn, isTwoSquare = true)) ++
           createLeaves(movers, advance, openOnly1, toMoves, doMove(Pawn)) ++
           createLeaves(movers, captures, captureOnly, toMoves, doMove(Pawn))
       } ++
@@ -138,7 +124,7 @@ case class Board private(same: Side, opponent: Side, private val lastIfPawn2: Op
           def createLeaf(cc: CastleConstants): Unit = {
             def betweenOccupied = cc.between.exists(b => same.contains(b) || opponent.contains(b))
             def throughCheck = Board.isCheck(cc.through.foldLeft(same)(_.add(_, King)), opponent)
-            def board = Board(opponent, same.remove(cc.rookStart, Rook).remove(kingStart, King).add(cc.rookEnd, Rook).add(cc.kingEnd, King), None)
+            def board = Board(opponent, same.remove(cc.rookStart, Rook).remove(kingStart, King).add(cc.rookEnd, Rook).add(cc.kingEnd, King), None, pawnOrCapture + 1)
             if (!same.moved(cc.rookStart) && !betweenOccupied && !throughCheck) castleLeaves = castleLeaves :+(cc.move, board)
           }
           createLeaf(kingside); createLeaf(queenside)
@@ -156,7 +142,7 @@ case class Board private(same: Side, opponent: Side, private val lastIfPawn2: Op
 
   def isStalemate: Boolean = moves.isEmpty && !isCheck
   def isInsufficientMaterial: Boolean = {
-    import SquareConstants._
+    import Board.blackSquares
     def both(t: PieceType): Set[Square] = same.squares(t) ++ opponent.squares(t)
     (both(Pawn).isEmpty || both(Rook).isEmpty || both(Queen).isEmpty) &&
       ((both(Knight).isEmpty || both(Bishop).isEmpty) || (both(Knight).size == 1 && both(Bishop).isEmpty) ||
@@ -165,7 +151,7 @@ case class Board private(same: Side, opponent: Side, private val lastIfPawn2: Op
   def isAutomaticDraw: Boolean = isStalemate || isInsufficientMaterial
 
   def isThreefoldRepetition: Boolean = false
-  def isFiftyMoveRule: Boolean = false
+  def isFiftyMoveRule: Boolean = pawnOrCapture >= 100
   def mayClaimDraw: Boolean = isThreefoldRepetition || isFiftyMoveRule
 
   def move(movesToMake: List[MoveBase]): Option[Board] = movesToMake match { case h :: t => leaves.find(_._1 == h).flatMap(_._2.move(t)); case _ => Some(this) }
