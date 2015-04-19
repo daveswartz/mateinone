@@ -154,20 +154,11 @@ class MateInOneSpec extends Specification {
     }
   }
 
-  "Evaluation" should {
-    "evaluate the initial board" in { Evaluation.value(Board.initial) must beEqualTo(0) }
-    "evaluate after a pawn move" in {
-      val m = Move.move(A2, A4)
-      val b = Board.initial.move(m).get
-      Evaluation.value(b) must beEqualTo(-5)
-      Evaluation.deltaValue(Board.initial, m) must beEqualTo(-5)
-    }
-    "evaluate after a knight move" in {
-      val b = Board.initial.move(Move.move(B1, C3), Move.move(B8, C6), Move.move(G1, F3), Move.move(G8, F6), Move.move(D2, D4)).get
-      val m = Move.move(C6, D4)
-      Evaluation.value(b.move(m).get) must beEqualTo(-90)
-      Evaluation.deltaValue(b, m) must beEqualTo(-130)
-    }
+  "BoardWithEvaluator" should {
+    "evaluate the initial board" in { BoardWithEvaluator(Board.initial).evaluation must beEqualTo(0) }
+    "evaluate after a pawn move" in { BoardWithEvaluator(Board.initial.move(A2->A4).get).evaluation must beEqualTo(-5) }
+    "evaluate after two pawn moves" in { BoardWithEvaluator(Board.initial.move(A2->A4, A7->A5).get).evaluation must beEqualTo(0) }
+    "evaluate after a knight move" in { BoardWithEvaluator(Board.initial.move(B1->C3, B8->C6, G1->F3, G8->F6, D2->D4, C6->D4).get).evaluation must beEqualTo(-90) }
   }
 
   // Checks each move is generated and allowed

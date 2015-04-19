@@ -2,8 +2,7 @@ package mateinone
 
 import Square._
 
-object Evaluation {
-
+object BoardWithEvaluator {
   private val whitesView = Square.Squares.reverse.flatten
   private val blacksView = Square.Squares.flatten
   private def sides(pieceSquareTable: Vector[Int], pieceValue: Int) =
@@ -117,9 +116,9 @@ object Evaluation {
       }
   }
 
-  def isEndgame(b: Board) = b.same.squares(Queen).isEmpty && b.opponent.squares(Queen).isEmpty
+  private def isEndgame(b: Board) = b.same.squares(Queen).isEmpty && b.opponent.squares(Queen).isEmpty
 
-  def value(b: Board): Int = {
+  private def evaluate(b: Board): Int = {
     val isWhite = b.same.color == White
     def v(ofType: Side => Set[Square], whiteValues: Map[Square, Int], blackValues: Map[Square, Int]): Int = {
       ofType(b.same).foldLeft(0)(_ + (if (isWhite) whiteValues else blackValues)(_)) +
@@ -140,7 +139,7 @@ object Evaluation {
   private def captureDelta(b: Board, s: Square): Int =
     if (b.opponent.contains(s)) pieceSquareTable(b.opponent.color, b.opponent.`type`(s))(s) else 0
 
-  def deltaValue(b: Board, m: MoveBase): Int = {
+  private def delta(b: Board, m: MoveBase): Int = {
     m match {
       case Move(s: Square, e: Square) =>
         val t = b.same.`type`(s)
@@ -154,4 +153,12 @@ object Evaluation {
     }
   }
 
+  def apply(b: Board): BoardWithEvaluator = BoardWithEvaluator(b, evaluate(b))
+}
+
+case class BoardWithEvaluator private(b: Board, evaluation: Int) {
+  import BoardWithEvaluator._
+
+  lazy val leaves: Vector[(MoveBase, BoardWithEvaluator)] =
+    b.leaves.map { case (cm, cb) => (cm, BoardWithEvaluator(cb, if (!isEndgame(b) && isEndgame(cb)) evaluate(cb) else evaluation + delta(b, cm))) }
 }
