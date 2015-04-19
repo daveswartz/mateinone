@@ -4,10 +4,10 @@ import Square._
 
 object Evaluation {
 
-  private val whiteSquares = Square.Squares.reverse.flatten
-  private val blackSquares = Square.Squares.flatten
+  private val whitesView = Square.Squares.reverse.flatten
+  private val blacksView = Square.Squares.flatten
   private def sides(pieceSquareTable: Vector[Int], pieceValue: Int) =
-    (blackSquares.zip(pieceSquareTable.map(_ + pieceValue)).toMap, whiteSquares.zip(pieceSquareTable.map(-_ - pieceValue)).toMap)
+    (blacksView.zip(pieceSquareTable.map(_ + pieceValue)).toMap, whitesView.zip(pieceSquareTable.map(-_ - pieceValue)).toMap)
 
   private val pawnSquareTable = Vector(
       0,   0,   0,   0,   0,   0,   0,   0,
@@ -117,7 +117,7 @@ object Evaluation {
       }
   }
 
-  private def isEndGame(b: Board) = b.same.squares(Queen).isEmpty || b.opponent.squares(Queen).isEmpty
+  def isEndgame(b: Board) = b.same.squares(Queen).isEmpty && b.opponent.squares(Queen).isEmpty
 
   def value(b: Board): Int = {
     val isWhite = b.same.color == White
@@ -125,7 +125,7 @@ object Evaluation {
       ofType(b.same).foldLeft(0)(_ + (if (isWhite) whiteValues else blackValues)(_)) +
         ofType(b.opponent).foldLeft(0)(_ + (if (isWhite) blackValues else whiteValues)(_))
     }
-    val endGame = isEndGame(b)
+    val endGame = isEndgame(b)
     v(_.squares(Pawn), whitePawn, blackPawn) +
       v(_.squares(Knight), whiteKnight, blackKnight) +
       v(_.squares(Bishop), whiteBishop, blackBishop) +
@@ -140,7 +140,7 @@ object Evaluation {
   private def captureDelta(b: Board, s: Square): Int =
     if (b.opponent.contains(s)) pieceSquareTable(b.opponent.color, b.opponent.`type`(s))(s) else 0
 
-  def deltaValue(b: Board, m: MoveBase): Int = { // TODO if last queen captured then in end game and need to reevaluate.
+  def deltaValue(b: Board, m: MoveBase): Int = {
     m match {
       case Move(s: Square, e: Square) =>
         val t = b.same.`type`(s)

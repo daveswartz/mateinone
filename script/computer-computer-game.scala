@@ -1,6 +1,5 @@
 import mateinone._
 import scala.annotation.tailrec
-import scala.collection.mutable
 import TerminalPrinter._
 
 object BoardWithValue {
@@ -12,42 +11,27 @@ object BoardWithValue {
 
 case class BoardWithValue(b: Board, value: Int) {
   lazy val leaves: Vector[(MoveBase, BoardWithValue)] =
-    b.leaves.map { case (cm, cb) => (cm, BoardWithValue(cb, value + Evaluation.deltaValue(b, cm))) } // TODO reevaluate on end game in Evaluation
-//  lazy val tranpositionKey: TranspositionKey = (b.same, b.opponent)
+    b.leaves.map { case (cm, cb) =>
+      val v =
+        if (!Evaluation.isEndgame(b) && Evaluation.isEndgame(cb)) Evaluation.value(cb)
+        else value + Evaluation.deltaValue(b, cm)
+      (cm, BoardWithValue(cb, v))
+    }
 }
-
-//type TranspositionKey = (Pieces, Pieces)
-//case class TranspositionValue(depth: Int, a: Int, b: Int, value: Int)
-//class TranspositionTable(private val map: mutable.Map[TranspositionKey, TranspositionValue] = mutable.Map.empty[TranspositionKey, TranspositionValue]) {
-//  def get(k: TranspositionKey): Option[TranspositionValue] = map.get(k)
-//  def put(k: TranspositionKey, v: TranspositionValue) = {
-//    if (map.size > 1000) map.remove(map.head._1)
-//    map += k -> v
-//  }
-//}
-//val transpositionTable = new TranspositionTable()
 
 var evaluations = 0
 def negamax(node: BoardWithValue, depth: Int, color: Int, a: Int, b: Int): Int =
   if (depth == 0 || node.leaves.isEmpty) color * node.value
   else {
-//    val tOpt = transpositionTable.get(node.tranpositionKey)
-//    if (tOpt.exists(t => (t.a < t.value && t.value < t.b) || (t.a <= a && b <= t.b) && t.depth >= depth)) tOpt.get.value
-//    else {
-      var v = Int.MinValue
-      var a0 = a
-      evaluations += node.leaves.size
-      for (c <- node.leaves.sortBy { case (cm, cb) => -color * cb.value }) {
-        v = math.max(v, -negamax(c._2, depth - 1, -color, -b, -a0))
-        a0 = math.max(a0, v)
-        if (v >= b) {
-//          transpositionTable.put(node.tranpositionKey, TranspositionValue(depth, a, b, v))
-          return v
-        }
-      }
-//      transpositionTable.put(node.tranpositionKey, TranspositionValue(depth, a, b, v))
-      v
-//    }
+    var v = Int.MinValue
+    var a0 = a
+    evaluations += node.leaves.size
+    for (c <- node.leaves.sortBy { case (cm, cb) => -color * cb.value }) {
+      v = math.max(v, -negamax(c._2, depth - 1, -color, -b, -a0))
+      a0 = math.max(a0, v)
+      if (v >= b) return v
+    }
+    v
   }
 
 var current = BoardWithValue.initial

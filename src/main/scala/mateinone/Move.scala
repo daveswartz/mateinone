@@ -15,7 +15,7 @@ object Move {
   }
 }
 case class Move private(start: Square, end: Square) extends MoveBase with StartAndEnd {
-  override def toString(): String = start+"->"+end
+  override def toString: String = start+"->"+end
 }
 
 object Promotion {
@@ -24,14 +24,14 @@ object Promotion {
 }
 case class Promotion(start: Square, end: Square, `type`: PromotionType) extends MoveBase with StartAndEnd {
   import Promotion.promotionTypeToString
-  override def toString(): String = start+"->"+end+"="+`type`.print
+  override def toString: String = start+"->"+end+"="+`type`.print
 }
 
 sealed trait Castle extends MoveBase
-case object `O-O` extends Castle { override def toString(): String = "O-O" }
-case object `O-O-O` extends Castle { override def toString(): String = "O-O-O" }
+case object `O-O` extends Castle { override def toString: String = "O-O" }
+case object `O-O-O` extends Castle { override def toString: String = "O-O-O" }
 
 object MoveImplicits {
-  implicit def tupleToSimpleMove(t: (Square, Square)) = t match { case (start, end) => Move.move(start, end) }
-  implicit def tupleTupleToPromotion(t: ((Square, Square), PromotionType)) = t match { case ((start, end), promotion) => Promotion(start, end, promotion) }
+  implicit def tupleToMove(t: (Square, Square)): Move = t match { case (start, end) => Move.move(start, end) }
+  implicit def tupleTupleToPromotion(t: ((Square, Square), PromotionType)): Promotion = t match { case ((start, end), promotion) => Promotion(start, end, promotion) }
 }
