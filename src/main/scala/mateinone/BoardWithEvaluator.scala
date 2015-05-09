@@ -159,6 +159,6 @@ object BoardWithEvaluator {
 case class BoardWithEvaluator private(b: Board, evaluation: Int) {
   import BoardWithEvaluator._
 
-  lazy val leaves: Vector[(MoveBase, BoardWithEvaluator)] =
+  def leaves: Vector[(MoveBase, BoardWithEvaluator)] =
     b.leaves.map { case (cm, cb) => (cm, BoardWithEvaluator(cb, if (!isEndgame(b) && isEndgame(cb)) evaluate(cb) else evaluation + delta(b, cm))) }
 }

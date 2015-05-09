@@ -1,6 +1,9 @@
 import mateinone._
 import TerminalPrinter._
 
+val alphaBetaPruning = true;
+val lookAheadDepth = 3;
+
 case class Score(value: Int, moves: List[(MoveBase, Int)], evaluations: Int)
 
 def alphaBetaMax(board: BoardWithEvaluator, alpha: Int, beta: Int, depth: Int): Score =
@@ -10,9 +13,12 @@ def alphaBetaMax(board: BoardWithEvaluator, alpha: Int, beta: Int, depth: Int): 
     var maxAlpha = Score(alpha, Nil, 0)
     for ((childMove, childBoard) <- board.leaves) {
       val score = alphaBetaMin(childBoard, maxAlpha.value, beta, depth - 1)
-      if (score.value >= beta) return Score(beta, (childMove, childBoard.evaluation) :: score.moves, maxAlpha.evaluations + score.evaluations) // fail hard beta-cutoff
-      if (score.value > maxAlpha.value) maxAlpha = Score(score.value, (childMove, childBoard.evaluation) :: score.moves, maxAlpha.evaluations + score.evaluations) // alpha acts like max in MiniMax
-      else maxAlpha = maxAlpha.copy(evaluations = maxAlpha.evaluations + score.evaluations)
+      if (alphaBetaPruning && score.value >= beta) // fail hard beta-cutoff
+        return Score(beta, (childMove, childBoard.evaluation) :: score.moves, maxAlpha.evaluations + score.evaluations)
+      if (score.value > maxAlpha.value) // alpha acts like max in MiniMax
+        maxAlpha = Score(score.value, (childMove, childBoard.evaluation) :: score.moves, maxAlpha.evaluations + score.evaluations)
+      else
+        maxAlpha = maxAlpha.copy(evaluations = maxAlpha.evaluations + score.evaluations)
     }
     maxAlpha
   }
@@ -24,9 +30,12 @@ def alphaBetaMin(board: BoardWithEvaluator, alpha: Int, beta: Int, depth: Int): 
     var minBeta = Score(beta, Nil, 0)
     for ((childMove, childBoard) <- board.leaves) {
       val score = alphaBetaMax(childBoard, alpha, minBeta.value, depth - 1)
-      if (score.value <= alpha) return Score(alpha, (childMove, childBoard.evaluation) :: score.moves, minBeta.evaluations + score.evaluations) // fail hard alpha-cutoff
-      if (score.value < minBeta.value) minBeta = Score(score.value, (childMove, childBoard.evaluation) :: score.moves, minBeta.evaluations + score.evaluations) // beta acts like min in MiniMax
-      else minBeta = minBeta.copy(evaluations = minBeta.evaluations + score.evaluations)
+      if (alphaBetaPruning && score.value <= alpha) // fail hard alpha-cutoff
+        return Score(alpha, (childMove, childBoard.evaluation) :: score.moves, minBeta.evaluations + score.evaluations)
+      if (score.value < minBeta.value) // beta acts like min in MiniMax
+        minBeta = Score(score.value, (childMove, childBoard.evaluation) :: score.moves, minBeta.evaluations + score.evaluations)
+      else
+        minBeta = minBeta.copy(evaluations = minBeta.evaluations + score.evaluations)
     }
     minBeta
   }
@@ -49,4 +58,4 @@ def step(board: Board, depth: Int, n: Int): Unit =
     step(nextBoard, depth, n + 1)
   }
 
-step(Board.initial, 4, 0)
+step(Board.initial, lookAheadDepth, 0)
