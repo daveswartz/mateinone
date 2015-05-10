@@ -1,5 +1,6 @@
 package mateinone
 
+import mateinone.evaluators.Simplified
 import org.specs2.mutable._
 import Square._
 import File._
@@ -154,11 +155,11 @@ class MateInOneSpec extends Specification {
     }
   }
 
-  "BoardWithEvaluator" should {
-    "evaluate the initial board" in { BoardWithEvaluator(Board.initial).evaluation must beEqualTo(0) }
-    "evaluate after a pawn move" in { BoardWithEvaluator(Board.initial.move(A2->A4).get).evaluation must beEqualTo(-5) }
-    "evaluate after two pawn moves" in { BoardWithEvaluator(Board.initial.move(A2->A4, A7->A5).get).evaluation must beEqualTo(0) }
-    "evaluate after a knight move" in { BoardWithEvaluator(Board.initial.move(B1->C3, B8->C6, G1->F3, G8->F6, D2->D4, C6->D4).get).evaluation must beEqualTo(-90) }
+  "Simplified" should {
+    "evaluate the initial board" in { Simplified.evaluate(Board.initial) must beEqualTo(0) }
+    "evaluate after a pawn move" in { Simplified.evaluate(Board.initial.move(A2->A4).get) must beEqualTo(-5) }
+    "evaluate after two pawn moves" in { Simplified.evaluate(Board.initial.move(A2->A4, A7->A5).get) must beEqualTo(0) }
+    "evaluate after a knight move" in { Simplified.evaluate(Board.initial.move(B1->C3, B8->C6, G1->F3, G8->F6, D2->D4, C6->D4).get) must beEqualTo(-90) }
   }
 
   // Checks each move is generated and allowed

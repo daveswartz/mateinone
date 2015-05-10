@@ -1,48 +1,61 @@
 import mateinone._
 import TerminalPrinter._
+import mateinone.evaluators.{Evaluator, Simplified}
 
-val alphaBetaPruning = true;
-val lookAheadDepth = 3;
+val alphaBetaPruning = true
+val lookAheadDepth = 5
+val evaluator: Evaluator = Simplified
 
-case class Score(value: Int, moves: List[(MoveBase, Int)], evaluations: Int)
+// TODO restore delta evaluation as option (on/off boolean) if speeds up/does not affect result
 
-def alphaBetaMax(board: BoardWithEvaluator, alpha: Int, beta: Int, depth: Int): Score =
+case class Score(score: Int, moves: List[(MoveBase, Int)], nEvals: Int) {
+  def addEvals(e: Int) = copy(nEvals = nEvals + e)
+}
+
+def alphaBetaMax(move: MoveBase, board: Board, alpha: Int, beta: Int, depth: Int): Score = {
+  val eval = evaluator.evaluate(board)
+  var nEvals = 1
   if (depth == 0) {
-    Score(board.evaluation, Nil, 1)
+    Score(eval, (move, eval) :: Nil, nEvals)
   } else {
-    var maxAlpha = Score(alpha, Nil, 0)
+    var maxAlpha = Score(alpha, Nil, nEvals)
     for ((childMove, childBoard) <- board.leaves) {
-      val score = alphaBetaMin(childBoard, maxAlpha.value, beta, depth - 1)
-      if (alphaBetaPruning && score.value >= beta) // fail hard beta-cutoff
-        return Score(beta, (childMove, childBoard.evaluation) :: score.moves, maxAlpha.evaluations + score.evaluations)
-      if (score.value > maxAlpha.value) // alpha acts like max in MiniMax
-        maxAlpha = Score(score.value, (childMove, childBoard.evaluation) :: score.moves, maxAlpha.evaluations + score.evaluations)
-      else
-        maxAlpha = maxAlpha.copy(evaluations = maxAlpha.evaluations + score.evaluations)
+      val childScore = alphaBetaMin(childMove, childBoard, maxAlpha.score, beta, depth - 1)
+      nEvals += childScore.nEvals
+      if (alphaBetaPruning && childScore.score >= beta) // fail hard beta-cutoff
+        return Score(beta, Nil, nEvals)
+      if (childScore.score > maxAlpha.score) // alpha acts like max in MiniMax
+        maxAlpha = Score(childScore.score, (move, eval) :: childScore.moves, nEvals)
     }
-    maxAlpha
+    maxAlpha.copy(nEvals = nEvals)
   }
+}
 
-def alphaBetaMin(board: BoardWithEvaluator, alpha: Int, beta: Int, depth: Int): Score =
+def alphaBetaMin(move: MoveBase, board: Board, alpha: Int, beta: Int, depth: Int): Score = {
+  val eval = evaluator.evaluate(board)
+  var nEvals = 1
   if (depth == 0) {
-    Score(board.evaluation, Nil, 1)
+    Score(eval, (move, eval) :: Nil, nEvals)
   } else {
-    var minBeta = Score(beta, Nil, 0)
+    var minBeta = Score(beta, Nil, nEvals)
     for ((childMove, childBoard) <- board.leaves) {
-      val score = alphaBetaMax(childBoard, alpha, minBeta.value, depth - 1)
-      if (alphaBetaPruning && score.value <= alpha) // fail hard alpha-cutoff
-        return Score(alpha, (childMove, childBoard.evaluation) :: score.moves, minBeta.evaluations + score.evaluations)
-      if (score.value < minBeta.value) // beta acts like min in MiniMax
-        minBeta = Score(score.value, (childMove, childBoard.evaluation) :: score.moves, minBeta.evaluations + score.evaluations)
-      else
-        minBeta = minBeta.copy(evaluations = minBeta.evaluations + score.evaluations)
+      val childScore = alphaBetaMax(childMove, childBoard, alpha, minBeta.score, depth - 1)
+      nEvals += childScore.nEvals
+      if (alphaBetaPruning && childScore.score <= alpha) // fail hard alpha-cutoff
+        return Score(alpha, Nil, nEvals)
+      if (childScore.score < minBeta.score) // beta acts like min in MiniMax
+        minBeta = Score(childScore.score, (move, eval) :: childScore.moves, nEvals)
     }
-    minBeta
+    minBeta.copy(nEvals = nEvals)
   }
+}
 
-def next(b: BoardWithEvaluator, depth: Int): Score =
-  if (b.b.same.color == White) alphaBetaMax(b, Int.MinValue, Int.MaxValue, depth)
-  else alphaBetaMin(b, Int.MinValue, Int.MaxValue, depth)
+def next(b: Board, depth: Int): Score = {
+  val score =
+    if (b.same.color == White) alphaBetaMax(null, b, Int.MinValue, Int.MaxValue, depth)
+    else alphaBetaMin(null, b, Int.MinValue, Int.MaxValue, depth)
+  score.copy(moves = score.moves.tail)
+}
 
 def step(board: Board, depth: Int, n: Int): Unit =
   if (board.isCheckmate) println(s"Checkmate ${board.opponent.color.toString} wins")
@@ -51,10 +64,13 @@ def step(board: Board, depth: Int, n: Int): Unit =
   else if (board.isThreefoldRepetition) println(s"${board.same.color.toString} claimed draw by threefold repetition")
   else if (board.isFiftyMoveRule) println(s"${board.same.color.toString} claimed draw by fifty-move rule")
   else {
-    val score @ Score(_, (nextMove, _) :: _, _) = next(BoardWithEvaluator(board), depth)
+    val start = System.nanoTime()
+    val score = next(board, depth)
+    val deltaInSeconds = (System.nanoTime() - start) / 1e9
+    val (nextMove, _) = score.moves.head
     val nextBoard = board.move(nextMove).get
     println(nextBoard.print(nextMove))
-    println(s"${n / 2 + 1}. $nextMove | $score")
+    println(s"${n / 2 + 1}. $nextMove | $score | $deltaInSeconds seconds")
     step(nextBoard, depth, n + 1)
   }
 

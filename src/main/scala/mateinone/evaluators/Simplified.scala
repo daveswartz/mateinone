@@ -1,12 +1,11 @@
-package mateinone
+package mateinone.evaluators
 
-import Square._
+import mateinone._
 
-object BoardWithEvaluator {
-  private val whitesView = Square.Squares.reverse.flatten
-  private val blacksView = Square.Squares.flatten
-  private def sides(pieceSquareTable: Vector[Int], pieceValue: Int) =
-    (blacksView.zip(pieceSquareTable.map(_ + pieceValue)).toMap, whitesView.zip(pieceSquareTable.map(-_ - pieceValue)).toMap)
+/**
+ * Source: https://chessprogramming.wikispaces.com/Simplified+evaluation+function
+ */
+object Simplified extends Evaluator {
 
   private val pawnSquareTable = Vector(
       0,   0,   0,   0,   0,   0,   0,   0,
@@ -85,6 +84,12 @@ object BoardWithEvaluator {
     -50, -30, -30, -30, -30, -30, -30, -50
   )
 
+  private def sides(pieceSquareTable: Vector[Int], pieceValue: Int) = {
+    val whitesView = Square.Squares.reverse.flatten
+    val blacksView = Square.Squares.flatten
+    (blacksView.zip(pieceSquareTable.map(_ + pieceValue)).toMap, whitesView.zip(pieceSquareTable.map(-_ - pieceValue)).toMap)
+  }
+
   private val (whitePawn, blackPawn) = sides(pawnSquareTable, 100)
   private val (whiteKnight, blackKnight) = sides(knightSquareTable, 320)
   private val (whiteBishop, blackBishop) = sides(bishopSquareTable, 330)
@@ -93,72 +98,32 @@ object BoardWithEvaluator {
   private val (whiteKingMiddle, blackKingMiddle) = sides(kingMiddleSquareTable, 0)
   private val (whiteKingEnd, blackKingEnd) = sides(kingEndSquareTable, 0)
 
-  private def pieceSquareTable(color: Color, pieceType: PieceType, endGame: Boolean = false): Map[Square, Int] = color match {
-    case White =>
-      pieceType match {
-        case Pawn => whitePawn
-        case Knight => whiteKnight
-        case Bishop => whiteBishop
-        case Rook => whiteRook
-        case Queen => whiteQueen
-        case King if endGame => whiteKingEnd
-        case King => whiteKingMiddle
-      }
-    case Black =>
-      pieceType match {
-        case Pawn => blackPawn
-        case Knight => blackKnight
-        case Bishop => blackBishop
-        case Rook => blackRook
-        case Queen => blackQueen
-        case King if endGame => blackKingEnd
-        case King => blackKingMiddle
-      }
+  private def valueForPawn(color: Color, square: Square): Int = if (color == White) whitePawn(square) else blackPawn(square)
+  private def valueForKnight(color: Color, square: Square): Int = if (color == White) whiteKnight(square) else blackKnight(square)
+  private def valueForBishop(color: Color, square: Square): Int = if (color == White) whiteBishop(square) else blackBishop(square)
+  private def valueForRook(color: Color, square: Square): Int = if (color == White) whiteRook(square) else blackRook(square)
+  private def valueForQueen(color: Color, square: Square): Int = if (color == White) whiteQueen(square) else blackQueen(square)
+  private def valueForKing(color: Color, endGame: Boolean, square: Square): Int =
+    if (color == White) { if (endGame) whiteKingEnd(square) else whiteKingMiddle(square) }
+    else { if (endGame) blackKingEnd(square) else blackKingMiddle(square) }
+
+  private def valueForSide(side: Side, endGame: Boolean): Int = {
+    var result = 0
+    side.squares(Pawn).foreach(result += valueForPawn(side.color, _))
+    side.squares(Knight).foreach(result += valueForKnight(side.color, _))
+    side.squares(Bishop).foreach(result += valueForBishop(side.color, _))
+    side.squares(Rook).foreach(result += valueForRook(side.color, _))
+    side.squares(Queen).foreach(result += valueForQueen(side.color, _))
+    side.squares(King).foreach(result += valueForKing(side.color, endGame, _))
+    result
   }
 
+  // TODO improve rule to match that on site
   private def isEndgame(b: Board) = b.same.squares(Queen).isEmpty && b.opponent.squares(Queen).isEmpty
 
-  private def evaluate(b: Board): Int = {
-    val isWhite = b.same.color == White
-    def v(ofType: Side => Set[Square], whiteValues: Map[Square, Int], blackValues: Map[Square, Int]): Int = {
-      ofType(b.same).foldLeft(0)(_ + (if (isWhite) whiteValues else blackValues)(_)) +
-        ofType(b.opponent).foldLeft(0)(_ + (if (isWhite) blackValues else whiteValues)(_))
-    }
+  def evaluate(b: Board): Int = {
     val endGame = isEndgame(b)
-    v(_.squares(Pawn), whitePawn, blackPawn) +
-      v(_.squares(Knight), whiteKnight, blackKnight) +
-      v(_.squares(Bishop), whiteBishop, blackBishop) +
-      v(_.squares(Rook), whiteRook, blackRook) +
-      v(_.squares(Queen), whiteQueen, blackQueen) +
-      v(_.squares(King), if (endGame) whiteKingEnd else whiteKingMiddle, if (endGame) blackKingEnd else blackKingMiddle)
+    valueForSide(b.same, endGame) + valueForSide(b.opponent, endGame)
   }
 
-  private def castleDelta(color: Color, kingStart: Square, kingEnd: Square, rookStart: Square, rookEnd: Square): Int =
-    -pieceSquareTable(color, King)(kingStart) - pieceSquareTable(color, Rook)(rookStart) + pieceSquareTable(color, King)(kingEnd) + pieceSquareTable(color, Rook)(rookEnd)
-
-  private def captureDelta(b: Board, s: Square): Int =
-    if (b.opponent.contains(s)) pieceSquareTable(b.opponent.color, b.opponent.`type`(s))(s) else 0
-
-  private def delta(b: Board, m: MoveBase): Int = {
-    m match {
-      case Move(s: Square, e: Square) =>
-        val t = b.same.`type`(s)
-        -pieceSquareTable(b.same.color, t)(s) + pieceSquareTable(b.same.color, t)(e) - captureDelta(b, e)
-      case Promotion(s: Square, e: Square, t) =>
-        -pieceSquareTable(b.same.color, Pawn)(s) + pieceSquareTable(b.same.color, t)(e) - captureDelta(b, e)
-      case `O-O` if b.same.color == White => castleDelta(White, E1, G1, H1, F1)
-      case `O-O` => castleDelta(Black, E8, G8, H8, F8)
-      case `O-O-O` if b.same.color == White => castleDelta(White, E1, C1, A1, D1)
-      case `O-O-O` => castleDelta(Black, E8, C8, A8, D8)
-    }
-  }
-
-  def apply(b: Board): BoardWithEvaluator = BoardWithEvaluator(b, evaluate(b))
-}
-
-case class BoardWithEvaluator private(b: Board, evaluation: Int) {
-  import BoardWithEvaluator._
-
-  def leaves: Vector[(MoveBase, BoardWithEvaluator)] =
-    b.leaves.map { case (cm, cb) => (cm, BoardWithEvaluator(cb, if (!isEndgame(b) && isEndgame(cb)) evaluate(cb) else evaluation + delta(b, cm))) }
 }
