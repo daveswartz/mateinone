@@ -124,12 +124,13 @@ case class Board private(same: Side, opponent: Side, private val twoSquarePawn: 
       {
         val (kingStart, kingside, queenside) = if (same.color == White) (E1, whiteKings, whiteQueens) else (E8, blackKings, blackQueens)
         var castleLeaves = Vector.empty[(Castle, Board)]
-        if (!same.moved(kingStart) && !isCheck) {
+        def notMoved(t: PieceType, s: Square) = same.contains(s) && same.`type`(s) == t && !same.moved(s)
+        if (notMoved(King, kingStart) && !isCheck) {
           def createLeaf(cc: CastleConstants): Unit = {
-            def betweenOccupied = cc.between.exists(b => same.contains(b) || opponent.contains(b))
+            def betweenOccupied =cc.between.exists(b => same.contains(b) || opponent.contains(b))
             def throughCheck = Board.isCheck(cc.through.foldLeft(same)(_.add(_, King)), opponent)
             def board = Board(opponent, same.remove(cc.rookStart, Rook).remove(kingStart, King).add(cc.rookEnd, Rook).add(cc.kingEnd, King), None, Vector.empty[(Side, Side)], pawnOrCapture + 1)
-            if (!same.moved(cc.rookStart) && !betweenOccupied && !throughCheck) castleLeaves = castleLeaves :+(cc.move, board)
+            if (notMoved(Rook, cc.rookStart) && !betweenOccupied && !throughCheck) castleLeaves = castleLeaves :+(cc.move, board)
           }
           createLeaf(kingside); createLeaf(queenside)
         }

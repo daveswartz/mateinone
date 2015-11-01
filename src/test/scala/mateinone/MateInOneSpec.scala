@@ -73,10 +73,16 @@ class MateInOneSpec extends Specification {
     "1. Nc3 Nc6 2. d3 d6 3. Bg5 Bg4 4. Qd2 Qd7 5. O-O-O O-O-O; White and black castle queenside." in
       movesAllowed(B1->C3, B8->C6, D2->D3, D7->D6, C1->G5, C8->G4, D1->D2, D8->D7, `O-O-O`, `O-O-O`)(Set((White, Knight, C3),  (White, Pawn, D3),  (White, Bishop, G5),  (White, Queen, D2),  (White, Rook, D1),  (White, King, C1),  (Black, Knight, C6),  (Black, Pawn, D6),  (Black, Bishop, G4),  (Black, Queen, D7),  (Black, Rook, D8),  (Black, King, C8)))
 
-    "1. Nf3 Nf6 2. g3 g6 3. Bh3 Bh6 4. Kf1 Kf8 5. Ke1 Ke8 6. O-O; White attempts to castle kingside after moving the king." in
+    "1. Nf3 Nf6 2. g3 g6 3. Bh3 Bh6 4. e3 e6 5. Ke2 Ke6 6. O-O; White attempts to castle kingside after moving the king." in
+      lastMoveNotAllowed(G1->F3, G8->F6, G2->G3, G7->G6, F1->H3, F8->H6, E2->E3, E7->E6, E1->E2, E8->E7, `O-O`)
+
+    "1. Nf3 Nf6 2. g3 g6 3. Bh3 Bh6 4. Kf1 Kf8 5. Ke1 Ke8 6. O-O; White attempts to castle kingside after moving the king and moving back." in
       lastMoveNotAllowed(G1->F3, G8->F6, G2->G3, G7->G6, F1->H3, F8->H6, E1->F1, E8->F8, F1->E1, F8->E8, `O-O`)
 
-    "1. Nf3 Nf6 2. g3 g6 3. Bh3 Bh6 4. Rg1 Rg8 5. Rh1 Rh8 6. O-O; White attempts to castle kingside after moving the chosen rook." in
+    "1. Nf3 Nf6 2. g3 g6 3. h3 h6 4. Bg2 Bg7 4. Rh2 Rh7 5. O-O; White attempts to castle kingside after moving the chosen rook." in
+      lastMoveNotAllowed(G1->F3, G8->F6, G2->G3, G7->G6, H2->H3, H7->H6, F1->G2, F8->G7, H1->H2, H8->H7, `O-O`)
+
+    "1. Nf3 Nf6 2. g3 g6 3. Bh3 Bh6 4. Rg1 Rg8 5. Rh1 Rh8 6. O-O; White attempts to castle kingside after moving the chosen rook and moving back." in
       lastMoveNotAllowed(G1->F3, G8->F6, G2->G3, G7->G6, F1->H3, F8->H6, H1->G1, H8->G8, G1->H1, G8->H8, `O-O`)
 
     "1. O-O; White attempts to castle kingside with pieces between the king and the chosen rook." in
