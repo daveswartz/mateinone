@@ -118,8 +118,11 @@ object Simplified extends Evaluator {
     result
   }
 
-  // TODO improve rule to match that on site
-  private def isEndgame(b: Board) = b.same.squares(Queen).isEmpty && b.opponent.squares(Queen).isEmpty
+  private def isEndgame(b: Board) = {
+    def numPieces(side: Side, pieceType: PieceType) = side.squares(pieceType).size
+    def inEngame(side: Side) = numPieces(side, Queen) == 0 || numPieces(side, Rook) == 0 && numPieces(side, Knight) + numPieces(side, Bishop) <= 1
+    inEngame(b.same) && inEngame(b.opponent)
+  }
 
   def evaluate(b: Board): Int = {
     val endGame = isEndgame(b)
