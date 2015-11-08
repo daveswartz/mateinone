@@ -120,8 +120,8 @@ object Simplified extends Evaluator {
 
   private def isEndgame(b: Board) = {
     def numPieces(side: Side, pieceType: PieceType) = side.squares(pieceType).size
-    def inEngame(side: Side) = numPieces(side, Queen) == 0 || numPieces(side, Rook) == 0 && numPieces(side, Knight) + numPieces(side, Bishop) <= 1
-    inEngame(b.same) && inEngame(b.opponent)
+    def inEndgame(side: Side) = numPieces(side, Queen) == 0 || numPieces(side, Rook) == 0 && numPieces(side, Knight) + numPieces(side, Bishop) <= 1
+    inEndgame(b.same) && inEndgame(b.opponent)
   }
 
   def evaluate(b: Board): Int = {
