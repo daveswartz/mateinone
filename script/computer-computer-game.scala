@@ -1,3 +1,4 @@
+import scala.language.reflectiveCalls
 import mateinone._
 import TerminalPrinter._
 import mateinone.evaluators.{Evaluator, Simplified}
@@ -5,8 +6,6 @@ import mateinone.evaluators.{Evaluator, Simplified}
 val alphaBetaPruning = true
 val lookAheadDepth = 5
 val evaluator: Evaluator = Simplified
-
-// TODO restore delta evaluation as option (on/off boolean) if speeds up/does not affect result
 
 case class Score(score: Int, moves: List[(MoveBase, Int)], nEvals: Int) {
   def addEvals(e: Int) = copy(nEvals = nEvals + e)
@@ -57,7 +56,7 @@ def next(b: Board, depth: Int): Score = {
   score.copy(moves = score.moves.tail)
 }
 
-def step(board: Board, depth: Int, n: Int): Unit =
+def step(board: Board, depth: Int, n: Int): Unit = {
   if (board.isCheckmate) println(s"Checkmate ${board.opponent.color.toString} wins")
   else if (board.isStalemate) println("Stalemate")
   else if (board.isInsufficientMaterial) println("Insufficient mating material")
@@ -66,12 +65,29 @@ def step(board: Board, depth: Int, n: Int): Unit =
   else {
     val start = System.nanoTime()
     val score = next(board, depth)
-    val deltaInSeconds = (System.nanoTime() - start) / 1e9
+    val delta = (System.nanoTime() - start) / 1e9
+
+    def isWhite(i: Integer) = i%2 == 0
+    def whitePrefix(i: Integer) = s"${i/2+1}."
+    def blackPrefix(i: Integer) = s"${whitePrefix(i)} ..."
+    def prefix(i: Integer) = if (isWhite(i)) whitePrefix(i) else blackPrefix(i)
+    def prefixIfWhite(i: Integer) = if (isWhite(i)) whitePrefix(i) else ""
+
+    val afterNextMoves = {
+      val indices = (n+1).to(n+1+depth)
+      val prefixes = prefix(indices.head) +: indices.tail.map(prefixIfWhite(_))
+      score.moves.tail.map(_._1).zip(prefixes).map { case (m, p) => s"$p $m" }.mkString(" ")
+    }
+
     val (nextMove, _) = score.moves.head
     val nextBoard = board.move(nextMove).get
     println(nextBoard.print(nextMove))
-    println(s"${n / 2 + 1}. $nextMove | $score | $deltaInSeconds seconds")
+    println(s"${prefix(n)} $nextMove")
+    println(f"Score: ${score.score/100f}%+.2f $afterNextMoves")
+    println(f"Engine: ${score.nEvals}%,d in $delta%.2fs")
+
     step(nextBoard, depth, n + 1)
   }
+}
 
 step(Board.initial, lookAheadDepth, 0)
