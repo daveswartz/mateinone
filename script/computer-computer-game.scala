@@ -7,45 +7,42 @@ val alphaBetaPruning = true
 val lookAheadDepth = 5
 val evaluator: Evaluator = Simplified
 
-case class Score(score: Int, moves: List[(MoveBase, Int)], nEvals: Int) {
-  def addEvals(e: Int) = copy(nEvals = nEvals + e)
-}
+case class MoveAndEvaluation(move: MoveBase, evaluation: Int)
+case class Score(score: Int, moves: List[MoveAndEvaluation], numEvaluations: Int)
 
 def alphaBetaMax(move: MoveBase, board: Board, alpha: Int, beta: Int, depth: Int): Score = {
   val eval = evaluator.evaluate(board)
-  var nEvals = 1
   if (depth == 0) {
-    Score(eval, (move, eval) :: Nil, nEvals)
+    Score(eval, MoveAndEvaluation(move, eval) :: Nil, 1)
   } else {
-    var maxAlpha = Score(alpha, Nil, nEvals)
+    var maxAlpha = Score(alpha, Nil, 1)
     for ((childMove, childBoard) <- board.leaves) {
       val childScore = alphaBetaMin(childMove, childBoard, maxAlpha.score, beta, depth - 1)
-      nEvals += childScore.nEvals
+      maxAlpha = maxAlpha.copy(numEvaluations = maxAlpha.numEvaluations + childScore.numEvaluations)
       if (alphaBetaPruning && childScore.score >= beta) // fail hard beta-cutoff
-        return Score(beta, Nil, nEvals)
+        return Score(beta, Nil, maxAlpha.numEvaluations)
       if (childScore.score > maxAlpha.score) // alpha acts like max in MiniMax
-        maxAlpha = Score(childScore.score, (move, eval) :: childScore.moves, nEvals)
+        maxAlpha = Score(childScore.score, MoveAndEvaluation(move, eval) :: childScore.moves, maxAlpha.numEvaluations)
     }
-    maxAlpha.copy(nEvals = nEvals)
+    maxAlpha
   }
 }
 
 def alphaBetaMin(move: MoveBase, board: Board, alpha: Int, beta: Int, depth: Int): Score = {
   val eval = evaluator.evaluate(board)
-  var nEvals = 1
   if (depth == 0) {
-    Score(eval, (move, eval) :: Nil, nEvals)
+    Score(eval, MoveAndEvaluation(move, eval) :: Nil, 1)
   } else {
-    var minBeta = Score(beta, Nil, nEvals)
+    var minBeta = Score(beta, Nil, 1)
     for ((childMove, childBoard) <- board.leaves) {
       val childScore = alphaBetaMax(childMove, childBoard, alpha, minBeta.score, depth - 1)
-      nEvals += childScore.nEvals
+      minBeta = minBeta.copy(numEvaluations = minBeta.numEvaluations + childScore.numEvaluations)
       if (alphaBetaPruning && childScore.score <= alpha) // fail hard alpha-cutoff
-        return Score(alpha, Nil, nEvals)
+        return Score(alpha, Nil, minBeta.numEvaluations)
       if (childScore.score < minBeta.score) // beta acts like min in MiniMax
-        minBeta = Score(childScore.score, (move, eval) :: childScore.moves, nEvals)
+        minBeta = Score(childScore.score, MoveAndEvaluation(move, eval) :: childScore.moves, minBeta.numEvaluations)
     }
-    minBeta.copy(nEvals = nEvals)
+    minBeta
   }
 }
 
@@ -67,24 +64,24 @@ def step(board: Board, depth: Int, n: Int): Unit = {
     val score = next(board, depth)
     val delta = (System.nanoTime() - start) / 1e9
 
-    def isWhite(i: Integer) = i%2 == 0
-    def whitePrefix(i: Integer) = s"${i/2+1}."
-    def blackPrefix(i: Integer) = s"${whitePrefix(i)} ..."
-    def prefix(i: Integer) = if (isWhite(i)) whitePrefix(i) else blackPrefix(i)
-    def prefixIfWhite(i: Integer) = if (isWhite(i)) whitePrefix(i) else ""
+    def isWhite(i: Int) = i%2 == 0
+    def whitePrefix(i: Int) = s"${i/2+1}."
+    def blackPrefix(i: Int) = s"${whitePrefix(i)} ..."
+    def prefix(i: Int) = if (isWhite(i)) whitePrefix(i) else blackPrefix(i)
+    def prefixIfWhite(i: Int) = if (isWhite(i)) whitePrefix(i) else ""
 
     val afterNextMoves = {
       val indices = (n+1).to(n+1+depth)
       val prefixes = prefix(indices.head) +: indices.tail.map(prefixIfWhite(_))
-      score.moves.tail.map(_._1).zip(prefixes).map { case (m, p) => s"$p $m" }.mkString(" ")
+      score.moves.tail.map(_.move).zip(prefixes).map { case (m, p) => s"$p $m" }.mkString(" ")
     }
 
-    val (nextMove, _) = score.moves.head
+    val nextMove = score.moves.head.move
     val nextBoard = board.move(nextMove).get
     println(nextBoard.print(nextMove))
     println(s"${prefix(n)} $nextMove")
     println(f"Score: ${score.score/100f}%+.2f $afterNextMoves")
-    println(f"Engine: ${score.nEvals}%,d in $delta%.2fs")
+    println(f"Engine: ${score.numEvaluations}%,d in $delta%.2fs")
 
     step(nextBoard, depth, n + 1)
   }
