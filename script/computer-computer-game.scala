@@ -7,8 +7,7 @@ val alphaBetaPruning = true
 val lookAheadDepth = 5
 val evaluator: Evaluator = Simplified
 
-case class MoveAndEvaluation(move: MoveBase, evaluation: Int)
-case class Score(score: Int, moves: List[MoveAndEvaluation])
+case class Score(score: Int, moves: List[MoveBase])
 
 var numEvaluations = 0
 def evaluate(board: Board) = {
@@ -19,7 +18,7 @@ def evaluate(board: Board) = {
 def alphaBetaMax(move: MoveBase, board: Board, alpha: Int, beta: Int, depth: Int): Score = {
   val eval = evaluate(board)
   if (depth == 0) {
-    Score(eval, MoveAndEvaluation(move, eval) :: Nil)
+    Score(eval, move :: Nil)
   } else {
     var maxAlpha = Score(alpha, Nil)
     for ((childMove, childBoard) <- board.leaves) {
@@ -27,7 +26,7 @@ def alphaBetaMax(move: MoveBase, board: Board, alpha: Int, beta: Int, depth: Int
       if (alphaBetaPruning && childScore.score >= beta) // fail hard beta-cutoff
         return Score(beta, Nil)
       if (childScore.score > maxAlpha.score) // alpha acts like max in MiniMax
-        maxAlpha = Score(childScore.score, MoveAndEvaluation(move, eval) :: childScore.moves)
+        maxAlpha = Score(childScore.score, move :: childScore.moves)
     }
     maxAlpha
   }
@@ -36,7 +35,7 @@ def alphaBetaMax(move: MoveBase, board: Board, alpha: Int, beta: Int, depth: Int
 def alphaBetaMin(move: MoveBase, board: Board, alpha: Int, beta: Int, depth: Int): Score = {
   val eval = evaluate(board)
   if (depth == 0) {
-    Score(eval, MoveAndEvaluation(move, eval) :: Nil)
+    Score(eval, move :: Nil)
   } else {
     var minBeta = Score(beta, Nil)
     for ((childMove, childBoard) <- board.leaves) {
@@ -44,7 +43,7 @@ def alphaBetaMin(move: MoveBase, board: Board, alpha: Int, beta: Int, depth: Int
       if (alphaBetaPruning && childScore.score <= alpha) // fail hard alpha-cutoff
         return Score(alpha, Nil)
       if (childScore.score < minBeta.score) // beta acts like min in MiniMax
-        minBeta = Score(childScore.score, MoveAndEvaluation(move, eval) :: childScore.moves)
+        minBeta = Score(childScore.score, move :: childScore.moves)
     }
     minBeta
   }
@@ -78,10 +77,10 @@ def step(board: Board, depth: Int, n: Int): Unit = {
     val afterNextMoves = {
       val indices = (n+1).to(n+1+depth)
       val prefixes = prefix(indices.head) +: indices.tail.map(prefixIfWhite)
-      score.moves.tail.map(_.move).zip(prefixes).map { case (m, p) => s"$p $m" }.mkString(" ")
+      score.moves.tail.zip(prefixes).map { case (m, p) => s"$p $m" }.mkString(" ")
     }
 
-    val nextMove = score.moves.head.move
+    val nextMove = score.moves.head
     val nextBoard = board.move(nextMove).get
     println(nextBoard.print(nextMove))
     println(s"${prefix(n)} $nextMove")
