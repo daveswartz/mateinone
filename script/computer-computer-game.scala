@@ -4,6 +4,7 @@ import TerminalPrinter._
 import mateinone.evaluators.{Evaluator, Simplified}
 
 val alphaBetaPruning = true
+val iterativeDeepening = true
 val lookAheadDepth = 5
 val evaluator: Evaluator = Simplified
 
@@ -15,46 +16,89 @@ def evaluate(board: Board) = {
   evaluator.evaluate(board)
 }
 
-def alphaBetaMax(move: MoveBase, board: Board, alpha: Int, beta: Int, depth: Int): Score = {
+def alphaBetaMax(board: Board, depth: Int): Score = {
+  assert(depth > 0)
+
+  def descending(leaves: Vector[(MoveBase, Board)], d: Int) = {
+    val alpha = Int.MinValue
+    val beta = Int.MaxValue
+    var maxAlpha = Score(alpha, Nil)
+    leaves.map { case (childMove, childBoard) =>
+      var childScore = alphaBetaMin(childBoard, maxAlpha.score, beta, d - 1)
+      childScore = childScore.copy(moves = childMove :: childScore.moves)
+      if (childScore.score > maxAlpha.score) maxAlpha = childScore
+      (childMove, childBoard, childScore)
+    }.sortBy(-_._3.score)
+  }
+
+  if (iterativeDeepening) {
+    var desc = descending(board.leaves, 1)
+    2.to(depth).foreach(d => desc = descending(desc.map { case (m, b, s) => (m, b) }, d))
+    desc.head._3
+  } else {
+    descending(board.leaves, depth).head._3
+  }
+}
+
+def alphaBetaMin(board: Board, depth: Int): Score = {
+  assert(depth > 0)
+
+  def ascending(leaves: Vector[(MoveBase, Board)], d: Int) = {
+    val alpha = Int.MinValue
+    val beta = Int.MaxValue
+    var minBeta = Score(beta, Nil)
+    leaves.map { case (childMove, childBoard) =>
+      var childScore = alphaBetaMax(childBoard, alpha, minBeta.score, d - 1)
+      childScore = childScore.copy(moves = childMove :: childScore.moves)
+      if (childScore.score < minBeta.score) minBeta = childScore
+      (childMove, childBoard, childScore)
+    }.sortBy(_._3.score)
+  }
+
+  if (iterativeDeepening) {
+	var asc = ascending(board.leaves, 1)
+	2.to(depth).foreach(d => asc = ascending(asc.map { case (m, b, s) => (m, b) }, d))
+	asc.head._3
+  } else {
+    ascending(board.leaves, depth).head._3
+  }
+}
+
+def alphaBetaMax(board: Board, alpha: Int, beta: Int, depth: Int): Score = {
   val eval = evaluate(board)
   if (depth == 0) {
-    Score(eval, move :: Nil)
+    Score(eval, Nil)
   } else {
     var maxAlpha = Score(alpha, Nil)
     for ((childMove, childBoard) <- board.leaves) {
-      val childScore = alphaBetaMin(childMove, childBoard, maxAlpha.score, beta, depth - 1)
+      val childScore = alphaBetaMin(childBoard, maxAlpha.score, beta, depth - 1)
       if (alphaBetaPruning && childScore.score >= beta) // fail hard beta-cutoff
         return Score(beta, Nil)
       if (childScore.score > maxAlpha.score) // alpha acts like max in MiniMax
-        maxAlpha = Score(childScore.score, move :: childScore.moves)
+        maxAlpha = Score(childScore.score, childMove :: childScore.moves)
     }
     maxAlpha
   }
 }
 
-def alphaBetaMin(move: MoveBase, board: Board, alpha: Int, beta: Int, depth: Int): Score = {
+def alphaBetaMin(board: Board, alpha: Int, beta: Int, depth: Int): Score = {
   val eval = evaluate(board)
   if (depth == 0) {
-    Score(eval, move :: Nil)
+    Score(eval, Nil)
   } else {
     var minBeta = Score(beta, Nil)
     for ((childMove, childBoard) <- board.leaves) {
-      val childScore = alphaBetaMax(childMove, childBoard, alpha, minBeta.score, depth - 1)
+      val childScore = alphaBetaMax(childBoard, alpha, minBeta.score, depth - 1)
       if (alphaBetaPruning && childScore.score <= alpha) // fail hard alpha-cutoff
         return Score(alpha, Nil)
       if (childScore.score < minBeta.score) // beta acts like min in MiniMax
-        minBeta = Score(childScore.score, move :: childScore.moves)
+        minBeta = Score(childScore.score, childMove :: childScore.moves)
     }
     minBeta
   }
 }
 
-def next(b: Board, depth: Int): Score = {
-  val score =
-    if (b.same.color == White) alphaBetaMax(null, b, Int.MinValue, Int.MaxValue, depth)
-    else alphaBetaMin(null, b, Int.MinValue, Int.MaxValue, depth)
-  score.copy(moves = score.moves.tail)
-}
+def next(b: Board, depth: Int) = if (b.same.color == White) alphaBetaMax(b, depth) else alphaBetaMin(b, depth)
 
 def step(board: Board, depth: Int, n: Int): Unit = {
   if (board.isCheckmate) println(s"Checkmate ${board.opponent.color.toString} wins")
@@ -92,5 +136,6 @@ def step(board: Board, depth: Int, n: Int): Unit = {
 }
 
 println(s"alphaBetaPruning: $alphaBetaPruning")
+println(s"iterativeDeepening: $iterativeDeepening")
 println(s"lookAheadDepth: $lookAheadDepth")
 step(Board.initial, lookAheadDepth, 0)
