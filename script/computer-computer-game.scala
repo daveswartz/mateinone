@@ -5,7 +5,7 @@ import mateinone.evaluators.{Evaluator, Simplified}
 
 val alphaBetaPruning = true
 val iterativeDeepening = true
-val lookAheadDepth = 5
+val lookAheadDepth = 4
 val evaluator: Evaluator = Simplified
 
 case class Score(score: Int, moves: List[MoveBase])
@@ -126,9 +126,11 @@ def step(board: Board, depth: Int, n: Int): Unit = {
 
     val nextMove = score.moves.head
     val nextBoard = board.move(nextMove).get
+    var centiPawns = score.score/100d
+    if (!isWhite(n)) centiPawns *= -1
     println(nextBoard.print(nextMove))
     println(s"${prefix(n)} $nextMove")
-    println(f"Score: ${score.score/100f}%+.2f $afterNextMoves")
+    println(f"Score: $centiPawns%+.2f $afterNextMoves")
     println(f"Engine: $numEvaluations%,d in $delta%.2fs")
 
     step(nextBoard, depth, n + 1)
