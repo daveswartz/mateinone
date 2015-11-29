@@ -207,12 +207,12 @@ class MateInOneSpec extends Specification {
 
   def pieces(b: Board): Set[(Color, PieceType, Square)] = {
     def toPieces(color: Color, squares: Set[Square], `type`: PieceType) = squares.map((color, `type`, _))
-    toPieces(b.same.color, b.same.squares(Pawn), Pawn) ++ toPieces(b.opponent.color, b.opponent.squares(Pawn), Pawn) ++
-      toPieces(b.same.color, b.same.squares(Knight), Knight) ++ toPieces(b.opponent.color, b.opponent.squares(Knight), Knight) ++
-      toPieces(b.same.color, b.same.squares(Bishop), Bishop) ++ toPieces(b.opponent.color, b.opponent.squares(Bishop), Bishop) ++
-      toPieces(b.same.color, b.same.squares(Rook), Rook) ++ toPieces(b.opponent.color, b.opponent.squares(Rook), Rook) ++
-      toPieces(b.same.color, b.same.squares(Queen), Queen) ++ toPieces(b.opponent.color, b.opponent.squares(Queen), Queen) ++
-      toPieces(b.same.color, b.same.squares(King), King) ++ toPieces(b.opponent.color, b.opponent.squares(King), King)
+    toPieces(b.same.color, b.same.pawns, Pawn) ++ toPieces(b.opponent.color, b.opponent.pawns, Pawn) ++
+      toPieces(b.same.color, b.same.knights, Knight) ++ toPieces(b.opponent.color, b.opponent.knights, Knight) ++
+      toPieces(b.same.color, b.same.bishops, Bishop) ++ toPieces(b.opponent.color, b.opponent.bishops, Bishop) ++
+      toPieces(b.same.color, b.same.rooks, Rook) ++ toPieces(b.opponent.color, b.opponent.rooks, Rook) ++
+      toPieces(b.same.color, b.same.queens, Queen) ++ toPieces(b.opponent.color, b.opponent.queens, Queen) ++
+      toPieces(b.same.color, b.same.kings, King) ++ toPieces(b.opponent.color, b.opponent.kings, King)
   }
 
   def onlyTheseMoved(movedPieces: Set[(Color, PieceType, Square)] = Set(), nCaptured: Int = 0): Board => Result = {

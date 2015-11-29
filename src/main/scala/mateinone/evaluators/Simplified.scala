@@ -111,18 +111,17 @@ object Simplified extends Evaluator {
 
   private def valueForSide(side: Side, endGame: Boolean): Int = {
     var result = 0
-    side.squares(Pawn).foreach(result += valueForPawn(side.color, _))
-    side.squares(Knight).foreach(result += valueForKnight(side.color, _))
-    side.squares(Bishop).foreach(result += valueForBishop(side.color, _))
-    side.squares(Rook).foreach(result += valueForRook(side.color, _))
-    side.squares(Queen).foreach(result += valueForQueen(side.color, _))
-    side.squares(King).foreach(result += valueForKing(side.color, endGame, _))
+    side.pawns.foreach(result += valueForPawn(side.color, _))
+    side.knights.foreach(result += valueForKnight(side.color, _))
+    side.bishops.foreach(result += valueForBishop(side.color, _))
+    side.rooks.foreach(result += valueForRook(side.color, _))
+    side.queens.foreach(result += valueForQueen(side.color, _))
+    side.kings.foreach(result += valueForKing(side.color, endGame, _))
     result
   }
 
   private def isEndgame(b: Board) = {
-    def numPieces(side: Side, pieceType: PieceType) = side.squares(pieceType).size
-    def inEndgame(side: Side) = numPieces(side, Queen) == 0 || numPieces(side, Rook) == 0 && numPieces(side, Knight) + numPieces(side, Bishop) <= 1
+    def inEndgame(side: Side) = side.queens.isEmpty || side.rooks.isEmpty && side.knights.size + side.bishops.size <= 1
     inEndgame(b.same) && inEndgame(b.opponent)
   }
 
