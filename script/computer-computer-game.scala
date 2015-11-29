@@ -65,37 +65,39 @@ def alphaBetaMin(board: Board, depth: Int): Score = {
 }
 
 def alphaBetaMax(board: Board, alpha: Int, beta: Int, depth: Int): Score = {
-  val eval = evaluate(board)
-  if (depth == 0) {
-    Score(eval, Nil)
-  } else {
-    var maxAlpha = Score(alpha, Nil)
-    for ((childMove, childBoard) <- board.leaves) {
-      val childScore = alphaBetaMin(childBoard, maxAlpha.score, beta, depth - 1)
-      if (alphaBetaPruning && childScore.score >= beta) // fail hard beta-cutoff
-        return Score(beta, Nil)
-      if (childScore.score > maxAlpha.score) // alpha acts like max in MiniMax
-        maxAlpha = Score(childScore.score, childMove :: childScore.moves)
-    }
-    maxAlpha
+  val score = Score(evaluate(board), Nil)
+  if (depth == 0) return score
+
+  val leaves = board.leaves
+  if (leaves.isEmpty) return score
+
+  var maxAlpha = Score(alpha, Nil)
+  for ((childMove, childBoard) <- leaves) {
+    val childScore = alphaBetaMin(childBoard, maxAlpha.score, beta, depth - 1)
+    if (alphaBetaPruning && childScore.score >= beta) // fail hard beta-cutoff
+      return Score(beta, Nil)
+    if (childScore.score > maxAlpha.score) // alpha acts like max in MiniMax
+      maxAlpha = Score(childScore.score, childMove :: childScore.moves)
   }
+  maxAlpha
 }
 
 def alphaBetaMin(board: Board, alpha: Int, beta: Int, depth: Int): Score = {
-  val eval = evaluate(board)
-  if (depth == 0) {
-    Score(eval, Nil)
-  } else {
-    var minBeta = Score(beta, Nil)
-    for ((childMove, childBoard) <- board.leaves) {
-      val childScore = alphaBetaMax(childBoard, alpha, minBeta.score, depth - 1)
-      if (alphaBetaPruning && childScore.score <= alpha) // fail hard alpha-cutoff
-        return Score(alpha, Nil)
-      if (childScore.score < minBeta.score) // beta acts like min in MiniMax
-        minBeta = Score(childScore.score, childMove :: childScore.moves)
-    }
-    minBeta
+  val score = Score(evaluate(board), Nil)
+  if (depth == 0) return score
+
+  val leaves = board.leaves
+  if (leaves.isEmpty) return score
+
+  var minBeta = Score(beta, Nil)
+  for ((childMove, childBoard) <- board.leaves) {
+    val childScore = alphaBetaMax(childBoard, alpha, minBeta.score, depth - 1)
+    if (alphaBetaPruning && childScore.score <= alpha) // fail hard alpha-cutoff
+      return Score(alpha, Nil)
+    if (childScore.score < minBeta.score) // beta acts like min in MiniMax
+      minBeta = Score(childScore.score, childMove :: childScore.moves)
   }
+  minBeta
 }
 
 def next(b: Board, depth: Int) = if (b.same.color == White) alphaBetaMax(b, depth) else alphaBetaMin(b, depth)
