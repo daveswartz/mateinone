@@ -3,6 +3,8 @@ package mateinone.evaluators
 import mateinone._
 
 /**
+ * Score is based on material unless mated.
+ *
  * Source: https://chessprogramming.wikispaces.com/Simplified+evaluation+function
  */
 object Simplified extends Evaluator {
@@ -124,7 +126,9 @@ object Simplified extends Evaluator {
     inEndgame(b.same) && inEndgame(b.opponent)
   }
 
-  def evaluate(b: Board): Int = {
+  def evaluate(b: Board): Int = if (b.isCheckmate) {
+    if (b.same.color == White) -20000 else 20000
+  } else {
     val endGame = isEndgame(b)
     valueForSide(b.same, endGame) + valueForSide(b.opponent, endGame)
   }
