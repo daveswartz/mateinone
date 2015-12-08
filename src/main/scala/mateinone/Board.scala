@@ -21,16 +21,6 @@ case class Side(
       queens.contains(s)  ||
       kings.contains(s)
 
-  def contains(ts: Set[PieceType], s: Square): Boolean =
-    ts.exists {
-      case Pawn => pawns.contains(s)
-      case Knight => knights.contains(s)
-      case Bishop => bishops.contains(s)
-      case Rook => rooks.contains(s)
-      case Queen => queens.contains(s)
-      case King => kings.contains(s)
-    }
-
   def add(s: Square, t: PieceType): Side =
     t match {
       case Pawn => copy(pawns = pawns + s, moved = moved + s)
@@ -74,18 +64,34 @@ object Board {
 
   private def isCheck(defender: Side, offender: Side): Boolean = {
     import OffsetConstants._
-    val n: Set[PieceType] = Set(Knight); val rq: Set[PieceType] = Set(Rook, Queen); val rqk: Set[PieceType] = Set(Rook, Queen, King)
-    val pbqk: Set[PieceType] = Set(Pawn, Bishop, Queen, King); val bqk: Set[PieceType] = Set(Bishop, Queen, King); val bq: Set[PieceType] = Set(Bishop, Queen)
+
+    def rq(s: Square) = offender.rooks.contains(s) || offender.queens.contains(s)
+    def rqk(s: Square) = rq(s) || offender.kings.contains(s)
+    def bq(s: Square) = offender.bishops.contains(s) || offender.queens.contains(s)
+    def bqk(s: Square) = bq(s) || offender.kings.contains(s)
+    def pbqk(s: Square) = bqk(s) || offender.pawns.contains(s)
+
     defender.kings.exists { king =>
-      def givingCheck(inOneStep: Set[PieceType], inAnySteps: Set[PieceType])(offset: (Int, Int)): Boolean = {
-        var c = king + offset; var g = inOneStep
-        while (c != Outside && !defender.contains(c) && !offender.contains(c)) { c = c + offset; g = inAnySteps }
-        c != Outside && offender.contains(g, c)
+
+      def givingCheck(inOneStep: Square => Boolean, inAnySteps: Square => Boolean)(offset: (Int, Int)): Boolean = {
+        var c = king + offset
+        var g = inOneStep
+        while (c != Outside && !defender.contains(c)) {
+          if (g(c)) return true
+          if (offender.contains(c)) return false
+          c = c + offset
+          g = inAnySteps
+        }
+        false
       }
-      verticalHorizontal.exists(givingCheck(rqk, rq)) || knight.exists(offset => offender.contains(n, king + offset)) ||
+
+      verticalHorizontal.exists(givingCheck(rqk, rq)) ||
+        knight.exists(offset => offender.knights.contains(king + offset)) ||
         Vector(downLeft, downRight).exists(givingCheck(if (defender.color == Black) pbqk else bqk, bq)) ||
         Vector(upLeft, upRight).exists(givingCheck(if (defender.color == White) pbqk else bqk, bq))
+
     }
+
   }
 
 }
