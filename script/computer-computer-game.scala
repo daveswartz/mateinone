@@ -66,6 +66,7 @@ object Engine {
   }
 
   def alphaBetaMax(board: Board, alpha: Int, beta: Int, depth: Int, ply: Int): Score = {
+    if (board.isThreefoldRepetition) return Score(0, Nil)
     val score = Score(evaluate(board, ply), Nil)
     if (depth == 0) return score
 
@@ -84,6 +85,7 @@ object Engine {
   }
 
   def alphaBetaMin(board: Board, alpha: Int, beta: Int, depth: Int, ply: Int): Score = {
+    if (board.isThreefoldRepetition) return Score(0, Nil)
     val score = Score(evaluate(board, ply), Nil)
     if (depth == 0) return score
 

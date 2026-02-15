@@ -39,6 +39,15 @@ case class Side(
     else if(queens.contains(s)) copy(queens = queens - s, moved = moved - s)
     else copy(kings = kings - s, moved = moved - s)
 
+  def typeAt(s: Square): Option[PieceType] =
+    if (pawns.contains(s)) Some(Pawn)
+    else if (knights.contains(s)) Some(Knight)
+    else if (bishops.contains(s)) Some(Bishop)
+    else if (rooks.contains(s)) Some(Rook)
+    else if (queens.contains(s)) Some(Queen)
+    else if (kings.contains(s)) Some(King)
+    else None
+
 }
 
 object Board {
@@ -60,7 +69,50 @@ object Board {
     val blackKings = CastleConstants(`O-O`, H8, G8, Set(F8, G8), Set(F8), F8)
   }
 
-  def initial = Board(Side(White, rank(_2), Set(B1, G1), Set(C1, F1), Set(A1, H1), Set(D1), Set(E1)), Side(Black, rank(_7), Set(B8, G8), Set(C8, F8), Set(A8, H8), Set(D8), Set(E8)), None, Vector.empty[(Side, Side)], 0)
+  def initial = {
+    val same = Side(White, rank(_2), Set(B1, G1), Set(C1, F1), Set(A1, H1), Set(D1), Set(E1))
+    val opponent = Side(Black, rank(_7), Set(B8, G8), Set(C8, F8), Set(A8, H8), Set(D8), Set(E8))
+    val h = calculateHash(same, opponent, None)
+    Board(same, opponent, None, Vector.empty[(Side, Side)], 0, h, Nil)
+  }
+
+  def calculateHash(same: Side, opponent: Side, twoSquarePawn: Option[Move]): Long = {
+    var h = 0L
+    def addSide(s: Side): Unit = {
+      val cIdx = Zobrist.getColorIndex(s.color)
+      s.pawns.foreach(sq => h ^= Zobrist.pieces(cIdx)(Zobrist.getPieceIndex(Pawn))(Zobrist.getSquareIndex(sq)))
+      s.knights.foreach(sq => h ^= Zobrist.pieces(cIdx)(Zobrist.getPieceIndex(Knight))(Zobrist.getSquareIndex(sq)))
+      s.bishops.foreach(sq => h ^= Zobrist.pieces(cIdx)(Zobrist.getPieceIndex(Bishop))(Zobrist.getSquareIndex(sq)))
+      s.rooks.foreach(sq => h ^= Zobrist.pieces(cIdx)(Zobrist.getPieceIndex(Rook))(Zobrist.getSquareIndex(sq)))
+      s.queens.foreach(sq => h ^= Zobrist.pieces(cIdx)(Zobrist.getPieceIndex(Queen))(Zobrist.getSquareIndex(sq)))
+      s.kings.foreach(sq => h ^= Zobrist.pieces(cIdx)(Zobrist.getPieceIndex(King))(Zobrist.getSquareIndex(sq)))
+    }
+    addSide(same)
+    addSide(opponent)
+
+    if (same.color == Black) h ^= Zobrist.sideToMove
+
+    // Castling
+    val white = if (same.color == White) same else opponent
+    val black = if (same.color == Black) same else opponent
+
+    if (white.color == White) {
+      if (white.kings.contains(E1) && !white.moved.contains(E1)) {
+        if (white.rooks.contains(H1) && !white.moved.contains(H1)) h ^= Zobrist.castling(0)
+        if (white.rooks.contains(A1) && !white.moved.contains(A1)) h ^= Zobrist.castling(1)
+      }
+    }
+    if (black.color == Black) {
+      if (black.kings.contains(E8) && !black.moved.contains(E8)) {
+        if (black.rooks.contains(H8) && !black.moved.contains(H8)) h ^= Zobrist.castling(2)
+        if (black.rooks.contains(A8) && !black.moved.contains(A8)) h ^= Zobrist.castling(3)
+      }
+    }
+
+    twoSquarePawn.foreach(m => h ^= Zobrist.enPassant(m.end.file))
+
+    h
+  }
 
   private def isCheck(defender: Side, offender: Side): Boolean = {
     import OffsetConstants._
@@ -97,7 +149,7 @@ object Board {
 }
 import Board._
 
-case class Board private(same: Side, opponent: Side, private val twoSquarePawn: Option[Move], private val positions: Vector[(Side, Side)], private val pawnOrCapture: Int) {
+case class Board private(same: Side, opponent: Side, private val twoSquarePawn: Option[Move], private val positions: Vector[(Side, Side)], private val pawnOrCapture: Int, val hash: Long, val history: List[Long]) {
 
   def leaves: Vector[(MoveBase, Board)] = {
     import OffsetConstants._
@@ -123,13 +175,20 @@ case class Board private(same: Side, opponent: Side, private val twoSquarePawn: 
     // Functions that generate a board from the current board and the specified move
     def doMove(`type`: PieceType, isTwoSquare: Boolean = false)(m: Move): Board = {
       val isCapture = opponent.contains(m.end)
-      Board(if (isCapture) opponent.remove(m.end) else opponent,
-            same.add(m.end, `type`).remove(m.start),
-            if (isTwoSquare) Some(m) else None,
-            if (`type` == Pawn || isCapture) Vector.empty[(Side, Side)] else positions :+ (same, opponent),
-            if (`type` == Pawn || isCapture) 0 else pawnOrCapture + 1)
+      val nextOpponent = if (isCapture) opponent.remove(m.end) else opponent
+      val nextSame = same.add(m.end, `type`).remove(m.start)
+      val nextTwoSquare = if (isTwoSquare) Some(m) else None
+      val nextPositions = if (`type` == Pawn || isCapture) Vector.empty[(Side, Side)] else positions :+ (same, opponent)
+      val nextPawnOrCapture = if (`type` == Pawn || isCapture) 0 else pawnOrCapture + 1
+      val nextHash = Board.calculateHash(nextOpponent, nextSame, nextTwoSquare)
+      Board(nextOpponent, nextSame, nextTwoSquare, nextPositions, nextPawnOrCapture, nextHash, hash :: history)
     }
-    def doPromotion(p: Promotion): Board = Board(if (opponent.contains(p.end)) opponent.remove(p.end) else opponent, same.remove(p.start).add(p.end, p.`type`), None, Vector.empty[(Side, Side)], 0)
+    def doPromotion(p: Promotion): Board = {
+      val nextOpponent = if (opponent.contains(p.end)) opponent.remove(p.end) else opponent
+      val nextSame = same.remove(p.start).add(p.end, p.`type`)
+      val nextHash = Board.calculateHash(nextOpponent, nextSame, None)
+      Board(nextOpponent, nextSame, None, Vector.empty[(Side, Side)], 0, nextHash, hash :: history)
+    }
 
     def createLeaves[M <: MoveBase](starts: Set[Square],
                                     offsets: Vector[(Int, Int)],
@@ -150,7 +209,11 @@ case class Board private(same: Side, opponent: Side, private val twoSquarePawn: 
           createLeaves(promoters, captures, captureOnly, toPromotions, doPromotion) ++
           createLeaves(movers, captures, openOnly1, toMoves, doMove(Pawn))
             .filter { case (m, b) => twoSquarePawn.exists(l => l.end.file == m.end.file && l.end.rank == m.start.rank) }
-            .map { case (m, b) => (m, b.copy(same = b.same.remove(twoSquarePawn.get.end))) } ++
+            .map { case (m, b) =>
+              val finalSame = b.same.remove(twoSquarePawn.get.end)
+              val nextHash = Board.calculateHash(b.opponent, finalSame, None)
+              (m, b.copy(same = finalSame, hash = nextHash))
+            } ++
           createLeaves(movers.filterNot(same.moved), advance, openOnly2, toMoves, doMove(Pawn, isTwoSquare = true)) ++
           createLeaves(movers, advance, openOnly1, toMoves, doMove(Pawn)) ++
           createLeaves(movers, captures, captureOnly, toMoves, doMove(Pawn))
@@ -162,7 +225,12 @@ case class Board private(same: Side, opponent: Side, private val twoSquarePawn: 
           def createLeaf(cc: CastleConstants): Unit = {
             def betweenOccupied = cc.between.exists(b => same.contains(b) || opponent.contains(b))
             def throughCheck = Board.isCheck(cc.through.foldLeft(same)(_.add(_, King)), opponent)
-            def board = Board(opponent, same.remove(cc.rookStart).remove(kingStart).add(cc.rookEnd, Rook).add(cc.kingEnd, King), None, Vector.empty[(Side, Side)], pawnOrCapture + 1)
+            def board = {
+              val nextOpponent = same.remove(cc.rookStart).remove(kingStart).add(cc.rookEnd, Rook).add(cc.kingEnd, King)
+              val nextSame = opponent
+              val nextHash = Board.calculateHash(nextSame, nextOpponent, None)
+              Board(nextSame, nextOpponent, None, Vector.empty[(Side, Side)], pawnOrCapture + 1, nextHash, hash :: history)
+            }
             if (same.rooks.contains(cc.rookStart) && !same.moved.contains(cc.rookStart) && !betweenOccupied && !throughCheck) castleLeaves = castleLeaves :+(cc.move, board)
           }
           createLeaf(kingside); createLeaf(queenside)
@@ -181,23 +249,16 @@ case class Board private(same: Side, opponent: Side, private val twoSquarePawn: 
   def isStalemate: Boolean = moves.isEmpty && !isCheck
   def isInsufficientMaterial: Boolean = {
     import Board.blackSquares
-    def both(f: Side => Set[Square]) = f(same) ++ f(opponent)
-    val numKnights = both(_.knights).size; val bishops = both(_.bishops)
-    (both(_.pawns).isEmpty && both(_.rooks).isEmpty && both(_.queens).isEmpty) &&
+    def bothPieces(f: Side => Set[Square]) = f(same) ++ f(opponent)
+    val numKnights = bothPieces(_.knights).size; val bishops = bothPieces(_.bishops)
+    (bothPieces(_.pawns).isEmpty && bothPieces(_.rooks).isEmpty && bothPieces(_.queens).isEmpty) &&
       ((numKnights == 0 || bishops.isEmpty) ||
         (numKnights == 1 && bishops.isEmpty) ||
         (numKnights == 0 && (bishops.forall(blackSquares.contains) || !bishops.exists(blackSquares.contains))))
   }
   def isAutomaticDraw: Boolean = isStalemate || isInsufficientMaterial
 
-  def isThreefoldRepetition: Boolean = {
-    def position(s: Side) =
-      (s.kings, s.moved.intersect(s.kings), s.rooks, s.moved.intersect(s.rooks),
-        s.pawns, s.knights, s.bishops, s.queens)
-    val samePosition = position(same)
-    val opponentPosition = position(opponent)
-    positions.count { case (s, o) => position(s) == samePosition && position(o) == opponentPosition } == 2
-  }
+  def isThreefoldRepetition: Boolean = history.count(_ == hash) >= 2
   def isFiftyMoveRule: Boolean = pawnOrCapture >= 100
   def mayClaimDraw: Boolean = isThreefoldRepetition || isFiftyMoveRule
 
