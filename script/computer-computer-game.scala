@@ -5,7 +5,7 @@ import mateinone.evaluators.{Evaluator, Simplified}
 
 val alphaBetaPruning = true
 val iterativeDeepening = true
-val lookAheadDepth = 4
+val lookAheadDepth = 8
 val evaluator: Evaluator = Simplified
 
 case class Score(score: Int, moves: List[MoveBase])
@@ -17,6 +17,26 @@ object Engine {
     evaluator.evaluate(board, ply)
   }
 
+  private val pieceValues = Map[PieceType, Int](
+    Pawn -> 1,
+    Knight -> 3,
+    Bishop -> 3,
+    Rook -> 5,
+    Queen -> 9,
+    King -> 100
+  )
+
+  def scoreMove(board: Board, move: MoveBase): Int = move match {
+    case m: StartAndEnd =>
+      val aggressor = board.same.typeAt(m.start).getOrElse(Pawn)
+      val victimOpt = board.opponent.typeAt(m.end)
+      victimOpt match {
+        case Some(victim) => (pieceValues(victim) * 10) - pieceValues(aggressor) + 1000 // Captures get high base score
+        case None => 0 // Quiet moves
+      }
+    case _: Castle => 0 // Treat castling as quiet move
+  }
+
   def alphaBetaMax(board: Board, depth: Int): Score = {
     assert(depth > 0)
 
@@ -24,7 +44,11 @@ object Engine {
       val alpha = Int.MinValue
       val beta = Int.MaxValue
       var maxAlpha = Score(alpha, Nil)
-      leaves.map { case (childMove, childBoard) =>
+      
+      // MVV-LVA ordering
+      val sortedLeaves = leaves.sortBy { case (m, b) => -scoreMove(board, m) }
+
+      sortedLeaves.map { case (childMove, childBoard) =>
         var childScore = alphaBetaMin(childBoard, maxAlpha.score, beta, d - 1, 1)
         childScore = childScore.copy(moves = childMove :: childScore.moves)
         if (childScore.score > maxAlpha.score) maxAlpha = childScore
@@ -48,7 +72,11 @@ object Engine {
       val alpha = Int.MinValue
       val beta = Int.MaxValue
       var minBeta = Score(beta, Nil)
-      leaves.map { case (childMove, childBoard) =>
+
+      // MVV-LVA ordering
+      val sortedLeaves = leaves.sortBy { case (m, b) => -scoreMove(board, m) }
+
+      sortedLeaves.map { case (childMove, childBoard) =>
         var childScore = alphaBetaMax(childBoard, alpha, minBeta.score, d - 1, 1)
         childScore = childScore.copy(moves = childMove :: childScore.moves)
         if (childScore.score < minBeta.score) minBeta = childScore
@@ -57,13 +85,13 @@ object Engine {
     }
 
     if (iterativeDeepening) {
-      var asc = ascending(board.leaves, 1)
-      2.to(depth).foreach(d => asc = ascending(asc.map { case (m, b, s) => (m, b) }, d))
-      asc.head._3
-    } else {
-      ascending(board.leaves, depth).head._3
-    }
+	var asc = ascending(board.leaves, 1)
+	2.to(depth).foreach(d => asc = ascending(asc.map { case (m, b, s) => (m, b) }, d))
+	asc.head._3
+  } else {
+    ascending(board.leaves, depth).head._3
   }
+}
 
   def alphaBetaMax(board: Board, alpha: Int, beta: Int, depth: Int, ply: Int): Score = {
     if (board.isThreefoldRepetition) return Score(0, Nil)
@@ -73,8 +101,11 @@ object Engine {
     val leaves = board.leaves
     if (leaves.isEmpty) return score
 
+    // MVV-LVA ordering
+    val sortedLeaves = leaves.sortBy { case (m, b) => -scoreMove(board, m) }
+
     var maxAlpha = Score(alpha, Nil)
-    for ((childMove, childBoard) <- leaves) {
+    for ((childMove, childBoard) <- sortedLeaves) {
       val childScore = alphaBetaMin(childBoard, maxAlpha.score, beta, depth - 1, ply + 1)
       if (alphaBetaPruning && childScore.score >= beta) // fail hard beta-cutoff
         return Score(beta, Nil)
@@ -92,8 +123,11 @@ object Engine {
     val leaves = board.leaves
     if (leaves.isEmpty) return score
 
+    // MVV-LVA ordering
+    val sortedLeaves = leaves.sortBy { case (m, b) => -scoreMove(board, m) }
+
     var minBeta = Score(beta, Nil)
-    for ((childMove, childBoard) <- board.leaves) {
+    for ((childMove, childBoard) <- sortedLeaves) {
       val childScore = alphaBetaMax(childBoard, alpha, minBeta.score, depth - 1, ply + 1)
       if (alphaBetaPruning && childScore.score <= alpha) // fail hard alpha-cutoff
         return Score(alpha, Nil)
@@ -102,7 +136,6 @@ object Engine {
     }
     minBeta
   }
-
   def next(b: Board, depth: Int) = if (b.same.color == White) alphaBetaMax(b, depth) else alphaBetaMin(b, depth)
 
   def step(board: Board, depth: Int, n: Int): Unit = {
