@@ -7,7 +7,7 @@ object TranspositionTable {
   val UpperBound = 2 // Alpha cutoff (Fail low) - Score is an upper bound
 
   // Entry structure: Depth, Score, Flag, BestMove
-  case class Entry(depth: Int, score: Int, flag: Int, bestMove: Option[MoveBase])
+  case class Entry(depth: Int, score: Int, flag: Int, bestMove: Option[Any])
 
   // Size = 2^20 (approx 1 million entries) to fit in memory easily
   private val Size = 1048576
@@ -28,7 +28,7 @@ object TranspositionTable {
 
   // Always replace strategy or depth-preferred. 
   // Here we replace if the new entry is from a deeper or equal search, or if the table slot is empty.
-  def store(hash: Long, depth: Int, score: Int, flag: Int, bestMove: Option[MoveBase]): Unit = {
+  def store(hash: Long, depth: Int, score: Int, flag: Int, bestMove: Option[Any]): Unit = {
     val index = (hash & Mask).toInt
     val existing = table(index)
     
