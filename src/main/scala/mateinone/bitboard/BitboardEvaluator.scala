@@ -85,6 +85,23 @@ object BitboardEvaluator {
   private val pieceValues = Array(100, 320, 330, 500, 900, 0)
   private val psts = Array(pawnPST, knightPST, bishopPST, rookPST, queenPST)
 
+  def calculateFullScore(b: Bitboard): Int = {
+    var score = 0
+    val endgame = isEndgame(b)
+    for (c <- 0 to 1) {
+      val sideMult = if (c == White) 1 else -1
+      for (pt <- 0 to 5) {
+        var bb = b.pieceBB(c)(pt)
+        while (bb != 0) {
+          val sq = numberOfTrailingZeros(bb)
+          score += sideMult * pieceValue(pt, c, sq, endgame)
+          bb &= (bb - 1)
+        }
+      }
+    }
+    score
+  }
+
   def pieceValue(pt: Int, color: Int, sq: Int, endgame: Boolean): Int = {
     if (pt == King) {
       val pstSq = if (color == White) sq else sq ^ 56
