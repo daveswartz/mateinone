@@ -67,6 +67,52 @@ class BitboardEdgeCaseSpec extends Specification {
       moves.exists(m => mCastle(m)) must beTrue
     }
   }
+
+  "UI and Search Utilities" should {
+    "print the board correctly via TerminalPrinter" in {
+      import mateinone.TerminalPrinter._
+      val b = Bitboard.initial
+      val output = b.print
+      output must contain("┌─────────────────┐")
+      output must contain("└─────────────────┘")
+      output must contain("♖ ♘ ♗ ♕ ♔ ♗ ♘ ♖")
+    }
+
+    "format scores correctly" in {
+      BitboardSearch.formatScore(100) must beEqualTo("+1.00")
+      BitboardSearch.formatScore(-50) must beEqualTo("-0.50")
+      BitboardSearch.formatScore(19999) must beEqualTo("Mate in 1")
+      BitboardSearch.formatScore(-19998) must beEqualTo("Mate in 1")
+    }
+
+    "extract Principal Variation (PV) from TT" in {
+      TranspositionTable.clear()
+      val b = Bitboard.initial
+      BitboardSearch.search(b, 2, -30000, 30000, 0)
+      val pv = BitboardSearch.getPV(b, 2)
+      pv must not be empty
+    }
+
+    "clear history and killers correctly" in {
+      BitboardSearch.clearHistory()
+      success
+    }
+  }
+
+  "Endgame Evaluation" should {
+    "trigger king herding bonuses" in {
+      // KR vs K endgame
+      val b = Bitboard.fromFen("4k3/8/8/8/8/8/8/R3K3 w - - 0 1")
+      val scoreMid = BitboardEvaluator.evaluate(b, 0)
+      
+      // Move black king to edge
+      val bEdge = Bitboard.fromFen("k7/8/8/8/8/8/8/R3K3 w - - 0 1")
+      val scoreEdge = BitboardEvaluator.evaluate(bEdge, 0)
+      
+      // Pushing king to edge should increase score for White
+      scoreEdge must beGreaterThan(scoreMid)
+    }
+  }
 }
 
 object FENUtils {
