@@ -37,7 +37,7 @@ object BitboardSearch {
   def scoreMove(b: Bitboard, m: Move, ply: Int, ttMove: Option[Move]): Int = {
     if (ttMove.contains(m)) 1000000 
     else if (m.capture) {
-      val victimType = b.pieceAt(m.to)
+      val victimType = if (m.enPassant) Pawn else b.pieceAt(m.to)
       (pieceValues(victimType) * 10) - pieceValues(m.piece) + 20000
     } else {
       if (m == killers(ply)(0)) 9000
