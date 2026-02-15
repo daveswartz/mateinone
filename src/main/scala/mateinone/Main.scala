@@ -41,13 +41,47 @@ object Main {
       }
 
       if (b.sideToMove == Constants.White) {
-        print("Your move (e.g. e2e4): ")
-        val input = scala.io.StdIn.readLine()
-        if (input == "quit" || input == "exit") return
+        val movableSquares = moves.map(_.from).distinct.sortBy(sq => (b.pieceAt(sq), Constants.squareName(sq)))
         
-        parseMove(input, moves) match {
-          case Some(m) => b.makeMove(m)
-          case None => println("Invalid move. Try again.")
+        println("\nYour pieces with legal moves:")
+        val pieceNames = Array("Pawns", "Knights", "Bishops", "Rooks", "Queens", "Kings")
+        for (pt <- 0 to 5) {
+          val pieceSqs = movableSquares.filter(sq => b.pieceAt(sq) == pt)
+          if (pieceSqs.nonEmpty) {
+            val names = pieceSqs.map(Constants.squareName).mkString(", ")
+            println(f"${pieceNames(pt)}%-8s: $names")
+          }
+        }
+
+        print(s"\nChoose piece to move [e2, 'q' to quit]: ")
+        val fromInput = scala.io.StdIn.readLine()
+        if (fromInput == null || fromInput == "q" || fromInput == "quit") return
+        
+        val pieceMoves = moves.filter(m => Constants.squareName(m.from) == fromInput)
+        
+        if (pieceMoves.isEmpty) {
+          println(s">>> No legal moves for piece at '$fromInput'. Try again.")
+        } else {
+          val sortedPieceMoves = pieceMoves.sortBy(m => Constants.squareName(m.to))
+          val destinations = sortedPieceMoves.zipWithIndex.map { case (m, i) => 
+            s"${i + 1}. ${Constants.squareName(m.to)}" 
+          }
+          println(s"Destinations for $fromInput: ${destinations.mkString(", ")}")
+          
+          print(s"Select destination [Number or e4]: ")
+          val toInput = scala.io.StdIn.readLine()
+          
+          val selectedMove = if (toInput.nonEmpty && toInput.forall(_.isDigit)) {
+            val idx = toInput.toInt - 1
+            if (idx >= 0 && idx < sortedPieceMoves.length) Some(sortedPieceMoves(idx)) else None
+          } else {
+            sortedPieceMoves.find(m => Constants.squareName(m.to) == toInput)
+          }
+
+          selectedMove match {
+            case Some(m) => b.makeMove(m)
+            case None => println(">>> Invalid destination. Selection cancelled.")
+          }
         }
       } else {
         println("Computer is thinking...")
