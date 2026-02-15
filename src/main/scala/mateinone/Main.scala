@@ -7,19 +7,94 @@ object Main {
   def main(args: Array[String]): Unit = {
     val depth = args.indexOf("--depth") match {
       case i if i >= 0 && i < args.length - 1 => args(i + 1).toInt
-      case _ => 12 // New default depth
+      case _ => 12
     }
 
-    println(s"Starting MateInOne Bitboard Engine Simulation")
-    println(s"Target Depth: $depth")
-    println("-" * 30)
+    val playMode = args.contains("--play")
 
-    val b = Bitboard.initial
-    step(b, depth, 0)
+    if (playMode) {
+      println("Starting MateInOne: Human vs Computer")
+      println(s"Search Depth: $depth")
+      play(Bitboard.initial, depth)
+    } else {
+      println(s"Starting MateInOne Bitboard Engine Simulation")
+      println(s"Target Depth: $depth")
+      println("-" * 30)
+      step(Bitboard.initial, depth, 0)
+    }
+  }
+
+  def play(b: Bitboard, depth: Int): Unit = {
+    while (true) {
+      println("\n" + b.print)
+      if (b.isThreefoldRepetition) { println("Draw by threefold repetition"); return }
+      val moves = MoveGen.generateMoves(b).filter(m => {
+        b.makeMove(m)
+        val legal = !LegalChecker.isInCheck(b, b.sideToMove ^ 1)
+        b.unmakeMove(m)
+        legal
+      })
+      if (moves.isEmpty) {
+        if (LegalChecker.isInCheck(b, b.sideToMove)) println("Checkmate! You lose.")
+        else println("Stalemate!")
+        return
+      }
+
+      if (b.sideToMove == Constants.White) {
+        print("Your move (e.g. e2e4): ")
+        val input = scala.io.StdIn.readLine()
+        if (input == "quit" || input == "exit") return
+        
+        parseMove(input, moves) match {
+          case Some(m) => b.makeMove(m)
+          case None => println("Invalid move. Try again.")
+        }
+      } else {
+        println("Computer is thinking...")
+        val m = findBestMove(b, depth)
+        b.makeMove(m)
+        println(s"Computer played: ${Constants.squareName(m.from)}${Constants.squareName(m.to)}")
+      }
+    }
+  }
+
+  private def parseMove(input: String, legalMoves: List[Move]): Option[Move] = {
+    if (input.length < 4) return None
+    val fromStr = input.substring(0, 2)
+    val toStr = input.substring(2, 4)
+    
+    legalMoves.find(m => 
+      Constants.squareName(m.from) == fromStr && Constants.squareName(m.to) == toStr
+    )
+  }
+
+  private def findBestMove(b: Bitboard, depth: Int): Move = {
+    BitboardSearch.nodesSearched = 0
+    BitboardSearch.ttHits = 0
+    val startTime = System.nanoTime()
+    
+    var bestMove: Option[Move] = None
+    var lastScore = 0
+
+    for (d <- 1 to depth) {
+      val iterStart = System.nanoTime()
+      lastScore = BitboardSearch.search(b, d, -30000, 30000, 0)
+      val iterDelta = (System.nanoTime() - iterStart) / 1e9
+      val totalDelta = (System.nanoTime() - startTime) / 1e9
+      
+      val pv = BitboardSearch.getPV(b, d)
+      bestMove = pv.headOption
+      
+      val pvStr = pv.map(m => s"${Constants.squareName(m.from)}${Constants.squareName(m.to)}").mkString(" ")
+      val nps = if (totalDelta > 0) (BitboardSearch.nodesSearched / totalDelta).toLong else 0
+      
+      println(f"depth $d%2d score ${BitboardSearch.formatScore(lastScore)}%s time $totalDelta%.2fs nodes ${BitboardSearch.nodesSearched}%,d nps $nps%,d pv $pvStr")
+    }
+    
+    bestMove.getOrElse(MoveGen.generateMoves(b).head)
   }
 
   def step(b: Bitboard, depth: Int, n: Int): Unit = {
-    // Check for game end
     if (b.isThreefoldRepetition) {
       println(s"Draw by threefold repetition")
       return
@@ -34,47 +109,11 @@ object Main {
       return
     }
 
-    // Reset Metrics
-    BitboardSearch.nodesSearched = 0
-    BitboardSearch.ttHits = 0
-
-    val start = System.nanoTime()
-    // Populate TT with Iterative Deepening up to target depth
-    for (d <- 1 until depth) {
-      BitboardSearch.search(b, d, -30000, 30000, 0)
-    }
-    val score = BitboardSearch.search(b, depth, -30000, 30000, 0)
-    val delta = (System.nanoTime() - start) / 1e9
-
-    // Find the best move from TT
-    val bestMoveOpt = TranspositionTable.get(b.hash).flatMap(_.bestMove).collect { case m: Move => m }
-    val m = bestMoveOpt.getOrElse {
-       // Fallback: just pick the first legal move if TT is weirdly empty
-       moves.find(mv => {
-         b.makeMove(mv)
-         val legal = !LegalChecker.isInCheck(b, b.sideToMove ^ 1)
-         b.unmakeMove(mv)
-         legal
-       }).get
-    }
+    println(s"\nMove ${n/2 + 1} (${if (b.sideToMove == Constants.White) "White" else "Black"}) thinking...")
+    val m = findBestMove(b, depth)
     
-    // Apply the move
     b.makeMove(m)
-    
-    def isWhite(i: Int) = i % 2 == 0
-    def whitePrefix(i: Int) = s"${i / 2 + 1}."
-    def blackPrefix(i: Int) = s"${whitePrefix(i)} ..."
-    def prefix(i: Int) = if (isWhite(i)) whitePrefix(i) else blackPrefix(i)
-
     println(b.print(m))
-    println(s"${prefix(n)} ${Constants.squareName(m.from)}->${Constants.squareName(m.to)}")
-    
-    val displayScore = if (score > 15000) s"Mate in ${(20000 - score + 1) / 2}"
-                       else if (score < -15000) s"Mate in ${(20000 + score + 1) / 2}"
-                       else f"${score / 100.0}%+.2f"
-
-    println(s"Score: $displayScore")
-    println(f"Search time: $delta%.2fs | Nodes: ${BitboardSearch.nodesSearched}%,d | TT Hits: ${BitboardSearch.ttHits}%,d")
     println("-" * 10)
 
     step(b, depth, n + 1)

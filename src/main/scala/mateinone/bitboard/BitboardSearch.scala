@@ -15,6 +15,25 @@ object BitboardSearch {
   private val MaxPly = 64
   private val killers = Array.fill(MaxPly, 2)(null: Move)
 
+  def getPV(b: Bitboard, depth: Int): List[Move] = {
+    if (depth <= 0) return Nil
+    TranspositionTable.get(b.hash) match {
+      case Some(entry) if entry.bestMove.isDefined =>
+        val m = entry.bestMove.get.asInstanceOf[Move]
+        b.makeMove(m)
+        val rest = getPV(b, depth - 1)
+        b.unmakeMove(m)
+        m :: rest
+      case _ => Nil
+    }
+  }
+
+  def formatScore(score: Int): String = {
+    if (score > 15000) s"Mate in ${(20000 - score + 1) / 2}"
+    else if (score < -15000) s"Mate in ${(20000 + score + 1) / 2}"
+    else f"${score / 100.0}%+.2f"
+  }
+
   def scoreMove(b: Bitboard, m: Move, ply: Int, ttMove: Option[Move]): Int = {
     if (ttMove.contains(m)) 1000000 
     else if (m.capture) {
