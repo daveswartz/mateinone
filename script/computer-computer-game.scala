@@ -1,182 +1,46 @@
-import scala.language.reflectiveCalls
 import mateinone._
 import TerminalPrinter._
-import mateinone.evaluators.{Evaluator, Simplified}
+import mateinone.evaluators.Simplified
 
-val alphaBetaPruning = true
-val iterativeDeepening = true
-val lookAheadDepth = 8
-val evaluator: Evaluator = Simplified
+val lookAheadDepth = 4
+val evaluator = Simplified
 
-case class Score(score: Int, moves: List[MoveBase])
+def step(board: Board, depth: Int, n: Int): Unit = {
+  if (board.isCheckmate) println(s"Checkmate ${board.opponent.color.toString} wins")
+  else if (board.isStalemate) println("Stalemate")
+  else if (board.isInsufficientMaterial) println("Insufficient mating material")
+  else if (board.isThreefoldRepetition) println(s"${board.same.color.toString} claimed draw by threefold repetition")
+  else if (board.isFiftyMoveRule) println(s"${board.same.color.toString} claimed draw by fifty-move rule")
+  else {
+    val start = System.nanoTime()
+    val searchScore = Search.nextMove(board, depth, evaluator)
+    val delta = (System.nanoTime() - start) / 1e9
 
-object Engine {
-  var numEvaluations = 0
-  def evaluate(board: Board, ply: Int) = {
-    numEvaluations += 1
-    evaluator.evaluate(board, ply)
-  }
+    def isWhite(i: Int) = i%2 == 0
+    def whitePrefix(i: Int) = s"${i/2+1}."
+    def blackPrefix(i: Int) = s"${whitePrefix(i)} ..."
+    def prefix(i: Int) = if (isWhite(i)) whitePrefix(i) else blackPrefix(i)
+    def prefixIfWhite(i: Int) = if (isWhite(i)) whitePrefix(i) else ""
 
-  private val pieceValues = Map[PieceType, Int](
-    Pawn -> 1,
-    Knight -> 3,
-    Bishop -> 3,
-    Rook -> 5,
-    Queen -> 9,
-    King -> 100
-  )
-
-  def scoreMove(board: Board, move: MoveBase): Int = move match {
-    case m: StartAndEnd =>
-      val aggressor = board.same.typeAt(m.start).getOrElse(Pawn)
-      val victimOpt = board.opponent.typeAt(m.end)
-      victimOpt match {
-        case Some(victim) => (pieceValues(victim) * 10) - pieceValues(aggressor) + 1000 // Captures get high base score
-        case None => 0 // Quiet moves
-      }
-    case _: Castle => 0 // Treat castling as quiet move
-  }
-
-  def alphaBetaMax(board: Board, depth: Int): Score = {
-    assert(depth > 0)
-
-    def descending(leaves: Vector[(MoveBase, Board)], d: Int) = {
-      val alpha = Int.MinValue
-      val beta = Int.MaxValue
-      var maxAlpha = Score(alpha, Nil)
-      
-      // MVV-LVA ordering
-      val sortedLeaves = leaves.sortBy { case (m, b) => -scoreMove(board, m) }
-
-      sortedLeaves.map { case (childMove, childBoard) =>
-        var childScore = alphaBetaMin(childBoard, maxAlpha.score, beta, d - 1, 1)
-        childScore = childScore.copy(moves = childMove :: childScore.moves)
-        if (childScore.score > maxAlpha.score) maxAlpha = childScore
-        (childMove, childBoard, childScore)
-      }.sortBy(-_._3.score)
+    val afterNextMoves = {
+      val indices = (n+1).to(n+1+depth)
+      val prefixes = prefix(indices.head) +: indices.tail.map(prefixIfWhite)
+      searchScore.moves.tail.zip(prefixes).map { case (m, p) => s"$p $m" }.mkString(" ")
     }
 
-    if (iterativeDeepening) {
-      var desc = descending(board.leaves, 1)
-      2.to(depth).foreach(d => desc = descending(desc.map { case (m, b, s) => (m, b) }, d))
-      desc.head._3
-    } else {
-      descending(board.leaves, depth).head._3
-    }
-  }
+    val nextMove = searchScore.moves.head
+    val nextBoard = board.move(nextMove).get
+    var centiPawns = searchScore.score/100d
+    if (!isWhite(n)) centiPawns *= -1
+    
+    println(nextBoard.print(nextMove))
+    println(s"${prefix(n)} $nextMove")
+    println(f"Score: $centiPawns%+.2f $afterNextMoves")
+    println(f"Search time: $delta%.2fs")
 
-  def alphaBetaMin(board: Board, depth: Int): Score = {
-    assert(depth > 0)
-
-    def ascending(leaves: Vector[(MoveBase, Board)], d: Int) = {
-      val alpha = Int.MinValue
-      val beta = Int.MaxValue
-      var minBeta = Score(beta, Nil)
-
-      // MVV-LVA ordering
-      val sortedLeaves = leaves.sortBy { case (m, b) => -scoreMove(board, m) }
-
-      sortedLeaves.map { case (childMove, childBoard) =>
-        var childScore = alphaBetaMax(childBoard, alpha, minBeta.score, d - 1, 1)
-        childScore = childScore.copy(moves = childMove :: childScore.moves)
-        if (childScore.score < minBeta.score) minBeta = childScore
-        (childMove, childBoard, childScore)
-      }.sortBy(_._3.score)
-    }
-
-    if (iterativeDeepening) {
-	var asc = ascending(board.leaves, 1)
-	2.to(depth).foreach(d => asc = ascending(asc.map { case (m, b, s) => (m, b) }, d))
-	asc.head._3
-  } else {
-    ascending(board.leaves, depth).head._3
+    step(nextBoard, depth, n + 1)
   }
 }
 
-  def alphaBetaMax(board: Board, alpha: Int, beta: Int, depth: Int, ply: Int): Score = {
-    if (board.isThreefoldRepetition) return Score(0, Nil)
-    val score = Score(evaluate(board, ply), Nil)
-    if (depth == 0) return score
-
-    val leaves = board.leaves
-    if (leaves.isEmpty) return score
-
-    // MVV-LVA ordering
-    val sortedLeaves = leaves.sortBy { case (m, b) => -scoreMove(board, m) }
-
-    var maxAlpha = Score(alpha, Nil)
-    for ((childMove, childBoard) <- sortedLeaves) {
-      val childScore = alphaBetaMin(childBoard, maxAlpha.score, beta, depth - 1, ply + 1)
-      if (alphaBetaPruning && childScore.score >= beta) // fail hard beta-cutoff
-        return Score(beta, Nil)
-      if (childScore.score > maxAlpha.score) // alpha acts like max in MiniMax
-        maxAlpha = Score(childScore.score, childMove :: childScore.moves)
-    }
-    maxAlpha
-  }
-
-  def alphaBetaMin(board: Board, alpha: Int, beta: Int, depth: Int, ply: Int): Score = {
-    if (board.isThreefoldRepetition) return Score(0, Nil)
-    val score = Score(evaluate(board, ply), Nil)
-    if (depth == 0) return score
-
-    val leaves = board.leaves
-    if (leaves.isEmpty) return score
-
-    // MVV-LVA ordering
-    val sortedLeaves = leaves.sortBy { case (m, b) => -scoreMove(board, m) }
-
-    var minBeta = Score(beta, Nil)
-    for ((childMove, childBoard) <- sortedLeaves) {
-      val childScore = alphaBetaMax(childBoard, alpha, minBeta.score, depth - 1, ply + 1)
-      if (alphaBetaPruning && childScore.score <= alpha) // fail hard alpha-cutoff
-        return Score(alpha, Nil)
-      if (childScore.score < minBeta.score) // beta acts like min in MiniMax
-        minBeta = Score(childScore.score, childMove :: childScore.moves)
-    }
-    minBeta
-  }
-  def next(b: Board, depth: Int) = if (b.same.color == White) alphaBetaMax(b, depth) else alphaBetaMin(b, depth)
-
-  def step(board: Board, depth: Int, n: Int): Unit = {
-    if (board.isCheckmate) println(s"Checkmate ${board.opponent.color.toString} wins")
-    else if (board.isStalemate) println("Stalemate")
-    else if (board.isInsufficientMaterial) println("Insufficient mating material")
-    else if (board.isThreefoldRepetition) println(s"${board.same.color.toString} claimed draw by threefold repetition")
-    else if (board.isFiftyMoveRule) println(s"${board.same.color.toString} claimed draw by fifty-move rule")
-    else {
-      numEvaluations = 0
-      val start = System.nanoTime()
-      val score = next(board, depth)
-      val delta = (System.nanoTime() - start) / 1e9
-
-      def isWhite(i: Int) = i%2 == 0
-      def whitePrefix(i: Int) = s"${i/2+1}."
-      def blackPrefix(i: Int) = s"${whitePrefix(i)} ..."
-      def prefix(i: Int) = if (isWhite(i)) whitePrefix(i) else blackPrefix(i)
-      def prefixIfWhite(i: Int) = if (isWhite(i)) whitePrefix(i) else ""
-
-      val afterNextMoves = {
-        val indices = (n+1).to(n+1+depth)
-        val prefixes = prefix(indices.head) +: indices.tail.map(prefixIfWhite)
-        score.moves.tail.zip(prefixes).map { case (m, p) => s"$p $m" }.mkString(" ")
-      }
-
-      val nextMove = score.moves.head
-      val nextBoard = board.move(nextMove).get
-      var centiPawns = score.score/100d
-      if (!isWhite(n)) centiPawns *= -1
-      println(nextBoard.print(nextMove))
-      println(s"${prefix(n)} $nextMove")
-      println(f"Score: $centiPawns%+.2f $afterNextMoves")
-      println(f"Engine: $numEvaluations%,d in $delta%.2fs")
-
-      step(nextBoard, depth, n + 1)
-    }
-  }
-}
-
-println(s"alphaBetaPruning: $alphaBetaPruning")
-println(s"iterativeDeepening: $iterativeDeepening")
-println(s"lookAheadDepth: $lookAheadDepth")
-Engine.step(Board.initial, lookAheadDepth, 0)
+println(s"Running simulation at depth: $lookAheadDepth")
+step(Board.initial, lookAheadDepth, 0)
