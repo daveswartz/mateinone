@@ -16,17 +16,4 @@ object Zobrist {
 
   // 0-7 for files A-H
   val enPassant: Array[Long] = Array.fill(8)(random.nextLong())
-
-  def getPieceIndex(t: PieceType): Int = t match {
-    case Pawn   => 0
-    case Knight => 1
-    case Bishop => 2
-    case Rook   => 3
-    case Queen  => 4
-    case King   => 5
-  }
-
-  def getSquareIndex(s: Square): Int = s.file + s.rank * 8
-
-  def getColorIndex(c: Color): Int = if (c == White) 0 else 1
 }

@@ -80,6 +80,14 @@ class Bitboard {
       putPiece(color, piece, to)
     }
 
+    // Handle Castling (Move Rook)
+    if (m.castle) {
+      if (to == G1) { removePiece(H1); putPiece(White, Rook, F1) }
+      else if (to == C1) { removePiece(A1); putPiece(White, Rook, D1) }
+      else if (to == G8) { removePiece(H8); putPiece(Black, Rook, F8) }
+      else if (to == C8) { removePiece(A8); putPiece(Black, Rook, D8) }
+    }
+
     // Hash updates for state changes
     if (enPassantSq != SquareNone) hash ^= Zobrist.enPassant(fileOf(enPassantSq))
     // TODO: Update hash for castleRights change
@@ -115,6 +123,14 @@ class Bitboard {
 
     if (state.capturedPiece != PieceNone) {
       putPiece(sideToMove, state.capturedPiece, to)
+    }
+
+    // Handle Castling (Move Rook Back)
+    if (m.castle) {
+      if (to == G1) { removePiece(F1); putPiece(White, Rook, H1) }
+      else if (to == C1) { removePiece(D1); putPiece(White, Rook, A1) }
+      else if (to == G8) { removePiece(F8); putPiece(Black, Rook, H8) }
+      else if (to == C8) { removePiece(D8); putPiece(Black, Rook, A8) }
     }
 
     sideToMove = color

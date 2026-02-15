@@ -147,9 +147,37 @@ object MoveGen {
         moves = Move(from, to, King, (oppOcc & (1L << to)) != 0) :: moves
         atts &= (atts - 1)
       }
+      
+      // Castling
+      if (color == White) {
+        // DEBUG
+        // println(s"White Castling: Rights=${b.castleRights & CastleWK}, Occ=${totalOcc & (1L << F1 | 1L << G1)}, AttackedE1=${LegalChecker.isSquareAttacked(b, E1, Black)}")
+        
+        if ((b.castleRights & CastleWK) != 0 && (totalOcc & (1L << F1 | 1L << G1)) == 0) {
+          if (!LegalChecker.isSquareAttacked(b, E1, Black) && !LegalChecker.isSquareAttacked(b, F1, Black) && !LegalChecker.isSquareAttacked(b, G1, Black)) {
+            moves = Move(E1, G1, King, false, PieceNone, true) :: moves
+          }
+        }
+        if ((b.castleRights & CastleWQ) != 0 && (totalOcc & (1L << B1 | 1L << C1 | 1L << D1)) == 0) {
+          if (!LegalChecker.isSquareAttacked(b, E1, Black) && !LegalChecker.isSquareAttacked(b, D1, Black) && !LegalChecker.isSquareAttacked(b, C1, Black)) {
+            moves = Move(E1, C1, King, false, PieceNone, true) :: moves
+          }
+        }
+      } else {
+        if ((b.castleRights & CastleBK) != 0 && (totalOcc & (1L << F8 | 1L << G8)) == 0) {
+          if (!LegalChecker.isSquareAttacked(b, E8, White) && !LegalChecker.isSquareAttacked(b, F8, White) && !LegalChecker.isSquareAttacked(b, G8, White)) {
+            moves = Move(E8, G8, King, false, PieceNone, true) :: moves
+          }
+        }
+        if ((b.castleRights & CastleBQ) != 0 && (totalOcc & (1L << B8 | 1L << C8 | 1L << D8)) == 0) {
+          if (!LegalChecker.isSquareAttacked(b, E8, White) && !LegalChecker.isSquareAttacked(b, D8, White) && !LegalChecker.isSquareAttacked(b, C8, White)) {
+            moves = Move(E8, C8, King, false, PieceNone, true) :: moves
+          }
+        }
+      }
     }
     
-    // TODO: Add Castling and En Passant
+    // TODO: Add En Passant (still pending)
     moves
   }
 
