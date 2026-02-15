@@ -59,6 +59,12 @@ Watch the engine play against itself at high depth.
 sbt "run --depth 12"
 ```
 
+### GUI Compatibility (UCI)
+The engine supports the **Universal Chess Interface (UCI)** protocol, making it compatible with GUIs like Arena, Cute Chess, or Banksia.
+```bash
+sbt "run --uci"
+```
+
 ## Development 🛠
 
 ### Running Tests
