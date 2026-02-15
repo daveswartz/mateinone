@@ -100,23 +100,29 @@ object Simplified extends Evaluator {
   private val (whiteKingMiddle, blackKingMiddle) = sides(kingMiddleSquareTable, 0)
   private val (whiteKingEnd, blackKingEnd) = sides(kingEndSquareTable, 0)
 
-  private def valueForPawn(color: Color, square: Square): Int = if (color == White) whitePawn(square) else blackPawn(square)
-  private def valueForKnight(color: Color, square: Square): Int = if (color == White) whiteKnight(square) else blackKnight(square)
-  private def valueForBishop(color: Color, square: Square): Int = if (color == White) whiteBishop(square) else blackBishop(square)
-  private def valueForRook(color: Color, square: Square): Int = if (color == White) whiteRook(square) else blackRook(square)
-  private def valueForQueen(color: Color, square: Square): Int = if (color == White) whiteQueen(square) else blackQueen(square)
-  private def valueForKing(color: Color, endGame: Boolean, square: Square): Int =
-    if (color == White) { if (endGame) whiteKingEnd(square) else whiteKingMiddle(square) }
-    else { if (endGame) blackKingEnd(square) else blackKingMiddle(square) }
+  def pieceValue(t: PieceType, color: Color, square: Square, endGame: Boolean): Int = t match {
+    case Pawn => if (color == White) whitePawn(square) else blackPawn(square)
+    case Knight => if (color == White) whiteKnight(square) else blackKnight(square)
+    case Bishop => if (color == White) whiteBishop(square) else blackBishop(square)
+    case Rook => if (color == White) whiteRook(square) else blackRook(square)
+    case Queen => if (color == White) whiteQueen(square) else blackQueen(square)
+    case King => if (color == White) { if (endGame) whiteKingEnd(square) else whiteKingMiddle(square) }
+                 else { if (endGame) blackKingEnd(square) else blackKingMiddle(square) }
+  }
+
+  def calculateFullScore(b: Board): Int = {
+    val endGame = isEndgame(b)
+    valueForSide(b.same, endGame) + valueForSide(b.opponent, endGame)
+  }
 
   private def valueForSide(side: Side, endGame: Boolean): Int = {
     var result = 0
-    side.pawns.foreach(result += valueForPawn(side.color, _))
-    side.knights.foreach(result += valueForKnight(side.color, _))
-    side.bishops.foreach(result += valueForBishop(side.color, _))
-    side.rooks.foreach(result += valueForRook(side.color, _))
-    side.queens.foreach(result += valueForQueen(side.color, _))
-    side.kings.foreach(result += valueForKing(side.color, endGame, _))
+    side.pawns.foreach(result += pieceValue(Pawn, side.color, _, endGame))
+    side.knights.foreach(result += pieceValue(Knight, side.color, _, endGame))
+    side.bishops.foreach(result += pieceValue(Bishop, side.color, _, endGame))
+    side.rooks.foreach(result += pieceValue(Rook, side.color, _, endGame))
+    side.queens.foreach(result += pieceValue(Queen, side.color, _, endGame))
+    side.kings.foreach(result += pieceValue(King, side.color, _, endGame))
     result
   }
 
@@ -128,8 +134,9 @@ object Simplified extends Evaluator {
   def evaluate(b: Board, depth: Int): Int = if (b.isCheckmate) {
     if (b.same.color == White) -20000 + depth else 20000 - depth
   } else {
-    val endGame = isEndgame(b)
-    valueForSide(b.same, endGame) + valueForSide(b.opponent, endGame)
+    // For now, return the pre-calculated score from the board. 
+    // We'll update Board to store this.
+    b.evalScore
   }
 
 }

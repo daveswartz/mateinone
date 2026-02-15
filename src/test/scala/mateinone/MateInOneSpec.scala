@@ -198,6 +198,44 @@ class MateInOneSpec extends Specification {
 
   }
 
+  "TranspositionTable" should {
+    "store and retrieve values correctly" in {
+      TranspositionTable.clear()
+      val hash = 12345L
+      val move = Move.move(A2, A3)
+      TranspositionTable.store(hash, 4, 100, TranspositionTable.Exact, Some(move))
+      
+      val entry = TranspositionTable.get(hash)
+      entry must beSome
+      entry.get.depth must beEqualTo(4)
+      entry.get.score must beEqualTo(100)
+      entry.get.flag must beEqualTo(TranspositionTable.Exact)
+      entry.get.bestMove must beSome(move)
+    }
+
+    "replace entry if new depth is greater" in {
+      TranspositionTable.clear()
+      val hash = 67890L
+      TranspositionTable.store(hash, 2, 50, TranspositionTable.UpperBound, None)
+      TranspositionTable.store(hash, 5, 60, TranspositionTable.LowerBound, None)
+
+      val entry = TranspositionTable.get(hash)
+      entry.get.depth must beEqualTo(5)
+      entry.get.score must beEqualTo(60)
+    }
+
+    "not replace entry if new depth is smaller" in {
+      TranspositionTable.clear()
+      val hash = 11111L
+      TranspositionTable.store(hash, 5, 100, TranspositionTable.Exact, None)
+      TranspositionTable.store(hash, 3, 200, TranspositionTable.Exact, None)
+
+      val entry = TranspositionTable.get(hash)
+      entry.get.depth must beEqualTo(5)
+      entry.get.score must beEqualTo(100)
+    }
+  }
+
   "TerminalPrinter" should {
     "print the board" in {
       import TerminalPrinter._
@@ -222,6 +260,38 @@ class MateInOneSpec extends Specification {
     "evaluate after a pawn move" in { Simplified.evaluate(Board.initial.move(A2->A4).get, 0) must beEqualTo(-5) }
     "evaluate after two pawn moves" in { Simplified.evaluate(Board.initial.move(A2->A4, A7->A5).get, 0) must beEqualTo(0) }
     "evaluate after a knight move" in { Simplified.evaluate(Board.initial.move(B1->C3, B8->C6, G1->F3, G8->F6, D2->D4, C6->D4).get, 0) must beEqualTo(-90) }
+    
+    "match incremental eval with full recalculation over a sequence" in {
+      val moves: List[MoveBase] = List(E2->E4, E7->E5, G1->F3, B8->C6, F1->B5, A7->A6, B5->C6, D7->C6)
+      var currentBoard = Board.initial
+      moves.foreach { m =>
+        currentBoard = currentBoard.move(m).get
+        currentBoard.evalScore must beEqualTo(Simplified.calculateFullScore(currentBoard))
+      }
+      success
+    }
+  }
+
+  "Search" should {
+    "find mate in one" in {
+      // Scholar's Mate position after 3. ... Nf6?
+      val scholarMoves: List[MoveBase] = List(E2->E4, E7->E5, D1->H5, B8->C6, F1->C4, G8->F6)
+      val board = Board.initial.move(scholarMoves).get
+      val result = Search.nextMove(board, 2, Simplified)
+      result.moves.head must beEqualTo(Move.move(H5, F7))
+      result.score must beGreaterThan(15000)
+    }
+
+    "utilize the Transposition Table" in {
+      TranspositionTable.clear()
+      val board = Board.initial
+      Search.nextMove(board, 4, Simplified)
+      val initialHits = Search.ttHits
+      
+      // Second search of same position should have hits
+      Search.nextMove(board, 4, Simplified)
+      Search.ttHits must beGreaterThan(initialHits)
+    }
   }
 
   // Checks each move is generated and allowed

@@ -2,7 +2,7 @@ import mateinone._
 import TerminalPrinter._
 import mateinone.evaluators.Simplified
 
-val lookAheadDepth = 4
+val lookAheadDepth = 8
 val evaluator = Simplified
 
 def step(board: Board, depth: Int, n: Int): Unit = {
@@ -36,7 +36,7 @@ def step(board: Board, depth: Int, n: Int): Unit = {
     println(nextBoard.print(nextMove))
     println(s"${prefix(n)} $nextMove")
     println(f"Score: $centiPawns%+.2f $afterNextMoves")
-    println(f"Search time: $delta%.2fs")
+    println(f"Search time: $delta%.2fs | Nodes: ${Search.nodesSearched}%,d | TT Hits: ${Search.ttHits}%,d")
 
     step(nextBoard, depth, n + 1)
   }

@@ -2,6 +2,7 @@ package mateinone
 
 import Rank._
 import Square._
+import mateinone.evaluators.Simplified
 
 case class Side(
     color: Color,
@@ -73,7 +74,8 @@ object Board {
     val same = Side(White, rank(_2), Set(B1, G1), Set(C1, F1), Set(A1, H1), Set(D1), Set(E1))
     val opponent = Side(Black, rank(_7), Set(B8, G8), Set(C8, F8), Set(A8, H8), Set(D8), Set(E8))
     val h = calculateHash(same, opponent, None)
-    Board(same, opponent, None, Vector.empty[(Side, Side)], 0, h, Nil)
+    val b = Board(same, opponent, None, Vector.empty[(Side, Side)], 0, h, Nil, 0)
+    b.copy(evalScore = Simplified.calculateFullScore(b))
   }
 
   def calculateHash(same: Side, opponent: Side, twoSquarePawn: Option[Move]): Long = {
@@ -149,11 +151,12 @@ object Board {
 }
 import Board._
 
-case class Board private(same: Side, opponent: Side, private val twoSquarePawn: Option[Move], private val positions: Vector[(Side, Side)], private val pawnOrCapture: Int, val hash: Long, val history: List[Long]) {
+case class Board private(same: Side, opponent: Side, private val twoSquarePawn: Option[Move], private val positions: Vector[(Side, Side)], private val pawnOrCapture: Int, val hash: Long, val history: List[Long], val evalScore: Int) {
 
   def leaves: Vector[(MoveBase, Board)] = {
     import OffsetConstants._
     import CastleConstants._
+    import mateinone.evaluators.Simplified
 
     // Functions that generate ends from the specified start and offset and filters illegal ends
     def oneStep(start: Square, offset: (Int, Int), acceptEnd: Square => Boolean): Set[Square] =
@@ -175,19 +178,44 @@ case class Board private(same: Side, opponent: Side, private val twoSquarePawn: 
     // Functions that generate a board from the current board and the specified move
     def doMove(`type`: PieceType, isTwoSquare: Boolean = false)(m: Move): Board = {
       val isCapture = opponent.contains(m.end)
+      val victimTypeOpt = if (isCapture) opponent.typeAt(m.end) else None
+      
+      var nextEvalScore = evalScore
+      // Remove piece from start
+      nextEvalScore -= Simplified.pieceValue(`type`, same.color, m.start, false)
+      // Add piece to end
+      nextEvalScore += Simplified.pieceValue(`type`, same.color, m.end, false)
+      // If capture, remove victim
+      victimTypeOpt.foreach { vt =>
+        nextEvalScore -= Simplified.pieceValue(vt, opponent.color, m.end, false)
+      }
+
       val nextOpponent = if (isCapture) opponent.remove(m.end) else opponent
       val nextSame = same.add(m.end, `type`).remove(m.start)
       val nextTwoSquare = if (isTwoSquare) Some(m) else None
       val nextPositions = if (`type` == Pawn || isCapture) Vector.empty[(Side, Side)] else positions :+ (same, opponent)
       val nextPawnOrCapture = if (`type` == Pawn || isCapture) 0 else pawnOrCapture + 1
       val nextHash = Board.calculateHash(nextOpponent, nextSame, nextTwoSquare)
-      Board(nextOpponent, nextSame, nextTwoSquare, nextPositions, nextPawnOrCapture, nextHash, hash :: history)
+      Board(nextOpponent, nextSame, nextTwoSquare, nextPositions, nextPawnOrCapture, nextHash, hash :: history, nextEvalScore)
     }
     def doPromotion(p: Promotion): Board = {
-      val nextOpponent = if (opponent.contains(p.end)) opponent.remove(p.end) else opponent
+      val isCapture = opponent.contains(p.end)
+      val victimTypeOpt = if (isCapture) opponent.typeAt(p.end) else None
+      
+      var nextEvalScore = evalScore
+      // Remove pawn from start
+      nextEvalScore -= Simplified.pieceValue(Pawn, same.color, p.start, false)
+      // Add promoted piece to end
+      nextEvalScore += Simplified.pieceValue(p.`type`, same.color, p.end, false)
+      // If capture, remove victim
+      victimTypeOpt.foreach { vt =>
+        nextEvalScore -= Simplified.pieceValue(vt, opponent.color, p.end, false)
+      }
+
+      val nextOpponent = if (isCapture) opponent.remove(p.end) else opponent
       val nextSame = same.remove(p.start).add(p.end, p.`type`)
       val nextHash = Board.calculateHash(nextOpponent, nextSame, None)
-      Board(nextOpponent, nextSame, None, Vector.empty[(Side, Side)], 0, nextHash, hash :: history)
+      Board(nextOpponent, nextSame, None, Vector.empty[(Side, Side)], 0, nextHash, hash :: history, nextEvalScore)
     }
 
     def createLeaves[M <: MoveBase](starts: Set[Square],
@@ -210,9 +238,12 @@ case class Board private(same: Side, opponent: Side, private val twoSquarePawn: 
           createLeaves(movers, captures, openOnly1, toMoves, doMove(Pawn))
             .filter { case (m, b) => twoSquarePawn.exists(l => l.end.file == m.end.file && l.end.rank == m.start.rank) }
             .map { case (m, b) =>
-              val finalSame = b.same.remove(twoSquarePawn.get.end)
+              val capturedPawnSq = twoSquarePawn.get.end
+              val finalSame = b.same.remove(capturedPawnSq)
               val nextHash = Board.calculateHash(b.opponent, finalSame, None)
-              (m, b.copy(same = finalSame, hash = nextHash))
+              // Update eval for En Passant capture
+              val nextEvalScore = b.evalScore - Simplified.pieceValue(Pawn, opponent.color, capturedPawnSq, false)
+              (m, b.copy(same = finalSame, hash = nextHash, evalScore = nextEvalScore))
             } ++
           createLeaves(movers.filterNot(same.moved), advance, openOnly2, toMoves, doMove(Pawn, isTwoSquare = true)) ++
           createLeaves(movers, advance, openOnly1, toMoves, doMove(Pawn)) ++
@@ -229,7 +260,15 @@ case class Board private(same: Side, opponent: Side, private val twoSquarePawn: 
               val nextOpponent = same.remove(cc.rookStart).remove(kingStart).add(cc.rookEnd, Rook).add(cc.kingEnd, King)
               val nextSame = opponent
               val nextHash = Board.calculateHash(nextSame, nextOpponent, None)
-              Board(nextSame, nextOpponent, None, Vector.empty[(Side, Side)], pawnOrCapture + 1, nextHash, hash :: history)
+              
+              var nextEvalScore = evalScore
+              // Update eval for Castle (King and Rook move)
+              nextEvalScore -= Simplified.pieceValue(King, same.color, kingStart, false)
+              nextEvalScore -= Simplified.pieceValue(Rook, same.color, cc.rookStart, false)
+              nextEvalScore += Simplified.pieceValue(King, same.color, cc.kingEnd, false)
+              nextEvalScore += Simplified.pieceValue(Rook, same.color, cc.rookEnd, false)
+              
+              Board(nextSame, nextOpponent, None, Vector.empty[(Side, Side)], pawnOrCapture + 1, nextHash, hash :: history, nextEvalScore)
             }
             if (same.rooks.contains(cc.rookStart) && !same.moved.contains(cc.rookStart) && !betweenOccupied && !throughCheck) castleLeaves = castleLeaves :+(cc.move, board)
           }
