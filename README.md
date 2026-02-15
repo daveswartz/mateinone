@@ -17,7 +17,7 @@ A high-performance chess engine and library written entirely in Scala.
 - **Endgame Heuristics**: "King Herding" logic to force checkmates in simplified endgames.
 
 ## Performance Milestone 🚀
-The engine is optimized for deep search, consistently reaching **Depth 12** in sub-2s per move on standard hardware (3M+ NPS).
+The engine is ultra-optimized for deep search, consistently reaching **Depth 12** in under **1 second** and **Depth 14** in under **5 seconds** on standard hardware (**5M+ NPS**).
 
 ## Usage ♖
 Bring the `mateinone.bitboard` package into scope to access the engine.
