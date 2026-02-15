@@ -125,8 +125,8 @@ object Simplified extends Evaluator {
     inEndgame(b.same) && inEndgame(b.opponent)
   }
 
-  def evaluate(b: Board): Int = if (b.isCheckmate) {
-    if (b.same.color == White) -20000 else 20000
+  def evaluate(b: Board, depth: Int): Int = if (b.isCheckmate) {
+    if (b.same.color == White) -20000 + depth else 20000 - depth
   } else {
     val endGame = isEndgame(b)
     valueForSide(b.same, endGame) + valueForSide(b.opponent, endGame)

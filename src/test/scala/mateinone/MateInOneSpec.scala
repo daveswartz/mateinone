@@ -218,10 +218,10 @@ class MateInOneSpec extends Specification {
   }
 
   "Simplified" should {
-    "evaluate the initial board" in { Simplified.evaluate(Board.initial) must beEqualTo(0) }
-    "evaluate after a pawn move" in { Simplified.evaluate(Board.initial.move(A2->A4).get) must beEqualTo(-5) }
-    "evaluate after two pawn moves" in { Simplified.evaluate(Board.initial.move(A2->A4, A7->A5).get) must beEqualTo(0) }
-    "evaluate after a knight move" in { Simplified.evaluate(Board.initial.move(B1->C3, B8->C6, G1->F3, G8->F6, D2->D4, C6->D4).get) must beEqualTo(-90) }
+    "evaluate the initial board" in { Simplified.evaluate(Board.initial, 0) must beEqualTo(0) }
+    "evaluate after a pawn move" in { Simplified.evaluate(Board.initial.move(A2->A4).get, 0) must beEqualTo(-5) }
+    "evaluate after two pawn moves" in { Simplified.evaluate(Board.initial.move(A2->A4, A7->A5).get, 0) must beEqualTo(0) }
+    "evaluate after a knight move" in { Simplified.evaluate(Board.initial.move(B1->C3, B8->C6, G1->F3, G8->F6, D2->D4, C6->D4).get, 0) must beEqualTo(-90) }
   }
 
   // Checks each move is generated and allowed
