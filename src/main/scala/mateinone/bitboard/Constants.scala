@@ -47,6 +47,18 @@ object Constants {
   final val CastleBQ = 8
   final val CastleAll = 15
 
+  // Mask to update rights when a square is "touched" (move from/to)
+  val castleRightsUpdateMask: Array[Int] = {
+    val arr = Array.fill(64)(CastleAll)
+    arr(A1) = CastleAll ^ CastleWQ
+    arr(E1) = CastleAll ^ (CastleWK | CastleWQ)
+    arr(H1) = CastleAll ^ CastleWK
+    arr(A8) = CastleAll ^ CastleBQ
+    arr(E8) = CastleAll ^ (CastleBK | CastleBQ)
+    arr(H8) = CastleAll ^ CastleBK
+    arr
+  }
+
   // Utility
   def squareIndex(file: Int, rank: Int): Int = (rank * 8) + file
   def fileOf(sq: Int): Int = sq & 7

@@ -64,14 +64,21 @@ class Bitboard {
     val from = m.from
     val to = m.to
     val piece = m.piece
+    val color = sideToMove
     val captured = if (m.capture) pieceAt(to) else PieceNone
     
     positionHistory = hash :: positionHistory
     history = State(captured, castleRights, enPassantSq, halfMoveClock, hash, evalScore) :: history
 
-    if (m.capture) removePiece(to)
+    if (m.capture) {
+      if (m.enPassant) {
+        val capturedPawnSq = if (color == White) to - 8 else to + 8
+        removePiece(capturedPawnSq)
+      } else {
+        removePiece(to)
+      }
+    }
     
-    val color = sideToMove
     removePiece(from)
     
     if (m.promo != PieceNone) {
@@ -90,13 +97,22 @@ class Bitboard {
 
     // Hash updates for state changes
     if (enPassantSq != SquareNone) hash ^= Zobrist.enPassant(fileOf(enPassantSq))
-    // TODO: Update hash for castleRights change
+    hash ^= Zobrist.castling(castleRights & 3) // WK/WQ
+    hash ^= Zobrist.castling((castleRights >> 2) & 3) // BK/BQ
     
     // Update state
     sideToMove ^= 1
     hash ^= Zobrist.sideToMove
     
+    // Update halfMoveClock
+    if (piece == Pawn || m.capture) halfMoveClock = 0
+    else halfMoveClock += 1
+    
     if (color == Black) fullMoveNumber += 1
+    
+    // Update Castle Rights
+    castleRights &= castleRightsUpdateMask(from)
+    castleRights &= castleRightsUpdateMask(to)
     
     // Reset EP square unless double push
     enPassantSq = SquareNone
@@ -104,6 +120,9 @@ class Bitboard {
       enPassantSq = if (color == White) from + 8 else from - 8
       hash ^= Zobrist.enPassant(fileOf(enPassantSq))
     }
+    
+    hash ^= Zobrist.castling(castleRights & 3)
+    hash ^= Zobrist.castling((castleRights >> 2) & 3)
     
     updateOccupancy()
   }
@@ -122,7 +141,12 @@ class Bitboard {
     putPiece(color, piece, from)
 
     if (state.capturedPiece != PieceNone) {
-      putPiece(sideToMove, state.capturedPiece, to)
+      if (m.enPassant) {
+        val capturedPawnSq = if (color == White) to - 8 else to + 8
+        putPiece(sideToMove, state.capturedPiece, capturedPawnSq)
+      } else {
+        putPiece(sideToMove, state.capturedPiece, to)
+      }
     }
 
     // Handle Castling (Move Rook Back)
@@ -146,33 +170,84 @@ class Bitboard {
   def isThreefoldRepetition: Boolean = {
     positionHistory.count(_ == hash) >= 2
   }
+
+  def isFiftyMoveRule: Boolean = halfMoveClock >= 100
+
+  def isInsufficientMaterial: Boolean = {
+    // No pawns, rooks, or queens
+    if ((pieceBB(White)(Pawn) | pieceBB(Black)(Pawn) | 
+         pieceBB(White)(Rook) | pieceBB(Black)(Rook) | 
+         pieceBB(White)(Queen) | pieceBB(Black)(Queen)) != 0) return false
+    
+    val wKnights = java.lang.Long.bitCount(pieceBB(White)(Knight))
+    val bKnights = java.lang.Long.bitCount(pieceBB(Black)(Knight))
+    val wBishops = java.lang.Long.bitCount(pieceBB(White)(Bishop))
+    val bBishops = java.lang.Long.bitCount(pieceBB(Black)(Bishop))
+    
+    // K vs K
+    if (wKnights == 0 && bKnights == 0 && wBishops == 0 && bBishops == 0) return true
+    
+    // K+N vs K or K vs K+N
+    if (wKnights + wBishops <= 1 && bKnights + bBishops == 0) return true
+    if (bKnights + bBishops <= 1 && wKnights + wBishops == 0) return true
+    
+    // K+B vs K+B (if bishops are on same color squares - simplified for now)
+    if (wKnights == 0 && bKnights == 0 && wBishops == 1 && bBishops == 1) {
+       // Check square colors... for now just return true to match OO engine spirit
+       return true 
+    }
+    
+    false
+  }
 }
 
 object Bitboard {
-  def initial: Bitboard = {
+  def fromFen(fen: String): Bitboard = {
     val b = new Bitboard()
-    // Pawns
-    for (i <- 0 until 8) {
-      b.putPiece(White, Pawn, squareIndex(i, 1))
-      b.putPiece(Black, Pawn, squareIndex(i, 6))
+    val parts = fen.split(" ")
+    val ranks = parts(0).split("/")
+    
+    for (r <- 0 until 8) {
+      var f = 0
+      for (char <- ranks(7 - r)) {
+        if (char.isDigit) {
+          f += char.asDigit
+        } else {
+          val color = if (char.isUpper) White else Black
+          val pieceType = char.toLower match {
+            case 'p' => Pawn
+            case 'n' => Knight
+            case 'b' => Bishop
+            case 'r' => Rook
+            case 'q' => Queen
+            case 'k' => King
+          }
+          b.putPiece(color, pieceType, squareIndex(f, r))
+          f += 1
+        }
+      }
     }
-    // Rooks
-    b.putPiece(White, Rook, A1); b.putPiece(White, Rook, H1)
-    b.putPiece(Black, Rook, A8); b.putPiece(Black, Rook, H8)
-    // Knights
-    b.putPiece(White, Knight, B1); b.putPiece(White, Knight, G1)
-    b.putPiece(Black, Knight, B8); b.putPiece(Black, Knight, G8)
-    // Bishops
-    b.putPiece(White, Bishop, C1); b.putPiece(White, Bishop, F1)
-    b.putPiece(Black, Bishop, C8); b.putPiece(Black, Bishop, F8)
-    // Queens
-    b.putPiece(White, Queen, D1); b.putPiece(Black, Queen, D8)
-    // Kings
-    b.putPiece(White, King, E1); b.putPiece(Black, King, E8)
+    
+    b.sideToMove = if (parts(1) == "w") White else Black
+    
+    b.castleRights = 0
+    if (parts(2).contains('K')) b.castleRights |= CastleWK
+    if (parts(2).contains('Q')) b.castleRights |= CastleWQ
+    if (parts(2).contains('k')) b.castleRights |= CastleBK
+    if (parts(2).contains('q')) b.castleRights |= CastleBQ
+    
+    if (parts(3) != "-") {
+      val f = parts(3)(0) - 'a'
+      val r = parts(3)(1).asDigit - 1
+      b.enPassantSq = squareIndex(f, r)
+    }
+    
+    b.halfMoveClock = parts(4).toInt
+    b.fullMoveNumber = parts(5).toInt
     
     b.updateOccupancy()
     
-    // Initialize hash correctly
+    // Initialize hash and evalScore
     b.hash = 0L
     for (c <- 0 to 1; pt <- 0 to 5) {
       var bb = b.pieceBB(c)(pt)
@@ -183,9 +258,10 @@ object Bitboard {
       }
     }
     if (b.sideToMove == Black) b.hash ^= Zobrist.sideToMove
-    // TODO: Initial castle rights hash
+    if (b.enPassantSq != SquareNone) b.hash ^= Zobrist.enPassant(fileOf(b.enPassantSq))
+    b.hash ^= Zobrist.castling(b.castleRights & 3)
+    b.hash ^= Zobrist.castling((b.castleRights >> 2) & 3)
     
-    // Initialize evalScore correctly
     b.evalScore = 0
     for (c <- 0 to 1; pt <- 0 to 5) {
       val sideMult = if (c == White) 1 else -1
@@ -199,4 +275,6 @@ object Bitboard {
     
     b
   }
+
+  def initial: Bitboard = fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 }

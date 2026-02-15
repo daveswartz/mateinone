@@ -177,7 +177,22 @@ object MoveGen {
       }
     }
     
-    // TODO: Add En Passant (still pending)
+    // En Passant
+    if (b.enPassantSq != SquareNone) {
+      val target = b.enPassantSq
+      if (color == White) {
+        // White captures black pawn at target-8
+        val attackers = b.pieceBB(White)(Pawn)
+        if (fileOf(target) > 0 && (attackers & (1L << (target - 9))) != 0) moves = Move(target - 9, target, Pawn, true, PieceNone, false, true) :: moves
+        if (fileOf(target) < 7 && (attackers & (1L << (target - 7))) != 0) moves = Move(target - 7, target, Pawn, true, PieceNone, false, true) :: moves
+      } else {
+        // Black captures white pawn at target+8
+        val attackers = b.pieceBB(Black)(Pawn)
+        if (fileOf(target) > 0 && (attackers & (1L << (target + 7))) != 0) moves = Move(target + 7, target, Pawn, true, PieceNone, false, true) :: moves
+        if (fileOf(target) < 7 && (attackers & (1L << (target + 9))) != 0) moves = Move(target + 9, target, Pawn, true, PieceNone, false, true) :: moves
+      }
+    }
+    
     moves
   }
 
@@ -258,6 +273,20 @@ object MoveGen {
         if (to <= 7) moves = generatePromotions(to + 7, to, true, moves)
         else moves = Move(to + 7, to, Pawn, true) :: moves
         rightCaps &= (rightCaps - 1)
+      }
+    }
+
+    // En Passant captures
+    if (b.enPassantSq != SquareNone) {
+      val target = b.enPassantSq
+      if (color == White) {
+        val attackers = b.pieceBB(White)(Pawn)
+        if (fileOf(target) > 0 && (attackers & (1L << (target - 9))) != 0) moves = Move(target - 9, target, Pawn, true, PieceNone, false, true) :: moves
+        if (fileOf(target) < 7 && (attackers & (1L << (target - 7))) != 0) moves = Move(target - 7, target, Pawn, true, PieceNone, false, true) :: moves
+      } else {
+        val attackers = b.pieceBB(Black)(Pawn)
+        if (fileOf(target) > 0 && (attackers & (1L << (target + 7))) != 0) moves = Move(target + 7, target, Pawn, true, PieceNone, false, true) :: moves
+        if (fileOf(target) < 7 && (attackers & (1L << (target + 9))) != 0) moves = Move(target + 9, target, Pawn, true, PieceNone, false, true) :: moves
       }
     }
 
