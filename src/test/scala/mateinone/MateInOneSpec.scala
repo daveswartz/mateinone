@@ -140,6 +140,62 @@ class MateInOneSpec extends Specification {
       { val moves: List[MoveBase] = List(G1->F3, G8->F6, F3->G1, F6->G8)
         Board.initial.move(List.fill(25)(moves).flatten) must beSome.which(b => b.isFiftyMoveRule && b.mayClaimDraw) }
 
+    "1. a3 a6 2. Nf3 Nf6 3. Ng1 Ng8 4. Nf3 Nf6 5. Ng1 Ng8; Threefold repetition with intermediate moves." in
+      { Board.initial.move(A2->A3, A7->A6, G1->F3, G8->F6, F3->G1, F6->G8, G1->F3, G8->F6, F3->G1, F6->G8) must beSome.which(b => b.isThreefoldRepetition && b.mayClaimDraw) }
+
+    "Insufficient material: King + Bishop vs King" in
+      { // Setup a board with only King + Bishop vs King
+        val sideWhite = Side(White, Set.empty, Set.empty, Set(C1), Set.empty, Set.empty, Set(E1))
+        val sideBlack = Side(Black, Set.empty, Set.empty, Set.empty, Set.empty, Set.empty, Set(E8))
+        val board = Board.initial.move(E2->E3).get.copy(same = sideWhite, opponent = sideBlack)
+        board.isInsufficientMaterial must beTrue
+      }
+
+    "Insufficient material: King vs King" in
+      {
+        val sideWhite = Side(White, Set.empty, Set.empty, Set.empty, Set.empty, Set.empty, Set(E1))
+        val sideBlack = Side(Black, Set.empty, Set.empty, Set.empty, Set.empty, Set.empty, Set(E8))
+        val board = Board.initial.move(E2->E3).get.copy(same = sideWhite, opponent = sideBlack)
+        board.isInsufficientMaterial must beTrue
+      }
+
+    "Insufficient material: King + Knight vs King" in
+      {
+        val sideWhite = Side(White, Set.empty, Set(F3), Set.empty, Set.empty, Set.empty, Set(E1))
+        val sideBlack = Side(Black, Set.empty, Set.empty, Set.empty, Set.empty, Set.empty, Set(E8))
+        val board = Board.initial.move(E2->E3).get.copy(same = sideWhite, opponent = sideBlack)
+        board.isInsufficientMaterial must beTrue
+      }
+
+    "Insufficient material: King + Bishop vs King + Bishop (same color)" in
+      {
+        val sideWhite = Side(White, Set.empty, Set.empty, Set(C1), Set.empty, Set.empty, Set(E1))
+        val sideBlack = Side(Black, Set.empty, Set.empty, Set(F8), Set.empty, Set.empty, Set(E8))
+        val board = Board.initial.move(E2->E3).get.copy(same = sideWhite, opponent = sideBlack)
+        // C1 and F8 are both black squares
+        board.isInsufficientMaterial must beTrue
+      }
+
+    "Insufficient material: King + Bishop vs King + Bishop (different color)" in
+      {
+        val sideWhite = Side(White, Set.empty, Set.empty, Set(C1), Set.empty, Set.empty, Set(E1))
+        val sideBlack = Side(Black, Set.empty, Set.empty, Set(C8), Set.empty, Set.empty, Set(E8))
+        val board = Board.initial.move(E2->E3).get.copy(same = sideWhite, opponent = sideBlack)
+        // C1 is black, C8 is white. The current implementation considers any 2 bishops + 0 knights as insufficient if no other major pieces.
+        board.isInsufficientMaterial must beTrue
+      }
+
+    "isAutomaticDraw should be true for insufficient material" in
+      {
+        val sideWhite = Side(White, Set.empty, Set.empty, Set(C1), Set.empty, Set.empty, Set(E1))
+        val sideBlack = Side(Black, Set.empty, Set.empty, Set.empty, Set.empty, Set.empty, Set(E8))
+        val board = Board.initial.move(E2->E3).get.copy(same = sideWhite, opponent = sideBlack)
+        board.isAutomaticDraw must beTrue
+      }
+
+    "pawn promotion to Knight" in
+      movesAllowed(G2->G4, H7->H5, H2->H4, H5->G4, H4->H5, H8->H6, F2->F3, H6->G6, H5->H6, G4->F3, H6->H7, F3->E2, H7->H8->Knight)(Set((White, Knight, H8), (Black, Rook, G6), (Black, Pawn, E2)), nCaptured = 3)
+
   }
 
   "TerminalPrinter" should {
