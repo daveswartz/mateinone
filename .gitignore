@@ -14,3 +14,20 @@ project/plugins/project/
 # Scala-IDE specific
 .idea
 .idea_modules
+# Modern Tooling (Metals/Bloop)
+.bsp/
+.scala-build/
+.metals/
+
+# Emacs temp files
+.#*
+*#
+
+# Modern Tooling (Metals/Bloop)
+.bsp/
+.scala-build/
+.metals/
+
+# Emacs temp files
+.#*
+*#

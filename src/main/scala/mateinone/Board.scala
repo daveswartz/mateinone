@@ -183,7 +183,7 @@ case class Board private(same: Side, opponent: Side, private val twoSquarePawn: 
     import Board.blackSquares
     def both(f: Side => Set[Square]) = f(same) ++ f(opponent)
     val numKnights = both(_.knights).size; val bishops = both(_.bishops)
-    (both(_.pawns).isEmpty || both(_.rooks).isEmpty || both(_.queens).isEmpty) &&
+    (both(_.pawns).isEmpty && both(_.rooks).isEmpty && both(_.queens).isEmpty) &&
       ((numKnights == 0 || bishops.isEmpty) ||
         (numKnights == 1 && bishops.isEmpty) ||
         (numKnights == 0 && (bishops.forall(blackSquares.contains) || !bishops.exists(blackSquares.contains))))

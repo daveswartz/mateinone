@@ -2,13 +2,13 @@ name := "mateinone"
 
 version := "0.1-SNAPSHOT"
 
-scalaVersion := "2.11.0"
+scalaVersion := "2.13.12"
 
-resolvers ++= Seq("snapshots", "releases").map(Resolver.sonatypeRepo)
+resolvers ++= Resolver.sonatypeOssRepos("snapshots") ++ Resolver.sonatypeOssRepos("releases")
 
-libraryDependencies ++= Seq("org.specs2" %% "specs2" % "2.3.11" % "test")
+libraryDependencies ++= Seq("org.specs2" %% "specs2-core" % "4.20.4" % "test")
 
-initialCommands in console :=
+console / initialCommands :=
   """
     |import mateinone._
     |import TerminalPrinter._

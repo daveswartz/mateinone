@@ -5,7 +5,7 @@ import Square._
 
 object TerminalPrinter {
 
-  implicit def boardToTerminalBoard(b: Board) = new {
+  implicit class TerminalBoard(val b: Board) {
 
     def print: String = print(None)
     def print(last: MoveBase): String = print(Some(last))
@@ -37,8 +37,8 @@ object TerminalPrinter {
       }
 
       ("┌─────────────────┐" +:
-       Squares.map(rank => rank.map(print)).map(rank => ("│"+:rank:+"│").mkString(" ")) :+
-       "└─────────────────┘").mkString("\n")
+        Squares.map(rank => rank.map(print)).map(rank => ("│"+:rank:+"│").mkString(" ")) :+
+        "└─────────────────┘").mkString("\n")
 
     }
 
