@@ -60,18 +60,18 @@ class Bitboard {
     }
   }
 
-  def makeMove(m: Move): Unit = {
-    val from = m.from
-    val to = m.to
-    val piece = m.piece
+  def makeMove(m: Int): Unit = {
+    val from = mFrom(m)
+    val to = mTo(m)
+    val piece = mPiece(m)
     val color = sideToMove
-    val captured = if (m.capture) pieceAt(to) else PieceNone
+    val captured = if (mCapture(m)) pieceAt(to) else PieceNone
     
     positionHistory = hash :: positionHistory
     history = State(captured, castleRights, enPassantSq, halfMoveClock, hash, evalScore) :: history
 
-    if (m.capture) {
-      if (m.enPassant) {
+    if (mCapture(m)) {
+      if (mEP(m)) {
         val capturedPawnSq = if (color == White) to - 8 else to + 8
         removePiece(capturedPawnSq)
       } else {
@@ -81,14 +81,14 @@ class Bitboard {
     
     removePiece(from)
     
-    if (m.promo != PieceNone) {
-      putPiece(color, m.promo, to)
+    if (mPromo(m) != PieceNone) {
+      putPiece(color, mPromo(m), to)
     } else {
       putPiece(color, piece, to)
     }
 
     // Handle Castling (Move Rook)
-    if (m.castle) {
+    if (mCastle(m)) {
       if (to == G1) { removePiece(H1); putPiece(White, Rook, F1) }
       else if (to == C1) { removePiece(A1); putPiece(White, Rook, D1) }
       else if (to == G8) { removePiece(H8); putPiece(Black, Rook, F8) }
@@ -105,7 +105,7 @@ class Bitboard {
     hash ^= Zobrist.sideToMove
     
     // Update halfMoveClock
-    if (piece == Pawn || m.capture) halfMoveClock = 0
+    if (piece == Pawn || mCapture(m)) halfMoveClock = 0
     else halfMoveClock += 1
     
     if (color == Black) fullMoveNumber += 1
@@ -127,21 +127,21 @@ class Bitboard {
     updateOccupancy()
   }
 
-  def unmakeMove(m: Move): Unit = {
+  def unmakeMove(m: Int): Unit = {
     val state = history.head
     history = history.tail
     positionHistory = positionHistory.tail
 
-    val from = m.from
-    val to = m.to
-    val piece = m.piece
+    val from = mFrom(m)
+    val to = mTo(m)
+    val piece = mPiece(m)
     val color = sideToMove ^ 1
     
     removePiece(to)
     putPiece(color, piece, from)
 
     if (state.capturedPiece != PieceNone) {
-      if (m.enPassant) {
+      if (mEP(m)) {
         val capturedPawnSq = if (color == White) to - 8 else to + 8
         putPiece(sideToMove, state.capturedPiece, capturedPawnSq)
       } else {
@@ -150,7 +150,7 @@ class Bitboard {
     }
 
     // Handle Castling (Move Rook Back)
-    if (m.castle) {
+    if (mCastle(m)) {
       if (to == G1) { removePiece(F1); putPiece(White, Rook, H1) }
       else if (to == C1) { removePiece(D1); putPiece(White, Rook, A1) }
       else if (to == G8) { removePiece(F8); putPiece(Black, Rook, H8) }

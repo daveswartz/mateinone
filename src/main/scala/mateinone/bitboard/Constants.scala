@@ -69,6 +69,30 @@ object Constants {
     val r = rankOf(sq)
     s"${('a' + f).toChar}${r + 1}"
   }
+
+  // Move Packing (bits): 
+  // 0-5: from (6 bits)
+  // 6-11: to (6 bits)
+  // 12-14: piece type (3 bits)
+  // 15-17: promotion type (3 bits)
+  // 18: capture flag
+  // 19: castle flag
+  // 20: enPassant flag
+  def packMove(from: Int, to: Int, piece: Int, promo: Int, capture: Boolean, castle: Boolean, ep: Boolean): Int = {
+    var m = from | (to << 6) | (piece << 12) | (promo << 15)
+    if (capture) m |= (1 << 18)
+    if (castle) m |= (1 << 19)
+    if (ep) m |= (1 << 20)
+    m
+  }
+
+  def mFrom(m: Int): Int = m & 0x3F
+  def mTo(m: Int): Int = (m >> 6) & 0x3F
+  def mPiece(m: Int): Int = (m >> 12) & 0x07
+  def mPromo(m: Int): Int = (m >> 15) & 0x07
+  def mCapture(m: Int): Boolean = (m & (1 << 18)) != 0
+  def mCastle(m: Int): Boolean = (m & (1 << 19)) != 0
+  def mEP(m: Int): Boolean = (m & (1 << 20)) != 0
   
   def printBitboard(bb: Long): String = {
     val sb = new StringBuilder()

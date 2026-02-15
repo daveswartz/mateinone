@@ -6,17 +6,17 @@ import mateinone.bitboard.Constants._
 
 class BitboardEdgeCaseSpec extends Specification {
 
-  def isLegal(b: Bitboard, m: Move): Boolean = {
+  def isLegal(b: Bitboard, m: Int): Boolean = {
     b.makeMove(m)
     val check = LegalChecker.isInCheck(b, b.sideToMove ^ 1)
     b.unmakeMove(m)
     !check
   }
 
-  def findMove(b: Bitboard, moveStr: String): Move = {
+  def findMove(b: Bitboard, moveStr: String): Int = {
     val moves = MoveGen.generateMoves(b).filter(m => isLegal(b, m))
     moves.find(m => 
-      s"${Constants.squareName(m.from)}${Constants.squareName(m.to)}" == moveStr.toLowerCase
+      s"${Constants.squareName(mFrom(m))}${Constants.squareName(mTo(m))}" == moveStr.toLowerCase
     ).getOrElse(throw new Exception(s"Move $moveStr not found"))
   }
 
@@ -47,7 +47,7 @@ class BitboardEdgeCaseSpec extends Specification {
       // Black just played e7e5. White's capture dxe6 would reveal check.
       val b = Bitboard.fromFen("8/8/8/K2Pp2r/8/8/8/4k3 w - e6 0 1")
       val moves = MoveGen.generateMoves(b)
-      val epMove = moves.find(_.enPassant)
+      val epMove = moves.find(m => mEP(m))
       
       epMove must beSome
       isLegal(b, epMove.get) must beFalse
@@ -57,14 +57,14 @@ class BitboardEdgeCaseSpec extends Specification {
       // White king e1, Rook h1. Black rook at f8 attacks f1.
       val b = Bitboard.fromFen("4kr2/8/8/8/8/8/8/4K2R w K - 0 1")
       val moves = MoveGen.generateMoves(b)
-      moves.exists(_.castle) must beFalse
+      moves.exists(m => mCastle(m)) must beFalse
     }
 
     "allow castling when rook is attacked but king path is safe" in {
       // White king e1, Rook h1. Black rook at h8 attacks h1.
       val b = Bitboard.fromFen("7r/8/8/8/8/8/8/4K2R w K - 0 1")
       val moves = MoveGen.generateMoves(b)
-      moves.exists(_.castle) must beTrue
+      moves.exists(m => mCastle(m)) must beTrue
     }
   }
 }

@@ -13,13 +13,21 @@ object BitboardSearch {
   
   // Killer moves (2 per ply)
   private val MaxPly = 64
-  private val killers = Array.fill(MaxPly, 2)(null: Move)
+  private val killers = Array.fill(MaxPly, 2)(0)
+  
+  // History table [color][from][to]
+  private val history = Array.ofDim[Int](2, 64, 64)
 
-  def getPV(b: Bitboard, depth: Int): List[Move] = {
+  def clearHistory(): Unit = {
+    for (c <- 0 to 1; f <- 0 until 64; t <- 0 until 64) history(c)(f)(t) = 0
+    for (p <- 0 until MaxPly; i <- 0 until 2) killers(p)(i) = 0
+  }
+
+  def getPV(b: Bitboard, depth: Int): List[Int] = {
     if (depth <= 0) return Nil
     TranspositionTable.get(b.hash) match {
       case Some(entry) if entry.bestMove.isDefined =>
-        val m = entry.bestMove.get.asInstanceOf[Move]
+        val m = entry.bestMove.get.asInstanceOf[Int]
         b.makeMove(m)
         val rest = getPV(b, depth - 1)
         b.unmakeMove(m)
@@ -34,31 +42,29 @@ object BitboardSearch {
     else f"${score / 100.0}%+.2f"
   }
 
-  def scoreMove(b: Bitboard, m: Move, ply: Int, ttMove: Option[Move]): Int = {
-    if (ttMove.contains(m)) 1000000 
-    else if (m.capture) {
-      val victimType = if (m.enPassant) Pawn else b.pieceAt(m.to)
-      (pieceValues(victimType) * 10) - pieceValues(m.piece) + 20000
+  def scoreMove(b: Bitboard, m: Int, ply: Int, ttMove: Int): Int = {
+    if (m == ttMove) 1000000 
+    else if (mCapture(m)) {
+      val victimType = if (mEP(m)) Pawn else b.pieceAt(mTo(m))
+      (pieceValues(victimType) * 10) - pieceValues(mPiece(m)) + 20000
     } else {
       if (m == killers(ply)(0)) 9000
       else if (m == killers(ply)(1)) 8000
-      else 0
+      else history(b.sideToMove)(mFrom(m))(mTo(m))
     }
   }
 
   def search(b: Bitboard, depth: Int, alpha: Int, beta: Int, ply: Int = 0): Int = {
     nodesSearched += 1
     
-    // Repetition check
     if (b.isThreefoldRepetition) return 0
 
-    // 1. TT Lookup
     val ttEntry = TranspositionTable.get(b.hash)
-    var ttMove: Option[Move] = None
+    var ttMove = 0
 
     if (ttEntry.isDefined) {
       val entry = ttEntry.get
-      ttMove = entry.bestMove.collect { case m: Move => m }
+      ttMove = entry.bestMove.collect { case m: Int => m }.getOrElse(0)
       if (entry.depth >= depth) {
         ttHits += 1
         if (entry.flag == TranspositionTable.Exact) return entry.score
@@ -67,11 +73,8 @@ object BitboardSearch {
       }
     }
 
-    if (depth <= 0) {
-      return quiesce(b, alpha, beta, ply)
-    }
+    if (depth <= 0) return quiesce(b, alpha, beta, ply)
 
-    // 2. Null Move Pruning
     if (depth >= 3 && !LegalChecker.isInCheck(b, b.sideToMove) && ply > 0) {
       val oldHash = b.hash
       val oldEp = b.enPassantSq
@@ -89,28 +92,44 @@ object BitboardSearch {
       if (score >= beta) return beta
     }
 
-    val moves = MoveGen.generateMoves(b).sortBy(m => -scoreMove(b, m, ply, ttMove))
+    val moves = MoveGen.generateMoves(b)
+    val scoredMoves = new Array[Long](moves.length)
+    for (i <- 0 until moves.length) {
+      val m = moves(i)
+      val s = scoreMove(b, m, ply, ttMove)
+      // Pack score and move into Long for fast sorting (Score in upper 32 bits)
+      scoredMoves(i) = (s.toLong << 32) | (i.toLong)
+    }
+    
+    // Sort moves (Selection sort for simplicity and speed on small arrays)
+    for (i <- 0 until scoredMoves.length) {
+      var maxIdx = i
+      for (j <- i + 1 until scoredMoves.length) {
+        if (scoredMoves(j) > scoredMoves(maxIdx)) maxIdx = j
+      }
+      val temp = scoredMoves(i)
+      scoredMoves(i) = scoredMoves(maxIdx)
+      scoredMoves(maxIdx) = temp
+    }
+
     var maxAlpha = alpha
     var flag = TranspositionTable.UpperBound
-    var bestMove: Option[Move] = None
+    var bestMove = 0
     var legalMoves = 0
 
-    for ((m, i) <- moves.zipWithIndex) {
-      // Fast check: if move captures a king, return immediately (should be caught by LegalChecker but for safety)
-      if (b.pieceAt(m.to) == King) return 30000 
+    for (i <- 0 until scoredMoves.length) {
+      val m = moves((scoredMoves(i) & 0xFFFFFFFFL).toInt)
+      if (b.pieceAt(mTo(m)) == King) return 30000 
 
       b.makeMove(m)
-      
       if (LegalChecker.isInCheck(b, b.sideToMove ^ 1)) {
         b.unmakeMove(m)
       } else {
         legalMoves += 1
-        
         var score = 0
-        // 3. Late Move Reductions (LMR)
-        if (depth >= 3 && legalMoves > 4 && !m.capture && m.promo == PieceNone && !LegalChecker.isInCheck(b, b.sideToMove)) {
+        if (depth >= 3 && legalMoves > 4 && !mCapture(m) && mPromo(m) == PieceNone && !LegalChecker.isInCheck(b, b.sideToMove)) {
           score = -search(b, depth - 2, -maxAlpha - 1, -maxAlpha, ply + 1)
-          if (score > maxAlpha) { // Re-search
+          if (score > maxAlpha) {
             score = -search(b, depth - 1, -beta, -maxAlpha, ply + 1)
           }
         } else {
@@ -120,26 +139,25 @@ object BitboardSearch {
         b.unmakeMove(m)
         
         if (score >= beta) {
-          if (!m.capture) {
+          if (!mCapture(m)) {
             killers(ply)(1) = killers(ply)(0)
             killers(ply)(0) = m
+            history(b.sideToMove)(mFrom(m))(mTo(m)) += depth * depth
           }
           TranspositionTable.store(b.hash, depth, beta, TranspositionTable.LowerBound, Some(m))
           return beta
         }
         if (score > maxAlpha) {
           maxAlpha = score
-          bestMove = Some(m)
+          bestMove = m
           flag = TranspositionTable.Exact
         }
       }
     }
 
-    if (legalMoves == 0) {
-      return if (LegalChecker.isInCheck(b, b.sideToMove)) -20000 + ply else 0
-    }
+    if (legalMoves == 0) return if (LegalChecker.isInCheck(b, b.sideToMove)) -20000 + ply else 0
 
-    TranspositionTable.store(b.hash, depth, maxAlpha, flag, bestMove)
+    TranspositionTable.store(b.hash, depth, maxAlpha, flag, if (bestMove != 0) Some(bestMove) else None)
     maxAlpha
   }
 
@@ -149,10 +167,21 @@ object BitboardSearch {
     if (standingPat >= beta) return beta
     var maxAlpha = Math.max(alpha, standingPat)
 
-    val captures = MoveGen.generateCaptures(b).sortBy(m => -scoreMove(b, m, ply, None))
-    for (m <- captures) {
-      if (b.pieceAt(m.to) == King) return 30000
+    val captures = MoveGen.generateCaptures(b)
+    val scored = new Array[Long](captures.length)
+    for (i <- 0 until captures.length) {
+      scored(i) = (scoreMove(b, captures(i), ply, 0).toLong << 32) | i.toLong
+    }
+    // Simple sort
+    for (i <- 0 until scored.length) {
+      var maxIdx = i
+      for (j <- i + 1 until scored.length) if (scored(j) > scored(maxIdx)) maxIdx = j
+      val t = scored(i); scored(i) = scored(maxIdx); scored(maxIdx) = t
+    }
 
+    for (i <- 0 until scored.length) {
+      val m = captures((scored(i) & 0xFFFFFFFFL).toInt)
+      if (b.pieceAt(mTo(m)) == King) return 30000
       b.makeMove(m)
       if (LegalChecker.isInCheck(b, b.sideToMove ^ 1)) {
         b.unmakeMove(m)

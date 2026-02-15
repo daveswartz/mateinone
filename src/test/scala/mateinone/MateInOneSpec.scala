@@ -6,25 +6,73 @@ import mateinone.bitboard.Constants._
 
 class MateInOneSpec extends Specification {
 
-  def isLegal(b: Bitboard, m: Move): Boolean = {
+  def isLegal(b: Bitboard, m: Int): Boolean = {
     b.makeMove(m)
     val check = LegalChecker.isInCheck(b, b.sideToMove ^ 1)
     b.unmakeMove(m)
     !check
   }
 
-  def getLegalMoves(b: Bitboard): List[Move] = {
-    MoveGen.generateMoves(b).filter(m => isLegal(b, m))
+  def getLegalMoves(b: Bitboard): List[Int] = {
+    MoveGen.generateMoves(b).filter(m => isLegal(b, m)).toList
   }
 
-  def findMove(b: Bitboard, moveStr: String): Move = {
+  def findMove(b: Bitboard, moveStr: String): Int = {
     val moves = getLegalMoves(b)
     moves.find(m => 
-      s"${Constants.squareName(m.from)}${Constants.squareName(m.to)}${if (m.promo != PieceNone) "q" else ""}" == moveStr.toLowerCase
-    ).getOrElse(throw new Exception(s"Move $moveStr not found in ${moves.map(m => Constants.squareName(m.from)+Constants.squareName(m.to)).mkString(", ")}"))
+      s"${Constants.squareName(mFrom(m))}${Constants.squareName(mTo(m))}${if (mPromo(m) != PieceNone) "q" else ""}" == moveStr.toLowerCase
+    ).getOrElse(throw new Exception(s"Move $moveStr not found in ${moves.map(m => squareName(mFrom(m))+squareName(mTo(m))).mkString(", ")}"))
   }
 
-  "Bitboard Rules" should {
+  "Bitboard Engine" should {
+
+    "initialize correctly" in {
+      val b = Bitboard.initial
+      b.pieceBB(White)(Pawn) must not be equalTo(0L)
+      b.pieceBB(Black)(King) must not be equalTo(0L)
+      b.sideToMove must beEqualTo(White)
+    }
+
+    "generate opening moves" in {
+      val b = Bitboard.initial
+      val moves = MoveGen.generateMoves(b)
+      // 16 pawn moves + 4 knight moves = 20
+      moves.length must beEqualTo(20)
+    }
+
+    "handle simple moves" in {
+      val b = Bitboard.initial
+      // e2e4
+      val e2e4 = MoveGen.generateMoves(b).find(m => mFrom(m) == squareIndex(4, 1) && mTo(m) == squareIndex(4, 3)).get
+      b.makeMove(e2e4)
+      b.pieceAt(squareIndex(4, 3)) must beEqualTo(Pawn)
+      b.sideToMove must beEqualTo(Black)
+    }
+
+    "detect checkmate (Scholar's Mate)" in {
+      val b = Bitboard.initial
+      // 1. e4 e5 2. Qh5 Nc6 3. Bc4 Nf6 4. Qxf7#
+      val moves = List(
+        "e2e4", "e7e5",
+        "d1h5", "b8c6",
+        "f1c4", "g8f6",
+        "h5f7"
+      )
+      
+      for (moveStr <- moves) {
+        val legalMoves = MoveGen.generateMoves(b)
+        val m = legalMoves.find(lm => 
+          Constants.squareName(mFrom(lm)) + Constants.squareName(mTo(lm)) == moveStr
+        ).get
+        b.makeMove(m)
+      }
+      
+      val nextMoves = MoveGen.generateMoves(b)
+      val legalNextMoves = nextMoves.filter(m => isLegal(b, m))
+      
+      legalNextMoves must beEmpty
+      LegalChecker.isInCheck(b, b.sideToMove) must beTrue
+    }
 
     "handle En Passant correctly" in {
       // 1. e4 e6 2. e5 d5 3. exd6
@@ -37,7 +85,7 @@ class MateInOneSpec extends Specification {
       b.enPassantSq must beEqualTo(squareIndex(3, 5)) // d6
       
       val epMove = findMove(b, "e5d6")
-      epMove.enPassant must beTrue
+      mEP(epMove) must beTrue
       
       b.makeMove(epMove)
       b.pieceAt(squareIndex(3, 4)) must beEqualTo(PieceNone) // d5 pawn should be gone
@@ -59,64 +107,32 @@ class MateInOneSpec extends Specification {
     }
 
     "lose castling right when Rook is captured" in {
-      val b = Bitboard.fromFen("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1")
-      // White Rook at a1 captures Black Rook at a8
-      // Note: This is an impossible move in one go, let's use a better FEN
-      val b2 = Bitboard.fromFen("r3k2r/8/8/8/8/8/R7/4K2R w Kkq - 0 1")
       // White Rook at a2 captures a8
-      val m = Move(squareIndex(0, 1), squareIndex(0, 7), Rook, true)
+      val b2 = Bitboard.fromFen("r3k2r/8/8/8/8/8/R7/4K2R w Kkq - 0 1")
+      val m = packMove(squareIndex(0, 1), squareIndex(0, 7), Rook, PieceNone, true, false, false)
       b2.makeMove(m)
       
       (b2.castleRights & CastleBQ) must beEqualTo(0) // Black queenside right lost
     }
 
     "block castling through check" in {
-      // White King at e1, Black Rook at f8. Path f1 is attacked.
-      val b = Bitboard.fromFen("r3k1r1/8/8/8/8/8/8/R3K2R w KQkq - 0 1")
-      // Black rook at g8 is actually attacking g1? No.
       // Setup Black Rook at f8 to attack f1
       val b2 = Bitboard.fromFen("4kr2/8/8/8/8/8/8/4K2R w K - 0 1")
-      val moves = getLegalMoves(b2)
-      moves.exists(_.castle) must beFalse // Cannot castle through f1
+      val moves = MoveGen.generateMoves(b2)
+      moves.exists(m => mCastle(m)) must beFalse // Cannot castle through f1
     }
 
     "handle Pawn Promotion" in {
       val b = Bitboard.fromFen("8/4P3/8/8/8/8/8/4K3 w - - 0 1")
-      val moves = getLegalMoves(b)
+      val moves = MoveGen.generateMoves(b).filter(m => isLegal(b, m))
       // Should have 4 promotion moves to e8
-      moves.filter(_.promo != PieceNone).size must beEqualTo(4)
+      moves.filter(m => mPromo(m) != PieceNone).length must beEqualTo(4)
       
-      val promoToKnight = moves.find(_.promo == Knight).get
+      val promoToKnight = moves.find(m => mPromo(m) == Knight).get
       b.makeMove(promoToKnight)
       b.pieceAt(E8) must beEqualTo(Knight)
     }
-  }
 
-  "Bitboard Evaluation" should {
-    "match original Simplified spirit" in {
-      val b = Bitboard.initial
-      BitboardEvaluator.evaluate(b, 0) must beEqualTo(0)
-      
-      b.makeMove(findMove(b, "e2e4"))
-      // White pawn at e4 is better than at e2 (+20 bonus in PST)
-      BitboardEvaluator.evaluate(b, 0) must beLessThan(0) // Black's turn, so negative
-    }
-  }
-
-  "Search Accuracy" should {
-    "find Mate in One (Fool's Mate)" in {
-      val b = Bitboard.initial
-      b.makeMove(findMove(b, "f2f3"))
-      b.makeMove(findMove(b, "e7e5"))
-      b.makeMove(findMove(b, "g2g4"))
-      
-      // Black to move, has mate in 1: d8h4
-      val bestScore = BitboardSearch.search(b, 2, -30000, 30000, 0)
-      bestScore must beGreaterThan(15000) // Black sees a winning mate
-    }
-  }
-
-  "Bitboard Rules (Additional)" should {
     "detect repetition" in {
       val b = Bitboard.initial
       // 1. Nf3 Nf6 2. Ng1 Ng8
@@ -169,6 +185,42 @@ class MateInOneSpec extends Specification {
         b.evalScore must beEqualTo(calculatedScore)
       }
       success
+    }
+  }
+
+  "Bitboard Evaluation" should {
+    "match original Simplified spirit" in {
+      val b = Bitboard.initial
+      BitboardEvaluator.evaluate(b, 0) must beEqualTo(0)
+      
+      b.makeMove(findMove(b, "e2e4"))
+      // White pawn at e4 is better than at e2 (+20 bonus in PST)
+      BitboardEvaluator.evaluate(b, 0) must beLessThan(0) // Black's turn, so negative
+    }
+  }
+
+  "Bitboard Search" should {
+    "find mate in one" in {
+      val b = Bitboard.initial
+      // Setup Scholar's mate pos: e4 e5 Qh5 Nc6 Bc4 Nf6
+      val setup = List("e2e4", "e7e5", "d1h5", "b8c6", "f1c4", "g8f6")
+      for (moveStr <- setup) {
+        b.makeMove(findMove(b, moveStr))
+      }
+      
+      val bestScore = BitboardSearch.search(b, 2, -30000, 30000, 0)
+      bestScore must beGreaterThan(15000) // Mate score
+    }
+
+    "find Mate in One (Fool's Mate)" in {
+      val b = Bitboard.initial
+      b.makeMove(findMove(b, "f2f3"))
+      b.makeMove(findMove(b, "e7e5"))
+      b.makeMove(findMove(b, "g2g4"))
+      
+      // Black to move, has mate in 1: d8h4
+      val bestScore = BitboardSearch.search(b, 2, -30000, 30000, 0)
+      bestScore must beGreaterThan(15000) // Black sees a winning mate
     }
   }
 }
