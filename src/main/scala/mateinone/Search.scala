@@ -129,7 +129,7 @@ object Search {
       }
     }
 
-    if (depth == 0) return SearchScore(evaluator.evaluate(board, ply), Nil)
+    if (depth == 0) return quiesceMax(board, alpha, beta, ply, evaluator, pruning)
 
     // 2. Null Move Pruning
     if (pruning && depth >= 3 && !board.isCheck && ply > 0) {
@@ -194,7 +194,7 @@ object Search {
       }
     }
 
-    if (depth == 0) return SearchScore(evaluator.evaluate(board, ply), Nil)
+    if (depth == 0) return quiesceMin(board, alpha, beta, ply, evaluator, pruning)
 
     // 2. Null Move Pruning
     if (pruning && depth >= 3 && !board.isCheck && ply > 0) {
@@ -236,5 +236,51 @@ object Search {
 
     TranspositionTable.store(board.hash, depth, scoreToTT(minBeta, ply), flag, bestMoveBase)
     SearchScore(minBeta, bestMoves)
+  }
+
+  private def quiesceMax(board: Board, alpha: Int, beta: Int, ply: Int, evaluator: Evaluator, pruning: Boolean): SearchScore = {
+    nodesSearched += 1
+    val standingPat = evaluator.evaluate(board, ply)
+    if (standingPat >= beta) return SearchScore(beta, Nil)
+    var maxAlpha = Math.max(alpha, standingPat)
+
+    // Only search captures
+    val captures = board.leaves.filter { case (m, _) => 
+      m match {
+        case move: Move => board.opponent.contains(move.end)
+        case p: Promotion => board.opponent.contains(p.end)
+        case _ => false
+      }
+    }.sortBy { case (m, b) => -scoreMove(board, m, ply) }
+
+    for ((childMove, childBoard) <- captures) {
+      val childScore = quiesceMin(childBoard, maxAlpha, beta, ply + 1, evaluator, pruning)
+      if (childScore.score >= beta) return SearchScore(beta, Nil)
+      if (childScore.score > maxAlpha) maxAlpha = childScore.score
+    }
+    SearchScore(maxAlpha, Nil)
+  }
+
+  private def quiesceMin(board: Board, alpha: Int, beta: Int, ply: Int, evaluator: Evaluator, pruning: Boolean): SearchScore = {
+    nodesSearched += 1
+    val standingPat = evaluator.evaluate(board, ply)
+    if (standingPat <= alpha) return SearchScore(alpha, Nil)
+    var minBeta = Math.min(beta, standingPat)
+
+    // Only search captures
+    val captures = board.leaves.filter { case (m, _) => 
+      m match {
+        case move: Move => board.opponent.contains(move.end)
+        case p: Promotion => board.opponent.contains(p.end)
+        case _ => false
+      }
+    }.sortBy { case (m, b) => -scoreMove(board, m, ply) }
+
+    for ((childMove, childBoard) <- captures) {
+      val childScore = quiesceMax(childBoard, alpha, minBeta, ply + 1, evaluator, pruning)
+      if (childScore.score <= alpha) return SearchScore(alpha, Nil)
+      if (childScore.score < minBeta) minBeta = childScore.score
+    }
+    SearchScore(minBeta, Nil)
   }
 }
