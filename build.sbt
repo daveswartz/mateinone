@@ -15,8 +15,6 @@ libraryDependencies ++= Seq("org.specs2" %% "specs2-core" % "4.20.4" % "test")
 // - sbt "run --depth 8": Run engine simulation
 console / initialCommands :=
   """
-    |import mateinone._
-    |import TerminalPrinter._
-    |import Square._
-    |import MoveImplicits._
+    |import mateinone.bitboard._
+    |import mateinone.TerminalPrinter._
   """.stripMargin
