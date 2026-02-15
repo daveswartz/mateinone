@@ -15,8 +15,9 @@ object BitboardSearch {
   private val MaxPly = 64
   private val killers = Array.fill(MaxPly, 2)(null: Move)
 
-  def scoreMove(b: Bitboard, m: Move, ply: Int): Int = {
-    if (m.capture) {
+  def scoreMove(b: Bitboard, m: Move, ply: Int, ttMove: Option[Move]): Int = {
+    if (ttMove.contains(m)) 1000000 
+    else if (m.capture) {
       val victimType = b.pieceAt(m.to)
       (pieceValues(victimType) * 10) - pieceValues(m.piece) + 20000
     } else {
@@ -47,7 +48,9 @@ object BitboardSearch {
       }
     }
 
-    if (depth <= 0) return evaluate(b)
+    if (depth <= 0) {
+      return quiesce(b, alpha, beta, ply)
+    }
 
     // 2. Null Move Pruning
     if (depth >= 3 && !LegalChecker.isInCheck(b, b.sideToMove) && ply > 0) {
@@ -67,13 +70,16 @@ object BitboardSearch {
       if (score >= beta) return beta
     }
 
-    val moves = MoveGen.generateMoves(b).sortBy(m => -scoreMove(b, m, ply))
+    val moves = MoveGen.generateMoves(b).sortBy(m => -scoreMove(b, m, ply, ttMove))
     var maxAlpha = alpha
     var flag = TranspositionTable.UpperBound
     var bestMove: Option[Move] = None
     var legalMoves = 0
 
     for ((m, i) <- moves.zipWithIndex) {
+      // Fast check: if move captures a king, return immediately (should be caught by LegalChecker but for safety)
+      if (b.pieceAt(m.to) == King) return 30000 
+
       b.makeMove(m)
       
       if (LegalChecker.isInCheck(b, b.sideToMove ^ 1)) {
@@ -118,14 +124,26 @@ object BitboardSearch {
     maxAlpha
   }
 
-  private def evaluate(b: Bitboard): Int = {
-    var score = 0
-    for (pt <- 0 to 4) {
-      var wbb = b.pieceBB(White)(pt)
-      while (wbb != 0) { score += pieceValues(pt); wbb &= (wbb - 1) }
-      var bbb = b.pieceBB(Black)(pt)
-      while (bbb != 0) { score -= pieceValues(pt); bbb &= (bbb - 1) }
+  def quiesce(b: Bitboard, alpha: Int, beta: Int, ply: Int): Int = {
+    nodesSearched += 1
+    val standingPat = BitboardEvaluator.evaluate(b, ply)
+    if (standingPat >= beta) return beta
+    var maxAlpha = Math.max(alpha, standingPat)
+
+    val captures = MoveGen.generateCaptures(b).sortBy(m => -scoreMove(b, m, ply, None))
+    for (m <- captures) {
+      if (b.pieceAt(m.to) == King) return 30000
+
+      b.makeMove(m)
+      if (LegalChecker.isInCheck(b, b.sideToMove ^ 1)) {
+        b.unmakeMove(m)
+      } else {
+        val score = -quiesce(b, -beta, -maxAlpha, ply + 1)
+        b.unmakeMove(m)
+        if (score >= beta) return beta
+        if (score > maxAlpha) maxAlpha = score
+      }
     }
-    if (b.sideToMove == White) score else -score
+    maxAlpha
   }
 }

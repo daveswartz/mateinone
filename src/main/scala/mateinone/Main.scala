@@ -34,6 +34,10 @@ object Main {
       return
     }
 
+    // Reset Metrics
+    BitboardSearch.nodesSearched = 0
+    BitboardSearch.ttHits = 0
+
     val start = System.nanoTime()
     // Populate TT with Iterative Deepening up to target depth
     for (d <- 1 until depth) {
@@ -46,26 +50,33 @@ object Main {
     val bestMoveOpt = TranspositionTable.get(b.hash).flatMap(_.bestMove).collect { case m: Move => m }
     val m = bestMoveOpt.getOrElse {
        // Fallback: just pick the first legal move if TT is weirdly empty
-       moves.find(m => {
-         b.makeMove(m)
+       moves.find(mv => {
+         b.makeMove(mv)
          val legal = !LegalChecker.isInCheck(b, b.sideToMove ^ 1)
-         b.unmakeMove(m)
+         b.unmakeMove(mv)
          legal
        }).get
     }
+    
+    // Apply the move
+    b.makeMove(m)
     
     def isWhite(i: Int) = i % 2 == 0
     def whitePrefix(i: Int) = s"${i / 2 + 1}."
     def blackPrefix(i: Int) = s"${whitePrefix(i)} ..."
     def prefix(i: Int) = if (isWhite(i)) whitePrefix(i) else blackPrefix(i)
 
-    println(b.printBoard)
+    println(b.print(m))
     println(s"${prefix(n)} ${Constants.squareName(m.from)}->${Constants.squareName(m.to)}")
-    println(f"Score: ${score / 100.0}%+.2f")
+    
+    val displayScore = if (score > 15000) s"Mate in ${(20000 - score + 1) / 2}"
+                       else if (score < -15000) s"Mate in ${(20000 + score + 1) / 2}"
+                       else f"${score / 100.0}%+.2f"
+
+    println(s"Score: $displayScore")
     println(f"Search time: $delta%.2fs | Nodes: ${BitboardSearch.nodesSearched}%,d | TT Hits: ${BitboardSearch.ttHits}%,d")
     println("-" * 10)
 
-    b.makeMove(m)
     step(b, depth, n + 1)
   }
 }
