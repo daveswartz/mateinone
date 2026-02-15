@@ -145,7 +145,7 @@ object MoveGen {
       }
     }
     
-    // 5. EP
+    // 5. En Passant
     if (b.enPassantSq != SquareNone) {
       val target = b.enPassantSq
       val attackers = b.pieceBB(color)(Pawn)
@@ -168,6 +168,7 @@ object MoveGen {
     val oppOcc = b.occupancy(oppColor)
     val totalOcc = b.occupancy(2)
 
+    // Knights
     var knights = b.pieceBB(color)(Knight)
     while (knights != 0) {
       val from = numberOfTrailingZeros(knights)
@@ -180,6 +181,7 @@ object MoveGen {
       knights &= (knights - 1)
     }
     
+    // Sliders
     val sliderTypes = Array(Bishop, Rook, Queen)
     val sliderFuncs = Array(Attacks.bishopAttacks _, Attacks.rookAttacks _, Attacks.queenAttacks _)
     for (i <- 0 until 3) {
@@ -196,6 +198,7 @@ object MoveGen {
       }
     }
     
+    // King
     val kfrom = numberOfTrailingZeros(b.pieceBB(color)(King))
     var katts = Attacks.KingAttacks(kfrom) & oppOcc
     while (katts != 0) {
@@ -204,6 +207,7 @@ object MoveGen {
       katts &= (katts - 1)
     }
 
+    // Pawn
     val pawns = b.pieceBB(color)(Pawn)
     if (color == White) {
       var leftCaps = (pawns << 7) & oppOcc & ~FileH
@@ -237,6 +241,7 @@ object MoveGen {
       }
     }
 
+    // EP
     if (b.enPassantSq != SquareNone) {
       val target = b.enPassantSq
       val attackers = b.pieceBB(color)(Pawn)
