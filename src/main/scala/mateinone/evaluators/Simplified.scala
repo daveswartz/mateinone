@@ -134,9 +134,29 @@ object Simplified extends Evaluator {
   def evaluate(b: Board, depth: Int): Int = if (b.isCheckmate) {
     if (b.same.color == White) -20000 + depth else 20000 - depth
   } else {
-    // For now, return the pre-calculated score from the board. 
-    // We'll update Board to store this.
-    b.evalScore
+    var score = b.evalScore
+    
+    // Endgame Heuristics: "King Herding"
+    if (isEndgame(b)) {
+      val sameKing = b.same.kings.head
+      val oppKing = b.opponent.kings.head
+      
+      // 1. Push opponent king to edge
+      // Distance from center: (0..3)
+      val oppFileDist = Math.max(3 - oppKing.file, oppKing.file - 4)
+      val oppRankDist = Math.max(3 - oppKing.rank, oppKing.rank - 4)
+      val oppEdgeBonus = (oppFileDist + oppRankDist) * 10
+      
+      // 2. Reduce distance between kings (Manhattan distance)
+      val dist = Math.abs(sameKing.file - oppKing.file) + Math.abs(sameKing.rank - oppKing.rank)
+      val proximityBonus = (14 - dist) * 2 // Max distance is 14
+      
+      // Apply bonuses (positive for us, negative for opponent relative to their side)
+      // Since evalScore is already from 'same' perspective, we add these.
+      score += oppEdgeBonus + proximityBonus
+    }
+    
+    score
   }
 
 }
