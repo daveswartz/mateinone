@@ -18,10 +18,26 @@ object Main {
 
     val playMode = args.contains("--play")
 
+    // A time control such as 5+3: 5 minutes each, and 3 seconds more after each move.
+    val timeControl = args.indexOf("--time") match {
+      case i if i >= 0 && i < args.length - 1 => Some(args(i + 1))
+      case _ => None
+    }
+    val TimeControl = """(\d+(?:\.\d+)?)\+(\d+(?:\.\d+)?)""".r
+    val clock = timeControl match {
+      case None => None
+      case Some(TimeControl(minutes, seconds)) =>
+        Some(new ChessClock(Math.round(minutes.toDouble * 60000), Math.round(seconds.toDouble * 1000)))
+      case Some(_) =>
+        println("--time takes the minutes and the increment in seconds, such as 5+3.")
+        return
+    }
+
     if (playMode) {
       println("MateInOne: human vs computer")
       println(s"Search depth: $depth")
-      play(Bitboard.initial, depth)
+      timeControl.foreach(tc => println(s"Time control: $tc"))
+      play(Bitboard.initial, depth, clock)
     } else {
       println("MateInOne: self-play")
       println(s"Search depth: $depth")
@@ -30,13 +46,17 @@ object Main {
     }
   }
 
-  def play(b: Bitboard, depth: Int): Unit = {
+  def play(b: Bitboard, depth: Int, clock: Option[ChessClock] = None): Unit = {
     while (true) {
       println("\n" + b.print)
       // evaluate scores from the side to move; show it from White's side so it doesn't flip each turn.
       val sideToMoveEval = BitboardEvaluator.evaluate(b, 0)
       val currentEval = if (b.sideToMove == White) sideToMoveEval else -sideToMoveEval
       println(f"Evaluation: ${BitboardSearch.formatScore(currentEval)}")
+      for (c <- clock) {
+        def left(side: Int) = ChessClock.format(c.timeLeft(side, b.sideToMove))
+        println(s"Clock: You ${left(White)}, Computer ${left(Black)}")
+      }
 
       if (b.isThreefoldRepetition) { println("Threefold repetition. Draw."); return }
       if (b.isInsufficientMaterial) { println("Insufficient material. Draw."); return }
@@ -92,6 +112,7 @@ object Main {
           selectedMove match {
             case Some(m) =>
               b.makeMove(m)
+              clock.foreach(_.moved(White))
               println(s"You played: ${moveName(m)}")
             case None => println(notAChoice(toInput))
           }
@@ -100,6 +121,7 @@ object Main {
         println("Computer is thinking...")
         val m = findBestMove(b, depth)
         b.makeMove(m)
+        clock.foreach(_.moved(Black))
         println(s"Computer played: ${moveName(m)}")
       }
     }

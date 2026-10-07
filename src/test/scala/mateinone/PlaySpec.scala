@@ -24,6 +24,33 @@ class PlaySpec extends Specification {
   def move(b: Bitboard, name: String): Int =
     MoveGen.generateMoves(b).find(m => squareName(mFrom(m)) + squareName(mTo(m)) == name).get
 
+  // Answers the prompts with the lines, on a fake clock that moves on by ms for each line, as if
+  // the human took that long to type it. BufferedReader asks for more only once it has used up a
+  // line, so this hands it one line at a time.
+  class TimedInput(lines: Seq[String], ms: Long) extends java.io.Reader {
+    var now = 0L
+    private var rest = lines.toList
+    def read(buf: Array[Char], off: Int, len: Int): Int = rest match {
+      case Nil => -1
+      case line :: more =>
+        now += ms
+        rest = more
+        (line + "\n").getChars(0, line.length + 1, buf, off)
+        line.length + 1
+    }
+    def close(): Unit = ()
+  }
+
+  // Plays from fen at depth 1 under the clock, answering the prompts with input, a line every ms.
+  def playTimed(fen: String, clockMs: Long, incrementMs: Long, ms: Long, input: String*): String = {
+    val in = new TimedInput(input, ms)
+    val out = new ByteArrayOutputStream()
+    Console.withIn(in) {
+      Console.withOut(out)(Main.play(Bitboard.fromFen(fen), 1, Some(new ChessClock(clockMs, incrementMs, () => in.now))))
+    }
+    out.toString
+  }
+
   // The starting position after the given moves.
   def afterMoves(moves: String*): Bitboard = {
     val b = Bitboard.initial
@@ -161,6 +188,32 @@ class PlaySpec extends Specification {
       val out = play("k7/8/8/8/8/8/8/KQ6 b - - 0 1", "q")
       "(?m)^Evaluation: \\+".r.findFirstIn(out) must beSome
       out must not(contain("Evaluation: -"))
+    }
+
+    "show each side's clock, with the time spent and the increment" in {
+      // 5+3, and the human takes 10 s to answer each prompt: 20 s for Ra7. The computer takes no time.
+      val out = playTimed("4k3/8/8/8/8/8/8/R3K3 w - - 0 1", 300000, 3000, 10000, "a1", "a7", "q")
+      out must contain("Clock: You 5:00, Computer 5:00\n")
+      out must contain("Clock: You 4:43, Computer 5:03\n")
+    }
+
+    "show the time left rounded up, so that only an empty clock shows 0:00" in {
+      ChessClock.format(300000) must beEqualTo("5:00")
+      ChessClock.format(299999) must beEqualTo("5:00")
+      ChessClock.format(59001) must beEqualTo("1:00")
+      ChessClock.format(9000) must beEqualTo("0:09")
+      ChessClock.format(1) must beEqualTo("0:01")
+      ChessClock.format(0) must beEqualTo("0:00")
+      ChessClock.format(-500) must beEqualTo("0:00")
+    }
+
+    "start with the time control in the header" in {
+      val out = new ByteArrayOutputStream()
+      Console.withIn(new StringReader("q\n")) {
+        Console.withOut(out)(Main.main(Array("--play", "--depth", "1", "--time", "5+3")))
+      }
+      out.toString must startWith("MateInOne: human vs computer\nSearch depth: 1\nTime control: 5+3\n")
+      out.toString must contain("Clock: You 5:00, Computer 5:00\n")
     }
 
     "start with a header in the same form as self-play's" in {
