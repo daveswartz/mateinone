@@ -161,6 +161,12 @@ class MateInOneSpec extends Specification {
       Bitboard.fromFen("4k3/8/8/8/8/2B5/8/4K3 w - - 0 1").isInsufficientMaterial must beTrue
     }
 
+    "count a bishop each as insufficient material only on the same color" in {
+      // c3 and d4 are dark squares; c4 is light.
+      Bitboard.fromFen("4k3/8/8/8/3b4/2B5/8/4K3 w - - 0 1").isInsufficientMaterial must beTrue
+      Bitboard.fromFen("4k3/8/8/8/2b5/2B5/8/4K3 w - - 0 1").isInsufficientMaterial must beFalse
+    }
+
     "detect Fifty-Move Rule" in {
       val b = Bitboard.initial
       b.halfMoveClock = 100

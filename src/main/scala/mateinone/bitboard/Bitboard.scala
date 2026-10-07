@@ -191,10 +191,10 @@ class Bitboard {
     if (wKnights + wBishops <= 1 && bKnights + bBishops == 0) return true
     if (bKnights + bBishops <= 1 && wKnights + wBishops == 0) return true
     
-    // K+B vs K+B (if bishops are on same color squares - simplified for now)
+    // K+B vs K+B with the bishops on the same color. On opposite colors a mate is still possible.
     if (wKnights == 0 && bKnights == 0 && wBishops == 1 && bBishops == 1) {
-       // Check square colors... for now just return true to match OO engine spirit
-       return true 
+      val lightSquares = 0x55AA55AA55AA55AAL
+      return ((pieceBB(White)(Bishop) & lightSquares) != 0) == ((pieceBB(Black)(Bishop) & lightSquares) != 0)
     }
     
     false
