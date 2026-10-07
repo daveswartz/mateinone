@@ -38,7 +38,7 @@ object Main {
       val currentEval = if (b.sideToMove == White) sideToMoveEval else -sideToMoveEval
       println(f"Current Evaluation: ${BitboardSearch.formatScore(currentEval)}")
 
-      if (b.isThreefoldRepetition) { println("Draw by threefold repetition"); return }
+      if (b.isThreefoldRepetition) { println("Threefold repetition. Draw."); return }
       val moves = MoveGen.generateMoves(b).filter(m => {
         b.makeMove(m)
         val legal = !LegalChecker.isInCheck(b, b.sideToMove ^ 1)
@@ -47,9 +47,9 @@ object Main {
       })
       if (moves.isEmpty) {
         // The human plays White.
-        if (!LegalChecker.isInCheck(b, b.sideToMove)) println("Stalemate!")
-        else if (b.sideToMove == White) println("Checkmate! You lose.")
-        else println("Checkmate! You win.")
+        if (!LegalChecker.isInCheck(b, b.sideToMove)) println("Stalemate. Draw.")
+        else if (b.sideToMove == White) println("Checkmate. You lose.")
+        else println("Checkmate. You win.")
         return
       }
 
@@ -177,7 +177,7 @@ object Main {
 
   def step(b: Bitboard, depth: Int, n: Int): Unit = {
     if (b.isThreefoldRepetition) {
-      println(s"Draw by threefold repetition")
+      println("Threefold repetition. Draw.")
       return
     }
 
@@ -185,8 +185,8 @@ object Main {
     val inCheck = LegalChecker.isInCheck(b, b.sideToMove)
     
     if (moves.isEmpty) {
-      if (inCheck) println(s"Checkmate ${if (b.sideToMove == White) "Black" else "White"} wins")
-      else println("Stalemate")
+      if (inCheck) println(s"Checkmate. ${if (b.sideToMove == White) "Black" else "White"} wins.")
+      else println("Stalemate. Draw.")
       return
     }
 

@@ -2,6 +2,7 @@ package mateinone
 
 import org.specs2.mutable._
 import mateinone.bitboard._
+import mateinone.bitboard.Constants._
 import java.io.{ByteArrayOutputStream, StringReader}
 
 class PlaySpec extends Specification {
@@ -9,13 +10,26 @@ class PlaySpec extends Specification {
   sequential
 
   // Plays from fen at depth 1, answering the prompts with input, and returns everything printed.
-  def play(fen: String, input: String*): String = {
+  def play(fen: String, input: String*): String = play(Bitboard.fromFen(fen), input: _*)
+
+  def play(b: Bitboard, input: String*): String = {
     val out = new ByteArrayOutputStream()
     Console.withIn(new StringReader(input.mkString("", "\n", "\n"))) {
-      Console.withOut(out)(Main.play(Bitboard.fromFen(fen), 1))
+      Console.withOut(out)(Main.play(b, 1))
     }
     out.toString
   }
+
+  // The starting position after the given moves, e.g. "g1f3".
+  def afterMoves(moves: String*): Bitboard = {
+    val b = Bitboard.initial
+    for (move <- moves)
+      b.makeMove(MoveGen.generateMoves(b).find(m => squareName(mFrom(m)) + squareName(mTo(m)) == move).get)
+    b
+  }
+
+  // The starting position, reached for the third time.
+  def threefold: Bitboard = afterMoves("g1f3", "g8f6", "f3g1", "f6g8", "g1f3", "g8f6", "f3g1", "f6g8")
 
   "Human vs computer play" should {
     "suggest a legal piece and destination in its prompts" in {
@@ -58,12 +72,21 @@ class PlaySpec extends Specification {
     "announce a win when the human mates the computer" in {
       // Ra8# is a back-rank mate.
       val out = play("6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1", "a1", "a8")
-      out must contain("Checkmate! You win.")
+      out must contain("Checkmate. You win.")
       out must not(contain("You lose"))
     }
 
     "announce a loss when the human is mated" in {
-      play("6k1/8/8/8/8/8/5PPP/r5K1 w - - 0 1") must contain("Checkmate! You lose.")
+      play("6k1/8/8/8/8/8/5PPP/r5K1 w - - 0 1") must contain("Checkmate. You lose.")
+    }
+
+    "announce a draw by stalemate" in {
+      // Black's king has no legal move and isn't in check.
+      play("7k/7P/6K1/8/8/8/8/8 b - - 0 1") must contain("Stalemate. Draw.")
+    }
+
+    "announce a draw by threefold repetition" in {
+      play(threefold) must contain("Threefold repetition. Draw.")
     }
 
     "name the piece when the computer promotes" in {
@@ -86,6 +109,14 @@ class PlaySpec extends Specification {
       val out = play("k7/8/8/8/8/8/8/KQ6 b - - 0 1", "q")
       out must contain("Current Evaluation: +")
       out must not(contain("Current Evaluation: -"))
+    }
+  }
+
+  "Self-play" should {
+    "announce a draw by threefold repetition the same way as play" in {
+      val out = new ByteArrayOutputStream()
+      Console.withOut(out)(Main.step(threefold, 1, 0))
+      out.toString must contain("Threefold repetition. Draw.")
     }
   }
 }
