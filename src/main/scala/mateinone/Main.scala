@@ -39,12 +39,7 @@ object Main {
       println(f"Evaluation: ${BitboardSearch.formatScore(currentEval)}")
 
       if (b.isThreefoldRepetition) { println("Threefold repetition. Draw."); return }
-      val moves = MoveGen.generateMoves(b).filter(m => {
-        b.makeMove(m)
-        val legal = !LegalChecker.isInCheck(b, b.sideToMove ^ 1)
-        b.unmakeMove(m)
-        legal
-      })
+      val moves = legalMoves(b)
       if (moves.isEmpty) {
         // The human plays White.
         if (!LegalChecker.isInCheck(b, b.sideToMove)) println("Stalemate. Draw.")
@@ -106,6 +101,14 @@ object Main {
       }
     }
   }
+
+  // The moves that don't leave the mover's king in check.
+  private def legalMoves(b: Bitboard): Array[Int] = MoveGen.generateMoves(b).filter(m => {
+    b.makeMove(m)
+    val legal = !LegalChecker.isInCheck(b, b.sideToMove ^ 1)
+    b.unmakeMove(m)
+    legal
+  })
 
   // Prints the prompt and reads an answer, asking again after a blank line.
   private def ask(prompt: String): String = {
@@ -193,7 +196,7 @@ object Main {
       return
     }
 
-    val moves = MoveGen.generateMoves(b)
+    val moves = legalMoves(b)
     val inCheck = LegalChecker.isInCheck(b, b.sideToMove)
     
     if (moves.isEmpty) {

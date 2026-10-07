@@ -162,5 +162,15 @@ class PlaySpec extends Specification {
       Console.withOut(out)(Main.step(threefold, 1, 0))
       out.toString must contain("Threefold repetition. Draw.")
     }
+
+    "end the game when the side to move has no legal move" in {
+      // Black is mated by the rook on the back rank, then stalemated by the pawn and king.
+      for ((fen, end) <- Seq("R5k1/5ppp/8/8/8/8/8/6K1 b - - 0 1" -> "Checkmate. White wins.\n",
+                             "7k/7P/6K1/8/8/8/8/8 b - - 0 1" -> "Stalemate. Draw.\n")) yield {
+        val out = new ByteArrayOutputStream()
+        Console.withOut(out)(Main.step(Bitboard.fromFen(fen), 1, 0))
+        out.toString must beEqualTo(end)
+      }
+    }
   }
 }
