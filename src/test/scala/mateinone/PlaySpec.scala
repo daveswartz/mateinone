@@ -23,5 +23,16 @@ class PlaySpec extends Specification {
       out must contain("Choose piece to move [a1, 'q' to quit]: ")
       out must contain("Select destination [1-10 or a2]: ")
     }
+
+    "announce a win when the human mates the computer" in {
+      // Ra8# is a back-rank mate.
+      val out = play("6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1", "a1", "a8")
+      out must contain("Checkmate! You win.")
+      out must not(contain("You lose"))
+    }
+
+    "announce a loss when the human is mated" in {
+      play("6k1/8/8/8/8/8/5PPP/r5K1 w - - 0 1") must contain("Checkmate! You lose.")
+    }
   }
 }

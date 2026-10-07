@@ -44,8 +44,10 @@ object Main {
         legal
       })
       if (moves.isEmpty) {
-        if (LegalChecker.isInCheck(b, b.sideToMove)) println("Checkmate! You lose.")
-        else println("Stalemate!")
+        // The human plays White.
+        if (!LegalChecker.isInCheck(b, b.sideToMove)) println("Stalemate!")
+        else if (b.sideToMove == White) println("Checkmate! You lose.")
+        else println("Checkmate! You win.")
         return
       }
 
