@@ -167,8 +167,18 @@ class Bitboard {
     updateOccupancy()
   }
 
+  // A capture or pawn move can't be undone, so only the positions since the last one can recur,
+  // and the count looks no further back, as Stockfish's does.
   def isThreefoldRepetition: Boolean = {
-    positionHistory.count(_ == hash) >= 2
+    var h = positionHistory
+    var n = halfMoveClock
+    var count = 0
+    while (n > 0 && h.nonEmpty) {
+      if (h.head == hash) count += 1
+      h = h.tail
+      n -= 1
+    }
+    count >= 2
   }
 
   def isFiftyMoveRule: Boolean = halfMoveClock >= 100

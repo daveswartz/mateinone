@@ -145,6 +145,16 @@ class MateInOneSpec extends Specification {
       b.isThreefoldRepetition must beTrue
     }
 
+    "count as repeats only the positions since the last capture or pawn move" in {
+      // Neither can be undone, so no position before one can recur, and the count doesn't look
+      // further back. No game has a repeat from before one, so these are planted.
+      val b = Bitboard.fromFen("4k3/8/8/8/8/8/8/4K3 w - - 0 1")
+      b.positionHistory = List(0L, b.hash, 0L, b.hash)
+      b.isThreefoldRepetition must beFalse
+      b.halfMoveClock = 4
+      b.isThreefoldRepetition must beTrue
+    }
+
     "detect Stalemate" in {
       // Setup stalemate position
       val b = Bitboard.initial
