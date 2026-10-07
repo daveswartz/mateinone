@@ -19,5 +19,12 @@ class SearchSpec extends Specification {
       TranspositionTable.store(b.hash, 2, 0, TranspositionTable.Exact, Some(move(b, "g8f8")))
       BitboardSearch.search(b, 2, -30000, 30000, 0) must beGreaterThan(15000)
     }
+
+    "score a position that repeats since the root as a draw" in {
+      // White is two rooks up, but Black checks forever: Qe1+ Kh2 Qh4+ Kg1 Qe1+ repeats at ply 5.
+      val b = Bitboard.fromFen("7k/Q7/8/8/4q3/8/RR4P1/6K1 b - - 0 1")
+      TranspositionTable.clear()
+      BitboardSearch.search(b, 5, -30000, 30000, 0) must beEqualTo(0)
+    }
   }
 }

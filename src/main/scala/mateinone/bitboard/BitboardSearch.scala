@@ -12,6 +12,9 @@ object BitboardSearch {
   // The best move the last search found at the root, or 0 if it found none.
   var rootBestMove = 0
 
+  // The game's positions before the root, as positionHistory held them when the search started.
+  private var historyBeforeRoot: List[Long] = Nil
+
   private val pieceValues = Array(100, 320, 330, 500, 900, 0)
   
   // Killer moves (2 per ply)
@@ -59,9 +62,12 @@ object BitboardSearch {
 
   def search(b: Bitboard, depth: Int, alpha: Int, beta: Int, ply: Int = 0): Int = {
     nodesSearched += 1
-    if (ply == 0) rootBestMove = 0
+    if (ply == 0) {
+      rootBestMove = 0
+      historyBeforeRoot = b.positionHistory
+    }
 
-    if (b.isThreefoldRepetition) return 0
+    if (isRepetition(b, ply)) return 0
 
     val ttEntry = TranspositionTable.get(b.hash)
     var ttMove = 0
@@ -166,6 +172,21 @@ object BitboardSearch {
 
     TranspositionTable.store(b.hash, depth, maxAlpha, flag, if (bestMove != 0) Some(bestMove) else None)
     maxAlpha
+  }
+
+  // Stockfish's rule: a position is a draw if it repeats once strictly after the root, or twice
+  // in all. The side that steered into a repeat since the root can repeat it again.
+  private def isRepetition(b: Bitboard, ply: Int): Boolean = {
+    if (b.isThreefoldRepetition) return true
+    if (ply == 0) return false
+    // positionHistory is newest first, and each move pushes the position it left, so the entries
+    // ahead of the root's own are the positions reached since the root.
+    var h = b.positionHistory
+    while (h.nonEmpty && (h.tail ne historyBeforeRoot)) {
+      if (h.head == b.hash) return true
+      h = h.tail
+    }
+    false
   }
 
   def quiesce(b: Bitboard, alpha: Int, beta: Int, ply: Int): Int = {
