@@ -74,20 +74,22 @@ object Main {
           println(s">>> No legal moves for piece at '$fromInput'. Try again.")
         } else {
           val sortedPieceMoves = pieceMoves.sortBy(m => squareName(mTo(m)))
-          val destinations = sortedPieceMoves.zipWithIndex.map { case (m, i) => 
-            s"${i + 1}. ${squareName(mTo(m))}" 
+          val destinations = sortedPieceMoves.zipWithIndex.map { case (m, i) =>
+            s"${i + 1}. ${destName(m)}"
           }
           println(s"Destinations for $fromInput: ${destinations.mkString(", ")}")
           
           val numbers = if (sortedPieceMoves.length == 1) "1" else s"1-${sortedPieceMoves.length}"
-          print(s"Select destination [$numbers or ${squareName(mTo(sortedPieceMoves.head))}]: ")
+          print(s"Select destination [$numbers or ${destName(sortedPieceMoves.head)}]: ")
           val toInput = scala.io.StdIn.readLine()
           
           val selectedMove = if (toInput != null && toInput.nonEmpty && toInput.forall(_.isDigit)) {
             val idx = toInput.toInt - 1
             if (idx >= 0 && idx < sortedPieceMoves.length) Some(sortedPieceMoves(idx)) else None
           } else {
-            sortedPieceMoves.find(m => squareName(mTo(m)) == toInput)
+            // A bare square picks its first move, which for a promotion is the queen.
+            sortedPieceMoves.find(m => destName(m) == toInput)
+              .orElse(sortedPieceMoves.find(m => squareName(mTo(m)) == toInput))
           }
 
           selectedMove match {
@@ -109,7 +111,9 @@ object Main {
     case Queen => "q"; case Rook => "r"; case Bishop => "b"; case Knight => "n"; case _ => ""
   }
 
-  private def moveName(m: Int): String = s"${squareName(mFrom(m))}${squareName(mTo(m))}${promoSuffix(m)}"
+  private def destName(m: Int): String = s"${squareName(mTo(m))}${promoSuffix(m)}"
+
+  private def moveName(m: Int): String = s"${squareName(mFrom(m))}${destName(m)}"
 
   private def findBestMove(b: Bitboard, depth: Int): Int = {
     BitboardSearch.nodesSearched = 0
