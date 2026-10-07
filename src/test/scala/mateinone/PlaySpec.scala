@@ -100,6 +100,17 @@ class PlaySpec extends Specification {
       play("4k3/8/8/8/8/8/8/4K3 w - - 0 1") must contain("Insufficient material. Draw.")
     }
 
+    "announce a draw by the fifty-move rule" in {
+      // Neither side has moved a pawn or captured for 100 half-moves.
+      play("4k3/8/8/8/8/8/8/R3K3 w - - 100 80") must contain("Fifty-move rule. Draw.")
+    }
+
+    "count a mate on the hundredth half-move over the fifty-move rule" in {
+      val out = play("6k1/5ppp/8/8/8/8/8/R5K1 w - - 99 80", "a1", "a8")
+      out must contain("Checkmate. You win.")
+      out must not(contain("Fifty-move rule"))
+    }
+
     "name the piece when the computer promotes" in {
       val out = play("k7/8/8/8/8/8/p7/7K b - - 0 1", "q")
       out must contain("pv a2a1q")
@@ -172,6 +183,12 @@ class PlaySpec extends Specification {
       val out = new ByteArrayOutputStream()
       Console.withOut(out)(Main.step(Bitboard.fromFen("4k3/8/8/8/8/8/8/4K3 w - - 0 1"), 1, 0))
       out.toString must beEqualTo("Insufficient material. Draw.\n")
+    }
+
+    "announce a draw by the fifty-move rule the same way as play" in {
+      val out = new ByteArrayOutputStream()
+      Console.withOut(out)(Main.step(Bitboard.fromFen("4k3/8/8/8/8/8/8/R3K3 w - - 100 80"), 1, 0))
+      out.toString must beEqualTo("Fifty-move rule. Draw.\n")
     }
 
     "end the game when the side to move has no legal move" in {

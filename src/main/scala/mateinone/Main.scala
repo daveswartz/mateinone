@@ -48,6 +48,8 @@ object Main {
         else println("Checkmate. You win.")
         return
       }
+      // After the mate check, since a mate on the last move counts over the fifty-move rule.
+      if (b.isFiftyMoveRule) { println("Fifty-move rule. Draw."); return }
 
       if (b.sideToMove == White) {
         val movableSquares = moves.map(mFrom).distinct.sortBy(sq => (b.pieceAt(sq), squareName(sq)))
@@ -207,6 +209,11 @@ object Main {
     if (moves.isEmpty) {
       if (inCheck) println(s"Checkmate. ${if (b.sideToMove == White) "Black" else "White"} wins.")
       else println("Stalemate. Draw.")
+      return
+    }
+    // After the mate check, since a mate on the last move counts over the fifty-move rule.
+    if (b.isFiftyMoveRule) {
+      println("Fifty-move rule. Draw.")
       return
     }
 
