@@ -120,6 +120,17 @@ class PlaySpec extends Specification {
       play(b) must contain("Computer played: e8")
     }
 
+    "search each move from an empty table" in {
+      // Black takes the free queen, but an older result in the table says Kf7 wins more.
+      val b = Bitboard.fromFen("3qk3/8/8/8/3Q4/8/8/7K b - - 0 1")
+      TranspositionTable.clear()
+      val kf7 = move(b, "e8f7")
+      b.makeMove(kf7)
+      TranspositionTable.store(b.hash, 5, -1500, TranspositionTable.Exact, None)
+      b.unmakeMove(kf7)
+      play(b) must contain("Computer played: d8d4")
+    }
+
     "let the human choose the promotion piece" in {
       val fen = "8/P6k/8/8/8/8/8/K7 w - - 0 1"
       val out = play(fen, "a7", "a8n", "q")

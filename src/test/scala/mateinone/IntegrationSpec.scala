@@ -2,11 +2,24 @@ package mateinone
 
 import org.specs2.mutable._
 import mateinone.bitboard._
+import mateinone.bitboard.Constants._
 import java.io._
 
 class IntegrationSpec extends Specification {
   // The examples share global state (TranspositionTable, System.in), so run them one at a time.
   sequential
+
+  // Runs the UCI loop on the commands and returns everything printed.
+  def uci(commands: String*): String = {
+    // UCI.loop reads System.in. Its println writes to Console.out, which
+    // System.setOut does not redirect once Console has been used.
+    val originalIn = System.in
+    val out = new ByteArrayOutputStream()
+    System.setIn(new ByteArrayInputStream(commands.mkString("", "\n", "\n").getBytes("UTF-8")))
+    try scala.Console.withOut(out)(UCI.loop())
+    finally System.setIn(originalIn)
+    out.toString
+  }
 
   "Engine Integration" should {
     "run a short simulation via Main" in {
@@ -17,7 +30,7 @@ class IntegrationSpec extends Specification {
     }
 
     "handle full UCI protocol commands" in {
-      val commands = Seq(
+      val output = uci(
         "uci",
         "isready",
         "ucinewgame",
@@ -26,20 +39,21 @@ class IntegrationSpec extends Specification {
         "position fen rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 moves g1f3",
         "go depth 1",
         "quit"
-      ).mkString("", "\n", "\n")
-
-      // UCI.loop reads System.in. Its println writes to Console.out, which
-      // System.setOut does not redirect once Console has been used.
-      val originalIn = System.in
-      val outputBuffer = new ByteArrayOutputStream()
-      System.setIn(new ByteArrayInputStream(commands.getBytes("UTF-8")))
-      try scala.Console.withOut(outputBuffer)(UCI.loop())
-      finally System.setIn(originalIn)
-
-      val output = outputBuffer.toString
+      )
       output must contain("uciok")
       output must contain("readyok")
       output must contain("bestmove")
+    }
+
+    "search each go from an empty table" in {
+      // Black takes the free queen, but an older result in the table says Kf7 wins more.
+      val fen = "3qk3/8/8/8/3Q4/8/8/7K b - - 0 1"
+      val b = Bitboard.fromFen(fen)
+      TranspositionTable.clear()
+      val kf7 = MoveGen.generateMoves(b).find(m => squareName(mFrom(m)) + squareName(mTo(m)) == "e8f7").get
+      b.makeMove(kf7)
+      TranspositionTable.store(b.hash, 5, -1500, TranspositionTable.Exact, None)
+      uci(s"position fen $fen", "go depth 1", "quit") must contain("bestmove d8d4")
     }
 
     "handle Transposition Table collisions correctly" in {

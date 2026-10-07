@@ -141,6 +141,9 @@ object Main {
     BitboardSearch.nodesSearched = 0
     BitboardSearch.ttHits = 0
     BitboardSearch.clearHistory()
+    // A stored score can depend on the moves that led to its position, as a repeat's does, so
+    // an earlier move's results don't hold for this one.
+    TranspositionTable.clear()
     val startTime = System.nanoTime()
     
     var bestMove = 0

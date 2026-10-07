@@ -74,6 +74,9 @@ object UCI {
     BitboardSearch.nodesSearched = 0
     BitboardSearch.ttHits = 0
     BitboardSearch.clearHistory()
+    // A stored score can depend on the moves that led to its position, as a repeat's does, so
+    // an earlier go's results don't hold for this one.
+    TranspositionTable.clear()
     val startTime = System.nanoTime()
 
     for (d <- 1 to depth) {
