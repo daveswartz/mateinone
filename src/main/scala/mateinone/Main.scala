@@ -66,14 +66,14 @@ object Main {
           }
         }
 
-        print(s"\nChoose piece to move [${squareName(movableSquares.head)}, 'q' to quit]: ")
+        print(s"\nChoose a piece [a square such as ${squareName(movableSquares.head)} or q to quit]: ")
         val fromInput = scala.io.StdIn.readLine()
-        if (fromInput == null || fromInput == "q" || fromInput == "quit") return
-        
+        if (isQuit(fromInput)) return
+
         val pieceMoves = moves.filter(m => squareName(mFrom(m)) == fromInput)
-        
+
         if (pieceMoves.isEmpty) {
-          println(s">>> No legal moves for piece at '$fromInput'. Try again.")
+          println(notAChoice(fromInput))
         } else {
           val sortedPieceMoves = pieceMoves.sortBy(m => squareName(mTo(m)))
           val destinations = sortedPieceMoves.zipWithIndex.map { case (m, i) =>
@@ -82,9 +82,10 @@ object Main {
           println(s"Destinations for $fromInput: ${destinations.mkString(", ")}")
           
           val numbers = if (sortedPieceMoves.length == 1) "1" else s"1-${sortedPieceMoves.length}"
-          print(s"Select destination [$numbers or ${destName(sortedPieceMoves.head)}]: ")
+          print(s"Choose a destination [$numbers, a square such as ${squareName(mTo(sortedPieceMoves.head))}, or q to quit]: ")
           val toInput = scala.io.StdIn.readLine()
-          
+          if (isQuit(toInput)) return
+
           val selectedMove = if (toInput != null && toInput.nonEmpty && toInput.forall(_.isDigit)) {
             val idx = toInput.toInt - 1
             if (idx >= 0 && idx < sortedPieceMoves.length) Some(sortedPieceMoves(idx)) else None
@@ -96,7 +97,7 @@ object Main {
 
           selectedMove match {
             case Some(m) => b.makeMove(m)
-            case None => println(">>> Invalid destination. Selection cancelled.")
+            case None => println(notAChoice(toInput))
           }
         }
       } else {
@@ -107,6 +108,11 @@ object Main {
       }
     }
   }
+
+  // null is end of input.
+  private def isQuit(input: String): Boolean = input == null || input == "q" || input == "quit"
+
+  private def notAChoice(input: String): String = s">>> $input is not one of the choices. Try again."
 
   // The promotion letter in UCI coordinate notation, e.g. "q" in a7a8q.
   private def promoSuffix(m: Int): String = mPromo(m) match {

@@ -20,8 +20,19 @@ class PlaySpec extends Specification {
   "Human vs computer play" should {
     "suggest a legal piece and destination in its prompts" in {
       val out = play("4k3/8/8/8/8/8/8/R3K3 w - - 0 1", "a1", "zz", "q")
-      out must contain("Choose piece to move [a1, 'q' to quit]: ")
-      out must contain("Select destination [1-10 or a2]: ")
+      out must contain("Choose a piece [a square such as a1 or q to quit]: ")
+      out must contain("Choose a destination [1-10, a square such as a2, or q to quit]: ")
+    }
+
+    "answer a bad choice the same way at both prompts" in {
+      val out = play("4k3/8/8/8/8/8/8/R3K3 w - - 0 1", "zz", "a1", "yy", "q")
+      out must contain(">>> zz is not one of the choices. Try again.")
+      out must contain(">>> yy is not one of the choices. Try again.")
+    }
+
+    "quit with q at the destination prompt" in {
+      val out = play("4k3/8/8/8/8/8/8/R3K3 w - - 0 1", "a1", "q")
+      "Your pieces with legal moves".r.findAllIn(out).length must beEqualTo(1)
     }
 
     "announce a win when the human mates the computer" in {
@@ -45,7 +56,7 @@ class PlaySpec extends Specification {
       val fen = "8/P6k/8/8/8/8/8/K7 w - - 0 1"
       val out = play(fen, "a7", "a8n", "q")
       out must contain("Destinations for a7: 1. a8q, 2. a8r, 3. a8b, 4. a8n")
-      out must contain("Select destination [1-4 or a8q]: ")
+      out must contain("Choose a destination [1-4, a square such as a8, or q to quit]: ")
       out must contain("Knights : a8")
       play(fen, "a7", "a8", "q") must contain("Queens  : a8")
     }
