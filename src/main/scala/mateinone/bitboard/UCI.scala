@@ -35,15 +35,16 @@ object UCI {
   private def parsePosition(line: String): Unit = {
     val parts = line.split(" ")
     if (parts.length < 2) return
+    val movesIdx = parts.indexOf("moves")
 
     if (parts(1) == "startpos") {
       board = Bitboard.initial
     } else if (parts(1) == "fen") {
-      val fenParts = parts.slice(2, 8)
+      // The FEN runs up to "moves", since it can leave out its move counters.
+      val fenParts = parts.slice(2, if (movesIdx == -1) parts.length else movesIdx)
       board = Bitboard.fromFen(fenParts.mkString(" "))
     }
 
-    val movesIdx = parts.indexOf("moves")
     if (movesIdx != -1) {
       for (i <- movesIdx + 1 until parts.length) {
         val moveStr = parts(i)

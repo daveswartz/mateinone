@@ -61,6 +61,11 @@ class IntegrationSpec extends Specification {
       uci("position fen R5k1/5ppp/8/8/8/8/8/6K1 b - - 0 1", "go depth 2", "quit") must contain("bestmove 0000")
     }
 
+    "apply the moves after a FEN without the move counters" in {
+      // Ra8+ leaves Black only the king moves off the back rank.
+      uci("position fen 4k3/8/8/8/8/8/8/R3K3 w - - moves a1a8", "go depth 1", "quit") must beMatching("(?s).*bestmove e8[def]7\n")
+    }
+
     "handle Transposition Table collisions correctly" in {
       TranspositionTable.clear()
       val hash1 = 12345L
