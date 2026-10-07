@@ -50,6 +50,9 @@ object Main {
   }
 
   def play(b: Bitboard, depth: Int, clock: Option[ChessClock] = None): Unit = {
+    // Whether the side's flag has fallen on its own turn: nothing shows it until the side answers.
+    def flagged(side: Int) = clock.exists(_.timeLeft(side, side) <= 0)
+
     while (true) {
       println("\n" + b.print)
       // evaluate scores from the side to move; show it from White's side so it doesn't flip each turn.
@@ -91,6 +94,7 @@ object Main {
 
         println()
         val fromInput = ask(s"Choose a piece [${numberRange(movableSquares.length)}, a square such as ${squareName(movableSquares.head)}, or q to quit]: ")
+        if (flagged(White)) { println("Time forfeit. You lose."); return }
         if (isQuit(fromInput)) return
 
         val fromSq = choose(fromInput, movableSquares, squareName)
@@ -106,6 +110,7 @@ object Main {
           println(s"Destinations for ${squareName(mFrom(pieceMoves.head))}: ${destinations.mkString(", ")}")
           
           val toInput = ask(s"Choose a destination [${numberRange(sortedPieceMoves.length)}, a square such as ${squareName(mTo(sortedPieceMoves.head))}, or q to quit]: ")
+          if (flagged(White)) { println("Time forfeit. You lose."); return }
           if (isQuit(toInput)) return
 
           // A bare square picks its first move, which for a promotion is the queen.
@@ -124,6 +129,8 @@ object Main {
         println("Computer is thinking...")
         val timeLimit = clock.map(c => BitboardSearch.timeForMove(c.timeLeft(Black, Black), c.increment, 30))
         val m = findBestMove(b, depth, timeLimit)
+        // A move made after the flag fell doesn't count.
+        if (flagged(Black)) { println("Time forfeit. You win."); return }
         b.makeMove(m)
         clock.foreach(_.moved(Black))
         println(s"Computer played: ${moveName(m)}")

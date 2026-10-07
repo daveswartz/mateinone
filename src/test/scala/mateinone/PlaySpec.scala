@@ -206,6 +206,24 @@ class PlaySpec extends Specification {
       out must beMatching("(?s).*Computer played: [a-h][1-8][a-h][1-8].*")
     }
 
+    "lose on time when the human's flag has fallen by their answer, at either prompt" in {
+      // The human takes 10 s to answer each prompt: 5 s on the clock runs out at the piece, and
+      // 15 s at the destination.
+      val atPiece = playTimed("4k3/8/8/8/8/8/8/R3K3 w - - 0 1", 1, 5000, 0, 10000, "a1", "a7", "q")
+      atPiece must endWith("Time forfeit. You lose.\n")
+      atPiece must not(contain("Destinations for"))
+      val atDestination = playTimed("4k3/8/8/8/8/8/8/R3K3 w - - 0 1", 1, 15000, 0, 10000, "a1", "a7", "q")
+      atDestination must endWith("Time forfeit. You lose.\n")
+      atDestination must not(contain("You played"))
+    }
+
+    "win on time when the computer's flag has fallen by its move" in {
+      // The computer's clock is empty, so its flag has fallen by the time it moves.
+      val out = playTimed("4k3/8/8/8/8/8/8/R3K3 b - - 0 1", 1, 0, 0, 0, "q")
+      out must endWith("Time forfeit. You win.\n")
+      out must not(contain("Computer played"))
+    }
+
     "show the time left rounded up, so that only an empty clock shows 0:00" in {
       ChessClock.format(300000) must beEqualTo("5:00")
       ChessClock.format(299999) must beEqualTo("5:00")
