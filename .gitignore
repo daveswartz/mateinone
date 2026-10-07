@@ -31,3 +31,6 @@ project/plugins/project/
 # Emacs temp files
 .#*
 *#
+
+# macOS
+.DS_Store
