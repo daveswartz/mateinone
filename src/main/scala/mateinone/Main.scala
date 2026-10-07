@@ -11,9 +11,9 @@ object Main {
       return
     }
 
-    val depth = args.indexOf("--depth") match {
-      case i if i >= 0 && i < args.length - 1 => args(i + 1).toInt
-      case _ => 12
+    val depthArg = args.indexOf("--depth") match {
+      case i if i >= 0 && i < args.length - 1 => Some(args(i + 1).toInt)
+      case _ => None
     }
 
     val playMode = args.contains("--play")
@@ -35,10 +35,13 @@ object Main {
 
     if (playMode) {
       println("MateInOne: human vs computer")
-      println(s"Search depth: $depth")
+      // With a clock and no depth, the computer searches as deep as its time allows.
+      val depth = depthArg.getOrElse(if (clock.isDefined) BitboardSearch.MaxDepth else 12)
+      if (depthArg.isDefined || clock.isEmpty) println(s"Search depth: $depth")
       timeControl.foreach(tc => println(s"Time control: $tc"))
       play(Bitboard.initial, depth, clock)
     } else {
+      val depth = depthArg.getOrElse(12)
       println("MateInOne: self-play")
       println(s"Search depth: $depth")
       println("-" * 30)
@@ -119,7 +122,8 @@ object Main {
         }
       } else {
         println("Computer is thinking...")
-        val m = findBestMove(b, depth)
+        val timeLimit = clock.map(c => BitboardSearch.timeForMove(c.timeLeft(Black, Black), c.increment, 30))
+        val m = findBestMove(b, depth, timeLimit)
         b.makeMove(m)
         clock.foreach(_.moved(Black))
         println(s"Computer played: ${moveName(m)}")
@@ -165,7 +169,8 @@ object Main {
 
   private def moveName(m: Int): String = s"${squareName(mFrom(m))}${destName(m)}"
 
-  private def findBestMove(b: Bitboard, depth: Int): Int = {
+  // Searches to the depth, or until the time limit in ms, if there is one.
+  private def findBestMove(b: Bitboard, depth: Int, timeLimit: Option[Long] = None): Int = {
     BitboardSearch.nodesSearched = 0
     BitboardSearch.ttHits = 0
     BitboardSearch.clearHistory()
@@ -173,13 +178,17 @@ object Main {
     // an earlier move's results don't hold for this one.
     TranspositionTable.clear()
     val startTime = System.nanoTime()
+    val deadline = timeLimit.fold(Long.MaxValue)(ms => startTime + ms * 1000000)
+    val stop = () => System.nanoTime() >= deadline
+    BitboardSearch.stopped = false
     
     var bestMove = 0
     var lastScore = 0
 
-    for (d <- 1 to depth) {
-      val iterStart = System.nanoTime()
-      
+    var d = 1
+    // Depth 1 runs to the end, so there's a move to play when the time runs out.
+    while (d <= depth && (d == 1 || !stop())) {
+      BitboardSearch.shouldStop = if (d == 1) () => false else stop
       var alpha = -30000
       var beta = 30000
       val windowSize = 50 
@@ -190,27 +199,33 @@ object Main {
       }
       
       var score = BitboardSearch.search(b, d, alpha, beta, 0)
-      if (score <= alpha || score >= beta) {
+      if (!BitboardSearch.stopped && (score <= alpha || score >= beta)) {
         score = BitboardSearch.search(b, d, -30000, 30000, 0)
       }
-      lastScore = score
+      if (!BitboardSearch.stopped) {
+        lastScore = score
       
-      val totalDelta = (System.nanoTime() - startTime) / 1e9
-      // Take the move from the search: the table's entry for this position can hold an older,
-      // deeper search's move, or another position's entry. The rest of the PV comes from the table.
-      if (BitboardSearch.rootBestMove != 0) bestMove = BitboardSearch.rootBestMove
-      val pv = if (bestMove == 0) Nil else {
-        b.makeMove(bestMove)
-        val rest = BitboardSearch.getPV(b, d - 1)
-        b.unmakeMove(bestMove)
-        bestMove :: rest
+        val totalDelta = (System.nanoTime() - startTime) / 1e9
+        // Take the move from the search: the table's entry for this position can hold an older,
+        // deeper search's move, or another position's entry. The rest of the PV comes from the table.
+        if (BitboardSearch.rootBestMove != 0) bestMove = BitboardSearch.rootBestMove
+        val pv = if (bestMove == 0) Nil else {
+          b.makeMove(bestMove)
+          val rest = BitboardSearch.getPV(b, d - 1)
+          b.unmakeMove(bestMove)
+          bestMove :: rest
+        }
+      
+        val pvStr = pv.map(moveName).mkString(" ")
+        val nps = if (totalDelta > 0) (BitboardSearch.nodesSearched / totalDelta).toLong else 0
+      
+        println(f"depth $d%2d score ${BitboardSearch.formatScore(lastScore)}%s time $totalDelta%.2fs nodes ${BitboardSearch.nodesSearched}%,d nps $nps%,d pv $pvStr")
       }
-      
-      val pvStr = pv.map(moveName).mkString(" ")
-      val nps = if (totalDelta > 0) (BitboardSearch.nodesSearched / totalDelta).toLong else 0
-      
-      println(f"depth $d%2d score ${BitboardSearch.formatScore(lastScore)}%s time $totalDelta%.2fs nodes ${BitboardSearch.nodesSearched}%,d nps $nps%,d pv $pvStr")
+      d += 1
     }
+    // So that a later search without a clock runs to its depth.
+    BitboardSearch.shouldStop = () => false
+    BitboardSearch.stopped = false
     
     if (bestMove == 0) MoveGen.generateMoves(b).head else bestMove
   }

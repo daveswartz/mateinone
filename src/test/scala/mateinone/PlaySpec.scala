@@ -41,12 +41,12 @@ class PlaySpec extends Specification {
     def close(): Unit = ()
   }
 
-  // Plays from fen at depth 1 under the clock, answering the prompts with input, a line every ms.
-  def playTimed(fen: String, clockMs: Long, incrementMs: Long, ms: Long, input: String*): String = {
+  // Plays from fen to the depth under the clock, answering the prompts with input, a line every ms.
+  def playTimed(fen: String, depth: Int, clockMs: Long, incrementMs: Long, ms: Long, input: String*): String = {
     val in = new TimedInput(input, ms)
     val out = new ByteArrayOutputStream()
     Console.withIn(in) {
-      Console.withOut(out)(Main.play(Bitboard.fromFen(fen), 1, Some(new ChessClock(clockMs, incrementMs, () => in.now))))
+      Console.withOut(out)(Main.play(Bitboard.fromFen(fen), depth, Some(new ChessClock(clockMs, incrementMs, () => in.now))))
     }
     out.toString
   }
@@ -192,9 +192,18 @@ class PlaySpec extends Specification {
 
     "show each side's clock, with the time spent and the increment" in {
       // 5+3, and the human takes 10 s to answer each prompt: 20 s for Ra7. The computer takes no time.
-      val out = playTimed("4k3/8/8/8/8/8/8/R3K3 w - - 0 1", 300000, 3000, 10000, "a1", "a7", "q")
+      val out = playTimed("4k3/8/8/8/8/8/8/R3K3 w - - 0 1", 1, 300000, 3000, 10000, "a1", "a7", "q")
       out must contain("Clock: You 5:00, Computer 5:00\n")
       out must contain("Clock: You 4:43, Computer 5:03\n")
+    }
+
+    "have the computer spend its clock, stopping at the last depth it finished" in {
+      // Kiwipete with Black to move takes about 400 ms to depth 8, and 30 ms on the clock leaves
+      // time for depth 1 only.
+      val kiwipete = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R b KQkq - 0 1"
+      val out = playTimed(kiwipete, 8, 30, 0, 0, "q")
+      "(?m)^depth +(\\d+)".r.findAllMatchIn(out).map(_.group(1).toInt).max must beLessThan(8)
+      out must beMatching("(?s).*Computer played: [a-h][1-8][a-h][1-8].*")
     }
 
     "show the time left rounded up, so that only an empty clock shows 0:00" in {
@@ -214,6 +223,14 @@ class PlaySpec extends Specification {
       }
       out.toString must startWith("MateInOne: human vs computer\nSearch depth: 1\nTime control: 5+3\n")
       out.toString must contain("Clock: You 5:00, Computer 5:00\n")
+    }
+
+    "leave the depth out of the header when the clock decides it" in {
+      val out = new ByteArrayOutputStream()
+      Console.withIn(new StringReader("q\n")) {
+        Console.withOut(out)(Main.main(Array("--play", "--time", "5+3")))
+      }
+      out.toString must startWith("MateInOne: human vs computer\nTime control: 5+3\n\n")
     }
 
     "start with a header in the same form as self-play's" in {
