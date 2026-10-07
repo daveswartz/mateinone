@@ -65,7 +65,7 @@ class Bitboard {
     val to = mTo(m)
     val piece = mPiece(m)
     val color = sideToMove
-    val captured = if (mCapture(m)) pieceAt(to) else PieceNone
+    val captured = if (mEP(m)) Pawn else if (mCapture(m)) pieceAt(to) else PieceNone
     
     positionHistory = hash :: positionHistory
     history = State(captured, castleRights, enPassantSq, halfMoveClock, hash, evalScore) :: history

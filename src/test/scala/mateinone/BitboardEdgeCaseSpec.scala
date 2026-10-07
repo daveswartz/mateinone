@@ -39,6 +39,15 @@ class BitboardEdgeCaseSpec extends Specification {
       }
       success
     }
+
+    "restore the captured pawn when unmaking en passant" in {
+      val b = Bitboard.fromFen("rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3")
+      val before = (0 until 64).map(b.pieceAt)
+      val ep = MoveGen.generateMoves(b).find(m => mEP(m)).get
+      b.makeMove(ep)
+      b.unmakeMove(ep)
+      (0 until 64).map(b.pieceAt) must beEqualTo(before)
+    }
   }
 
   "Move Legality Edge Cases" should {
