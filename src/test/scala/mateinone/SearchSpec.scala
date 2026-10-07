@@ -74,6 +74,21 @@ class SearchSpec extends Specification {
       BitboardSearch.search(b, 3, -1, 0, 1) must beEqualTo(-1)
     }
 
+    "score a draw by the fifty-move rule, unless the hundredth half-move mates" in {
+      // White is a queen up, but none of its moves is a capture, a pawn's or a mate, so each one is
+      // the hundredth half-move without either, and the game is drawn.
+      val queenUp = Bitboard.fromFen("8/8/8/4k3/8/8/8/3QK3 w - - 99 80")
+      TranspositionTable.clear()
+      BitboardSearch.search(queenUp, 2, -30000, 30000, 0) must beEqualTo(0)
+      // Rh8 mates on the hundredth half-move, and the mate counts.
+      val mateNow = Bitboard.fromFen("k7/8/1K6/8/8/8/8/7R w - - 99 80")
+      TranspositionTable.clear()
+      BitboardSearch.search(mateNow, 2, -30000, 30000, 0) must beEqualTo(20000 - 1)
+      // In quiescence too: Black's king has to step out of the check, the hundredth half-move.
+      val inCheck = Bitboard.fromFen("4k3/8/8/8/Q7/8/8/4K3 b - - 99 80")
+      BitboardSearch.quiesce(inCheck, -30000, 30000, 1) must beEqualTo(0)
+    }
+
     "spend an even share of the clock on a move, plus the increment, but not its last 50 ms" in {
       BitboardSearch.timeForMove(60000, 0, 30) must beEqualTo(2000)
       BitboardSearch.timeForMove(60000, 1000, 30) must beEqualTo(3000)

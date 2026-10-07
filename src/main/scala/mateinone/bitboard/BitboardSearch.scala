@@ -99,8 +99,8 @@ object BitboardSearch {
     }
 
     // The root has to choose a move even in a drawn position, so only the positions below it are
-    // scored as repeats, as in Stockfish.
-    if (ply > 0 && isRepetition(b)) return 0
+    // scored as draws, as in Stockfish.
+    if (ply > 0 && (isRepetition(b) || isFiftyMoveDraw(b))) return 0
 
     val ttEntry = TranspositionTable.get(b.hash)
     var ttMove = 0
@@ -218,6 +218,18 @@ object BitboardSearch {
   private def hasPieces(b: Bitboard, side: Int): Boolean =
     (b.pieceBB(side)(Knight) | b.pieceBB(side)(Bishop) | b.pieceBB(side)(Rook) | b.pieceBB(side)(Queen)) != 0
 
+  // The fifty-move rule draws unless the side to move is mated, since a mate on the hundredth
+  // half-move counts, as in Stockfish.
+  private def isFiftyMoveDraw(b: Bitboard): Boolean =
+    b.isFiftyMoveRule && (!LegalChecker.isInCheck(b, b.sideToMove) || hasLegalMove(b))
+
+  private def hasLegalMove(b: Bitboard): Boolean = MoveGen.generateMoves(b).exists { m =>
+    b.makeMove(m)
+    val legal = !LegalChecker.isInCheck(b, b.sideToMove ^ 1)
+    b.unmakeMove(m)
+    legal
+  }
+
   // Stockfish's rule: a position is a draw if it repeats once strictly after the root, or twice
   // in all. The side that steered into a repeat since the root can repeat it again. Only for
   // positions below the root. Below a null move, only the positions since it count, as in
@@ -247,6 +259,8 @@ object BitboardSearch {
   def quiesce(b: Bitboard, alpha: Int, beta: Int, ply: Int): Int = {
     countNode()
     if (stopped) return 0
+    // A quiet answer to a check can be the hundredth half-move.
+    if (isFiftyMoveDraw(b)) return 0
     // In check, the side can't stand pat, since it has to answer the check, so it searches all its
     // moves, and with none it's mated, as in Stockfish.
     val inCheck = LegalChecker.isInCheck(b, b.sideToMove)
