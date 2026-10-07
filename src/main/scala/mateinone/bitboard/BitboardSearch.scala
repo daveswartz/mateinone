@@ -116,7 +116,9 @@ object BitboardSearch {
 
     if (depth <= 0) return quiesce(b, alpha, beta, ply)
 
-    if (depth >= 3 && !LegalChecker.isInCheck(b, b.sideToMove) && ply > 0) {
+    // A side with only pawns can be in zugzwang, where passing would beat every move it has, so a
+    // null move proves nothing for it, and it isn't tried, as in Stockfish.
+    if (depth >= 3 && !LegalChecker.isInCheck(b, b.sideToMove) && ply > 0 && hasPieces(b, b.sideToMove)) {
       val oldHash = b.hash
       val oldEp = b.enPassantSq
       b.sideToMove ^= 1
@@ -204,6 +206,10 @@ object BitboardSearch {
     TranspositionTable.store(b.hash, depth, toTable(maxAlpha, ply), flag, if (bestMove != 0) Some(bestMove) else None)
     maxAlpha
   }
+
+  // Whether the side has a knight, bishop, rook or queen.
+  private def hasPieces(b: Bitboard, side: Int): Boolean =
+    (b.pieceBB(side)(Knight) | b.pieceBB(side)(Bishop) | b.pieceBB(side)(Rook) | b.pieceBB(side)(Queen)) != 0
 
   // Stockfish's rule: a position is a draw if it repeats once strictly after the root, or twice
   // in all. The side that steered into a repeat since the root can repeat it again. Only for

@@ -52,6 +52,14 @@ class SearchSpec extends Specification {
       BitboardSearch.quiesce(b, -30000, 30000, 64) must beGreaterThan(-15000)
     }
 
+    "score a zugzwang against the side to move, not as if it could pass" in {
+      // Whichever side moves has to leave its pawn to the other king, so White to move loses a pawn,
+      // and its score is below 0. Passing would hand the zugzwang to Black, so a null move fails high.
+      val b = Bitboard.fromFen("8/8/8/3pK3/2kP4/8/8/8 w - - 0 1")
+      TranspositionTable.clear()
+      BitboardSearch.search(b, 5, -1, 0, 1) must beEqualTo(-1)
+    }
+
     "spend an even share of the clock on a move, plus the increment, but not its last 50 ms" in {
       BitboardSearch.timeForMove(60000, 0, 30) must beEqualTo(2000)
       BitboardSearch.timeForMove(60000, 1000, 30) must beEqualTo(3000)
