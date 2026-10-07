@@ -169,8 +169,6 @@ object BitboardSearch {
 
     for (i <- 0 until scoredMoves.length) {
       val m = moves((scoredMoves(i) & 0xFFFFFFFFL).toInt)
-      if (b.pieceAt(mTo(m)) == King) return 30000 
-
       b.makeMove(m)
       if (LegalChecker.isInCheck(b, b.sideToMove ^ 1)) {
         b.unmakeMove(m)
@@ -286,7 +284,6 @@ object BitboardSearch {
     var legalMoves = 0
     for (i <- 0 until scored.length) {
       val m = captures((scored(i) & 0xFFFFFFFFL).toInt)
-      if (b.pieceAt(mTo(m)) == King) return 30000
       b.makeMove(m)
       if (LegalChecker.isInCheck(b, b.sideToMove ^ 1)) {
         b.unmakeMove(m)

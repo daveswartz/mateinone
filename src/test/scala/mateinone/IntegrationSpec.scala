@@ -125,6 +125,13 @@ class IntegrationSpec extends Specification {
       uciExit("position fen 4k3/8/8/8/8/8/8/4K3 w - -", "quit") must beEqualTo((0, ""))
     }
 
+    "quit on a position where the side to move could capture the king, as Stockfish does" in {
+      // Black is in check with White to move. The search would take the king and score it as no
+      // mate it can name.
+      uciExit("position fen 4k3/8/8/8/8/8/8/4RK2 w - - 0 1", "go depth 1", "quit") must
+        beEqualTo((1, "info string invalid position: the side not to move is in check\n"))
+    }
+
     "quit on an illegal move after position, saying which, as Stockfish does" in {
       // A king can't move two squares except to castle; the go after it isn't read.
       uciExit("position startpos moves e2e4 e7e5 e1e3", "go depth 1", "quit") must

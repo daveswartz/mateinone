@@ -80,9 +80,10 @@ object UCI {
       // The FEN runs up to "moves", since it can leave out its move counters.
       val fenParts = parts.slice(2, if (movesIdx == -1) parts.length else movesIdx)
       board = Bitboard.fromFen(fenParts.mkString(" "))
-      // The search needs one king a side, as Stockfish's does.
+      // The search needs one king a side, and no king it can capture, as Stockfish's does.
       val kings = (side: Int) => java.lang.Long.bitCount(board.pieceBB(side)(King))
       if (kings(White) != 1 || kings(Black) != 1) return Some("each side needs exactly one king")
+      if (LegalChecker.isInCheck(board, board.sideToMove ^ 1)) return Some("the side not to move is in check")
     }
 
     // A move that isn't legal would leave the board out of step with the GUI's game, as in Stockfish.
