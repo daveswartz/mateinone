@@ -9,6 +9,9 @@ object BitboardSearch {
   var nodesSearched = 0L
   var ttHits = 0L
 
+  // The best move the last search found at the root, or 0 if it found none.
+  var rootBestMove = 0
+
   private val pieceValues = Array(100, 320, 330, 500, 900, 0)
   
   // Killer moves (2 per ply)
@@ -56,7 +59,8 @@ object BitboardSearch {
 
   def search(b: Bitboard, depth: Int, alpha: Int, beta: Int, ply: Int = 0): Int = {
     nodesSearched += 1
-    
+    if (ply == 0) rootBestMove = 0
+
     if (b.isThreefoldRepetition) return 0
 
     val ttEntry = TranspositionTable.get(b.hash)
@@ -146,12 +150,14 @@ object BitboardSearch {
             history(b.sideToMove)(mFrom(m))(mTo(m)) += depth * depth
           }
           TranspositionTable.store(b.hash, depth, beta, TranspositionTable.LowerBound, Some(m))
+          if (ply == 0) rootBestMove = m
           return beta
         }
         if (score > maxAlpha) {
           maxAlpha = score
           bestMove = m
           flag = TranspositionTable.Exact
+          if (ply == 0) rootBestMove = m
         }
       }
     }

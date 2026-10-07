@@ -165,8 +165,15 @@ object Main {
       lastScore = score
       
       val totalDelta = (System.nanoTime() - startTime) / 1e9
-      val pv = BitboardSearch.getPV(b, d)
-      if (pv.nonEmpty) bestMove = pv.head
+      // Take the move from the search: the table's entry for this position can hold an older,
+      // deeper search's move, or another position's entry. The rest of the PV comes from the table.
+      if (BitboardSearch.rootBestMove != 0) bestMove = BitboardSearch.rootBestMove
+      val pv = if (bestMove == 0) Nil else {
+        b.makeMove(bestMove)
+        val rest = BitboardSearch.getPV(b, d - 1)
+        b.unmakeMove(bestMove)
+        bestMove :: rest
+      }
       
       val pvStr = pv.map(moveName).mkString(" ")
       val nps = if (totalDelta > 0) (BitboardSearch.nodesSearched / totalDelta).toLong else 0

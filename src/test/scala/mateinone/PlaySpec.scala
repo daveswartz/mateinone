@@ -20,11 +20,14 @@ class PlaySpec extends Specification {
     out.toString
   }
 
-  // The starting position after the given moves, e.g. "g1f3".
+  // The move named in coordinate notation without a promotion, e.g. "g1f3".
+  def move(b: Bitboard, name: String): Int =
+    MoveGen.generateMoves(b).find(m => squareName(mFrom(m)) + squareName(mTo(m)) == name).get
+
+  // The starting position after the given moves.
   def afterMoves(moves: String*): Bitboard = {
     val b = Bitboard.initial
-    for (move <- moves)
-      b.makeMove(MoveGen.generateMoves(b).find(m => squareName(mFrom(m)) + squareName(mTo(m)) == move).get)
+    for (name <- moves) b.makeMove(move(b, name))
     b
   }
 
@@ -97,6 +100,24 @@ class PlaySpec extends Specification {
       val out = play("k7/8/8/8/8/8/p7/7K b - - 0 1", "q")
       out must contain("pv a2a1q")
       out must contain("Computer played: a2a1q")
+    }
+
+    "play the move the computer just searched, not an older stored one" in {
+      // Black takes the free queen, but the table holds a deeper, older result that says Kf7.
+      val b = Bitboard.fromFen("3qk3/8/8/8/3Q4/8/8/7K b - - 0 1")
+      TranspositionTable.clear()
+      TranspositionTable.store(b.hash, 5, 0, TranspositionTable.Exact, Some(move(b, "e8f7")))
+      val out = play(b)
+      out must contain("pv d8d4")
+      out must contain("Computer played: d8d4")
+    }
+
+    "play a legal move when another position holds the root's table slot" in {
+      // Black is in check from the rook, so only king moves are legal.
+      val b = Bitboard.fromFen("4k3/p7/8/8/8/8/8/K3R3 b - - 0 1")
+      TranspositionTable.clear()
+      TranspositionTable.store(b.hash + (1L << 20), 5, 0, TranspositionTable.Exact, None)
+      play(b) must contain("Computer played: e8")
     }
 
     "let the human choose the promotion piece" in {
