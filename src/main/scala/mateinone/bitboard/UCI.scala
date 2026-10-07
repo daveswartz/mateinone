@@ -69,9 +69,12 @@ object UCI {
       case i if i >= 0 && i < parts.length - 1 => parts(i + 1).toLongOption
       case _ => None
     }
-    val movetime = value("movetime")
+    // The side to move's clock, with 30 moves to go if the GUI doesn't say.
+    val (time, inc) = if (board.sideToMove == White) ("wtime", "winc") else ("btime", "binc")
+    val clockTime = value(time).map(BitboardSearch.timeForMove(_, value(inc).getOrElse(0L), value("movestogo").getOrElse(30L)))
+    val timeLimit = (value("movetime") ++ clockTime).minOption
     // With a time limit, as deep as the time allows; with neither a limit nor a depth, depth 8.
-    val depth = value("depth").map(_.toInt).getOrElse(if (movetime.isDefined) BitboardSearch.MaxDepth else 8)
+    val depth = value("depth").map(_.toInt).getOrElse(if (timeLimit.isDefined) BitboardSearch.MaxDepth else 8)
 
     // Search with UCI-formatted output
     BitboardSearch.nodesSearched = 0
@@ -81,7 +84,7 @@ object UCI {
     // an earlier go's results don't hold for this one.
     TranspositionTable.clear()
     val startTime = System.nanoTime()
-    val deadline = movetime.fold(Long.MaxValue)(ms => startTime + ms * 1000000)
+    val deadline = timeLimit.fold(Long.MaxValue)(ms => startTime + ms * 1000000)
     BitboardSearch.stopped = false
 
     var bestMove = 0

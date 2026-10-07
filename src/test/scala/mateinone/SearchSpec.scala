@@ -27,6 +27,14 @@ class SearchSpec extends Specification {
       BitboardSearch.search(b, 5, -30000, 30000, 0) must beEqualTo(0)
     }
 
+    "spend an even share of the clock on a move, plus the increment, but not its last 50 ms" in {
+      BitboardSearch.timeForMove(60000, 0, 30) must beEqualTo(2000)
+      BitboardSearch.timeForMove(60000, 1000, 30) must beEqualTo(3000)
+      BitboardSearch.timeForMove(60000, 0, 10) must beEqualTo(6000)
+      BitboardSearch.timeForMove(100, 1000, 30) must beEqualTo(50)
+      BitboardSearch.timeForMove(30, 0, 30) must beEqualTo(0)
+    }
+
     "choose a root move even when the root has occurred three times" in {
       val b = Bitboard.initial
       for (name <- Seq("g1f3", "g8f6", "f3g1", "f6g8", "g1f3", "g8f6", "f3g1", "f6g8")) b.makeMove(move(b, name))

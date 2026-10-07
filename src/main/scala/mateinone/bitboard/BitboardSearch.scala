@@ -20,6 +20,11 @@ object BitboardSearch {
   var deadline = Long.MaxValue
   var stopped = false
 
+  // The ms to spend on a move with timeLeft on the clock: an even share of it for the moves to go,
+  // plus the increment, but never the last 50 ms, since the increment comes only after the move.
+  def timeForMove(timeLeft: Long, increment: Long, movesToGo: Long): Long =
+    Math.max(0, Math.min(timeLeft / Math.max(movesToGo, 1) + increment, timeLeft - 50))
+
   private val pieceValues = Array(100, 320, 330, 500, 900, 0)
   
   // Killer moves (2 per ply)

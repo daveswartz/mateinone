@@ -78,6 +78,13 @@ class IntegrationSpec extends Specification {
       out must beMatching("(?s).*bestmove [a-h][1-8][a-h][1-8]\\n")
     }
 
+    "manage the side to move's clock" in {
+      // White to move has 30 ms left, too little for more than depth 1; Black's clock doesn't count.
+      val out = uci(s"position fen $kiwipete", "go wtime 30 btime 100000", "quit")
+      lastDepth(out) must beLessThan(8)
+      out must beMatching("(?s).*bestmove [a-h][1-8][a-h][1-8]\\n")
+    }
+
     "handle Transposition Table collisions correctly" in {
       TranspositionTable.clear()
       val hash1 = 12345L
