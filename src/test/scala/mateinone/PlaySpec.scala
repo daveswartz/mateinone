@@ -49,5 +49,12 @@ class PlaySpec extends Specification {
       out must contain("Knights : a8")
       play(fen, "a7", "a8", "q") must contain("Queens  : a8")
     }
+
+    "show the evaluation from White's side on both sides' turns" in {
+      // White is a queen up. Black (the computer) moves first, then the human.
+      val out = play("k7/8/8/8/8/8/8/KQ6 b - - 0 1", "q")
+      out must contain("Current Evaluation: +")
+      out must not(contain("Current Evaluation: -"))
+    }
   }
 }

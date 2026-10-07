@@ -33,7 +33,9 @@ object Main {
   def play(b: Bitboard, depth: Int): Unit = {
     while (true) {
       println("\n" + b.print)
-      val currentEval = BitboardEvaluator.evaluate(b, 0)
+      // evaluate scores from the side to move; show it from White's side so it doesn't flip each turn.
+      val sideToMoveEval = BitboardEvaluator.evaluate(b, 0)
+      val currentEval = if (b.sideToMove == White) sideToMoveEval else -sideToMoveEval
       println(f"Current Evaluation: ${BitboardSearch.formatScore(currentEval)}")
 
       if (b.isThreefoldRepetition) { println("Draw by threefold repetition"); return }
