@@ -21,6 +21,48 @@ class IntegrationSpec extends Specification {
     out.toString
   }
 
+  // Runs the UCI loop on its own thread, as a GUI drives an engine: commands go in as they're
+  // sent, and the output can be read as it comes.
+  class Engine {
+    private val originalIn = System.in
+    private val out = new ByteArrayOutputStream()
+    private val feed = new PipedOutputStream()
+    System.setIn(new PipedInputStream(feed))
+    private val loop = new Thread(() => scala.Console.withOut(out)(UCI.loop()))
+    loop.start()
+
+    def send(commands: String*): Unit = {
+      feed.write(commands.mkString("", "\n", "\n").getBytes("UTF-8"))
+      feed.flush()
+    }
+
+    def output: String = out.toString
+
+    // Waits up to 10 s for the text to be printed.
+    def await(text: String): Unit = {
+      val giveUp = System.nanoTime() + 10000000000L
+      while (!output.contains(text) && System.nanoTime() < giveUp) Thread.sleep(1)
+    }
+
+    // Sends quit and returns everything printed.
+    def quit(): String = {
+      send("quit")
+      feed.close()
+      loop.join()
+      System.setIn(originalIn)
+      output
+    }
+  }
+
+  // Like uci, but sends quit only once the engine has answered bestmove, as a GUI does when it
+  // leaves the search to end on its own. quit would stop it.
+  def uciThenQuit(commands: String*): String = {
+    val engine = new Engine
+    engine.send(commands: _*)
+    engine.await("bestmove")
+    engine.quit()
+  }
+
   val kiwipete = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"
 
   // The deepest iteration the info lines report.
@@ -73,16 +115,39 @@ class IntegrationSpec extends Specification {
 
     "stop at the movetime with the move the last finished depth found" in {
       // Depth 8 takes about 400 ms here.
-      val out = uci(s"position fen $kiwipete", "go movetime 1", "quit")
+      val out = uciThenQuit(s"position fen $kiwipete", "go movetime 1")
       lastDepth(out) must beLessThan(8)
       out must beMatching("(?s).*bestmove [a-h][1-8][a-h][1-8]\\n")
     }
 
     "manage the side to move's clock" in {
       // White to move has 30 ms left, too little for more than depth 1; Black's clock doesn't count.
-      val out = uci(s"position fen $kiwipete", "go wtime 30 btime 100000", "quit")
+      val out = uciThenQuit(s"position fen $kiwipete", "go wtime 30 btime 100000")
       lastDepth(out) must beLessThan(8)
       out must beMatching("(?s).*bestmove [a-h][1-8][a-h][1-8]\\n")
+    }
+
+    "stop go infinite at stop with the move the last finished depth found" in {
+      val out = uci(s"position fen $kiwipete", "go infinite", "stop", "quit")
+      lastDepth(out) must beLessThan(8)
+      out must beMatching("(?s).*bestmove [a-h][1-8][a-h][1-8]\\n")
+    }
+
+    "answer isready during a search" in {
+      val out = uci(s"position fen $kiwipete", "go infinite", "isready", "stop", "quit")
+      out.indexOf("readyok") must beLessThan(out.indexOf("bestmove"))
+    }
+
+    "search go infinite until stop, even past its deepest" in {
+      // Black is mated, so each depth takes no time, and 100 ms is ample for all of them.
+      val engine = new Engine
+      engine.send("position fen R5k1/5ppp/8/8/8/8/8/6K1 b - - 0 1", "go infinite")
+      Thread.sleep(100)
+      val beforeStop = engine.output
+      engine.send("stop")
+      engine.await("bestmove")
+      engine.quit() must contain("bestmove 0000")
+      beforeStop must not(contain("bestmove"))
     }
 
     "handle Transposition Table collisions correctly" in {

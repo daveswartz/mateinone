@@ -15,9 +15,9 @@ object BitboardSearch {
   // The game's positions before the root, as positionHistory held them when the search started.
   private var historyBeforeRoot: List[Long] = Nil
 
-  // The System.nanoTime at which the search stops, and whether it has. A stopped search's scores and
-  // moves are partial, so they're for throwing away.
-  var deadline = Long.MaxValue
+  // Checked every 2048 nodes, about a millisecond: once it's true, the search stops, and stopped
+  // says so. A stopped search's scores and moves are partial, so they're for throwing away.
+  var shouldStop: () => Boolean = () => false
   var stopped = false
 
   // The ms to spend on a move with timeLeft on the clock: an even share of it for the moves to go,
@@ -73,10 +73,9 @@ object BitboardSearch {
     }
   }
 
-  // Counts a node, and checks the clock every 2048 nodes, about a millisecond.
   private def countNode(): Unit = {
     nodesSearched += 1
-    if ((nodesSearched & 2047) == 0 && System.nanoTime() >= deadline) stopped = true
+    if ((nodesSearched & 2047) == 0 && shouldStop()) stopped = true
   }
 
   def search(b: Bitboard, depth: Int, alpha: Int, beta: Int, ply: Int = 0): Int = {

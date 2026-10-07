@@ -7,6 +7,11 @@ import java.util.Scanner
 object UCI {
   private var board = Bitboard.initial
 
+  // The search runs on its own thread, so that the loop can read stop while it runs.
+  private var searchThread: Option[Thread] = None
+  // Set by stop on the loop's thread, and read by the search's.
+  @volatile private var stopRequested = false
+
   def loop(): Unit = {
     val scanner = new Scanner(System.in)
     while (scanner.hasNextLine) {
@@ -18,18 +23,37 @@ object UCI {
       } else if (line == "isready") {
         println("readyok")
       } else if (line == "ucinewgame") {
+        awaitSearch()
         board = Bitboard.initial
         TranspositionTable.clear()
       } else if (line.startsWith("position")) {
+        awaitSearch()
         parsePosition(line)
       } else if (line.startsWith("go")) {
+        awaitSearch()
         parseGo(line)
       } else if (line == "quit") {
+        stopSearch()
         return
       } else if (line == "stop") {
-        // TODO: Implement search interruption
+        stopSearch()
       }
     }
+    // The end of the input is a quit, as in Stockfish.
+    stopSearch()
+  }
+
+  // Waits for the search to end. The GUI shouldn't send position or go while one runs, but if it
+  // does, they wait.
+  private def awaitSearch(): Unit = {
+    searchThread.foreach(_.join())
+    searchThread = None
+  }
+
+  // Stops the search, which answers with bestmove, and waits for it.
+  private def stopSearch(): Unit = {
+    stopRequested = true
+    awaitSearch()
   }
 
   private def parsePosition(line: String): Unit = {
@@ -73,10 +97,18 @@ object UCI {
     val (time, inc) = if (board.sideToMove == White) ("wtime", "winc") else ("btime", "binc")
     val clockTime = value(time).map(BitboardSearch.timeForMove(_, value(inc).getOrElse(0L), value("movestogo").getOrElse(30L)))
     val timeLimit = (value("movetime") ++ clockTime).minOption
-    // With a time limit, as deep as the time allows; with neither a limit nor a depth, depth 8.
-    val depth = value("depth").map(_.toInt).getOrElse(if (timeLimit.isDefined) BitboardSearch.MaxDepth else 8)
+    val infinite = parts.contains("infinite")
+    // With a time limit or infinite, as deep as it can; with neither, nor a depth, depth 8.
+    val depth = value("depth").map(_.toInt).getOrElse(if (timeLimit.isDefined || infinite) BitboardSearch.MaxDepth else 8)
 
-    // Search with UCI-formatted output
+    stopRequested = false
+    val thread = new Thread(() => search(depth, timeLimit, infinite), "search")
+    thread.start()
+    searchThread = Some(thread)
+  }
+
+  // Searches the board with UCI-formatted output, until the depth, the time limit or a stop.
+  private def search(depth: Int, timeLimit: Option[Long], infinite: Boolean): Unit = {
     BitboardSearch.nodesSearched = 0
     BitboardSearch.ttHits = 0
     BitboardSearch.clearHistory()
@@ -85,13 +117,14 @@ object UCI {
     TranspositionTable.clear()
     val startTime = System.nanoTime()
     val deadline = timeLimit.fold(Long.MaxValue)(ms => startTime + ms * 1000000)
+    val stop = () => stopRequested || System.nanoTime() >= deadline
     BitboardSearch.stopped = false
 
     var bestMove = 0
     var d = 1
-    while (d <= depth && !BitboardSearch.stopped) {
-      // Depth 1 runs without the clock, so there's a move to play when the time runs out.
-      BitboardSearch.deadline = if (d == 1) Long.MaxValue else deadline
+    // Depth 1 runs to the end, so there's a move to play when the search stops.
+    while (d <= depth && (d == 1 || !stop())) {
+      BitboardSearch.shouldStop = if (d == 1) () => false else stop
       val score = BitboardSearch.search(board, d, -30000, 30000, 0)
       if (!BitboardSearch.stopped) {
         val totalDeltaMs = (System.nanoTime() - startTime) / 1000000
@@ -115,8 +148,10 @@ object UCI {
       }
       d += 1
     }
+    // An infinite search answers only at stop, even once it's as deep as it goes.
+    while (infinite && !stopRequested) Thread.sleep(1)
     // So that a later search without a clock runs to its depth.
-    BitboardSearch.deadline = Long.MaxValue
+    BitboardSearch.shouldStop = () => false
     BitboardSearch.stopped = false
 
     // 0000 is UCI's null move, for a position with no legal move.
