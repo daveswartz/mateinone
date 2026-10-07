@@ -19,12 +19,12 @@ object Main {
     val playMode = args.contains("--play")
 
     if (playMode) {
-      println("Starting MateInOne: Human vs Computer")
-      println(s"Search Depth: $depth")
+      println("MateInOne: human vs computer")
+      println(s"Search depth: $depth")
       play(Bitboard.initial, depth)
     } else {
-      println(s"Starting MateInOne Bitboard Engine Simulation")
-      println(s"Target Depth: $depth")
+      println("MateInOne: self-play")
+      println(s"Search depth: $depth")
       println("-" * 30)
       step(Bitboard.initial, depth, 0)
     }
@@ -36,7 +36,7 @@ object Main {
       // evaluate scores from the side to move; show it from White's side so it doesn't flip each turn.
       val sideToMoveEval = BitboardEvaluator.evaluate(b, 0)
       val currentEval = if (b.sideToMove == White) sideToMoveEval else -sideToMoveEval
-      println(f"Current Evaluation: ${BitboardSearch.formatScore(currentEval)}")
+      println(f"Evaluation: ${BitboardSearch.formatScore(currentEval)}")
 
       if (b.isThreefoldRepetition) { println("Threefold repetition. Draw."); return }
       val moves = MoveGen.generateMoves(b).filter(m => {
@@ -64,7 +64,7 @@ object Main {
           val pieceSqs = numberedSquares.filter { case (sq, _) => b.pieceAt(sq) == pt }
           if (pieceSqs.nonEmpty) {
             val names = pieceSqs.map { case (sq, i) => s"${i + 1}. ${squareName(sq)}" }.mkString(", ")
-            println(f"${pieceNames(pt)}%-8s: $names")
+            println(f"${pieceNames(pt) + ":"}%-9s$names")
           }
         }
 

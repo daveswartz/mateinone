@@ -11,8 +11,9 @@ class IntegrationSpec extends Specification {
   "Engine Integration" should {
     "run a short simulation via Main" in {
       // Run with depth 1 for speed
-      Main.main(Array("--depth", "1"))
-      success
+      val out = new ByteArrayOutputStream()
+      scala.Console.withOut(out)(Main.main(Array("--depth", "1")))
+      out.toString must startWith("MateInOne: self-play\nSearch depth: 1\n")
     }
 
     "handle full UCI protocol commands" in {

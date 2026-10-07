@@ -40,8 +40,8 @@ class PlaySpec extends Specification {
 
     "accept a number at the piece prompt" in {
       val out = play("4k3/8/8/8/8/8/8/R3K3 w - - 0 1", "2", "q")
-      out must contain("Rooks   : 1. a1")
-      out must contain("Kings   : 2. e1")
+      out must contain("Rooks:   1. a1")
+      out must contain("Kings:   2. e1")
       out must contain("Destinations for e1: 1. d1, 2. d2, 3. e2, 4. f1, 5. f2")
     }
 
@@ -100,15 +100,23 @@ class PlaySpec extends Specification {
       val out = play(fen, "a7", "a8n", "q")
       out must contain("Destinations for a7: 1. a8q, 2. a8r, 3. a8b, 4. a8n")
       out must contain("Choose a destination [1-4, a square such as a8, or q to quit]: ")
-      out must contain("Knights : 1. a8")
-      play(fen, "a7", "a8", "q") must contain("Queens  : 1. a8")
+      out must contain("Knights: 1. a8")
+      play(fen, "a7", "a8", "q") must contain("Queens:  1. a8")
     }
 
     "show the evaluation from White's side on both sides' turns" in {
       // White is a queen up. Black (the computer) moves first, then the human.
       val out = play("k7/8/8/8/8/8/8/KQ6 b - - 0 1", "q")
-      out must contain("Current Evaluation: +")
-      out must not(contain("Current Evaluation: -"))
+      "(?m)^Evaluation: \\+".r.findFirstIn(out) must beSome
+      out must not(contain("Evaluation: -"))
+    }
+
+    "start with a header in the same form as self-play's" in {
+      val out = new ByteArrayOutputStream()
+      Console.withIn(new StringReader("q\n")) {
+        Console.withOut(out)(Main.main(Array("--play", "--depth", "1")))
+      }
+      out.toString must startWith("MateInOne: human vs computer\nSearch depth: 1\n")
     }
   }
 
