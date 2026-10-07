@@ -60,6 +60,20 @@ class SearchSpec extends Specification {
       BitboardSearch.search(b, 5, -1, 0, 1) must beEqualTo(-1)
     }
 
+    "not count a position from before a null move as a repeat" in {
+      // The rook goes a4-a3-a4 and a4-a2-a1 while Black's king steps out and back, so the position
+      // with the rook on a4 and White to move has occurred twice. After Ra4, Black's null move
+      // gives that position again, but a line through a pass isn't one a game can play, so it isn't
+      // a third occurrence. Black is down a rook for a knight, so its score is below 0.
+      val b = Bitboard.fromFen("7k/8/8/5n2/R7/8/8/4K3 w - - 0 1")
+      for (m <- Seq("a4a3", "h8g8", "a3a4", "g8h8", "a4a2", "h8g8", "a2a1", "g8h8")) b.makeMove(move(b, m))
+      // Searching from here first sets the search's root here, as a game's search would.
+      BitboardSearch.search(b, 1, -30000, 30000, 0)
+      b.makeMove(move(b, "a1a4"))
+      TranspositionTable.clear()
+      BitboardSearch.search(b, 3, -1, 0, 1) must beEqualTo(-1)
+    }
+
     "spend an even share of the clock on a move, plus the increment, but not its last 50 ms" in {
       BitboardSearch.timeForMove(60000, 0, 30) must beEqualTo(2000)
       BitboardSearch.timeForMove(60000, 1000, 30) must beEqualTo(3000)

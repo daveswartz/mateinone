@@ -15,6 +15,9 @@ object BitboardSearch {
   // The game's positions before the root, as positionHistory held them when the search started.
   private var historyBeforeRoot: List[Long] = Nil
 
+  // The game's positions before the latest null move in the line being searched, if it's below one.
+  private var historyBeforeNull: Option[List[Long]] = None
+
   // Checked every 2048 nodes, about a millisecond: once it's true, the search stops, and stopped
   // says so. A stopped search's scores and moves are partial, so they're for throwing away.
   var shouldStop: () => Boolean = () => false
@@ -92,6 +95,7 @@ object BitboardSearch {
     if (ply == 0) {
       rootBestMove = 0
       historyBeforeRoot = b.positionHistory
+      historyBeforeNull = None
     }
 
     // The root has to choose a move even in a drawn position, so only the positions below it are
@@ -125,9 +129,12 @@ object BitboardSearch {
       b.hash ^= Zobrist.sideToMove
       if (b.enPassantSq != SquareNone) b.hash ^= Zobrist.enPassant(fileOf(b.enPassantSq))
       b.enPassantSq = SquareNone
+      val outerNull = historyBeforeNull
+      historyBeforeNull = Some(b.positionHistory)
       
       val score = -search(b, depth - 3, -beta, -beta + 1, ply + 1)
       
+      historyBeforeNull = outerNull
       b.sideToMove ^= 1
       b.hash = oldHash
       b.enPassantSq = oldEp
@@ -213,17 +220,28 @@ object BitboardSearch {
 
   // Stockfish's rule: a position is a draw if it repeats once strictly after the root, or twice
   // in all. The side that steered into a repeat since the root can repeat it again. Only for
-  // positions below the root.
+  // positions below the root. Below a null move, only the positions since it count, as in
+  // Stockfish, since a line through a pass isn't one a game can play.
   private def isRepetition(b: Bitboard): Boolean = {
-    if (b.isThreefoldRepetition) return true
-    // positionHistory is newest first, and each move pushes the position it left, so the entries
-    // ahead of the root's own are the positions reached since the root.
     var h = b.positionHistory
-    while (h.nonEmpty && (h.tail ne historyBeforeRoot)) {
-      if (h.head == b.hash) return true
-      h = h.tail
+    historyBeforeNull match {
+      case Some(beforeNull) =>
+        // The positions since the null move are all since the root, so one repeat is a draw.
+        while (h.nonEmpty && (h ne beforeNull)) {
+          if (h.head == b.hash) return true
+          h = h.tail
+        }
+        false
+      case None =>
+        if (b.isThreefoldRepetition) return true
+        // positionHistory is newest first, and each move pushes the position it left, so the
+        // entries ahead of the root's own are the positions reached since the root.
+        while (h.nonEmpty && (h.tail ne historyBeforeRoot)) {
+          if (h.head == b.hash) return true
+          h = h.tail
+        }
+        false
     }
-    false
   }
 
   def quiesce(b: Bitboard, alpha: Int, beta: Int, ply: Int): Int = {
