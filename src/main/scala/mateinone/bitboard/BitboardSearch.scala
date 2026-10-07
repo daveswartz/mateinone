@@ -67,8 +67,9 @@ object BitboardSearch {
       val victimType = if (mEP(m)) Pawn else b.pieceAt(mTo(m))
       (pieceValues(victimType) * 10) - pieceValues(mPiece(m)) + 20000
     } else {
-      if (m == killers(ply)(0)) 9000
-      else if (m == killers(ply)(1)) 8000
+      // Quiescence can run past the killers' last ply.
+      if (ply < MaxPly && m == killers(ply)(0)) 9000
+      else if (ply < MaxPly && m == killers(ply)(1)) 8000
       else history(b.sideToMove)(mFrom(m))(mTo(m))
     }
   }
@@ -222,11 +223,17 @@ object BitboardSearch {
   def quiesce(b: Bitboard, alpha: Int, beta: Int, ply: Int): Int = {
     countNode()
     if (stopped) return 0
-    val standingPat = BitboardEvaluator.evaluate(b, ply)
-    if (standingPat >= beta) return beta
-    var maxAlpha = Math.max(alpha, standingPat)
+    // In check, the side can't stand pat, since it has to answer the check, so it searches all its
+    // moves, and with none it's mated, as in Stockfish.
+    val inCheck = LegalChecker.isInCheck(b, b.sideToMove)
+    var maxAlpha = alpha
+    if (!inCheck) {
+      val standingPat = BitboardEvaluator.evaluate(b, ply)
+      if (standingPat >= beta) return beta
+      maxAlpha = Math.max(alpha, standingPat)
+    }
 
-    val captures = MoveGen.generateCaptures(b)
+    val captures = if (inCheck) MoveGen.generateMoves(b) else MoveGen.generateCaptures(b)
     val scored = new Array[Long](captures.length)
     for (i <- 0 until captures.length) {
       scored(i) = (scoreMove(b, captures(i), ply, 0).toLong << 32) | i.toLong
@@ -238,6 +245,7 @@ object BitboardSearch {
       val t = scored(i); scored(i) = scored(maxIdx); scored(maxIdx) = t
     }
 
+    var legalMoves = 0
     for (i <- 0 until scored.length) {
       val m = captures((scored(i) & 0xFFFFFFFFL).toInt)
       if (b.pieceAt(mTo(m)) == King) return 30000
@@ -245,12 +253,14 @@ object BitboardSearch {
       if (LegalChecker.isInCheck(b, b.sideToMove ^ 1)) {
         b.unmakeMove(m)
       } else {
+        legalMoves += 1
         val score = -quiesce(b, -beta, -maxAlpha, ply + 1)
         b.unmakeMove(m)
         if (score >= beta) return beta
         if (score > maxAlpha) maxAlpha = score
       }
     }
+    if (inCheck && legalMoves == 0) return -20000 + ply
     maxAlpha
   }
 }

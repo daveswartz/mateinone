@@ -36,6 +36,22 @@ class SearchSpec extends Specification {
       BitboardSearch.search(b, 3, -30000, 30000, 0) must beEqualTo(-20000 + 2)
     }
 
+    "see a mate on the search's last ply" in {
+      // Rh8 mates. At depth 1, Black's reply is quiescence's, which has to see that Black is in
+      // check and has no move.
+      val b = Bitboard.fromFen("k7/8/1K6/8/8/8/8/7R w - - 0 1")
+      TranspositionTable.clear()
+      BitboardSearch.search(b, 1, -30000, 30000, 0) must beEqualTo(20000 - 1)
+    }
+
+    "answer a check in quiescence at any ply, even past the killers' last" in {
+      // Black's king has to step out of the rook's check, and quiescence can run past ply 63, the
+      // last the killers hold, after a depth 64 search.
+      val b = Bitboard.fromFen("4k3/8/8/8/8/8/8/4R1K1 b - - 0 1")
+      TranspositionTable.clear()
+      BitboardSearch.quiesce(b, -30000, 30000, 64) must beGreaterThan(-15000)
+    }
+
     "spend an even share of the clock on a move, plus the increment, but not its last 50 ms" in {
       BitboardSearch.timeForMove(60000, 0, 30) must beEqualTo(2000)
       BitboardSearch.timeForMove(60000, 1000, 30) must beEqualTo(3000)
