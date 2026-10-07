@@ -68,8 +68,8 @@ object Main {
           }
         }
 
-        print(s"\nChoose a piece [${numberRange(movableSquares.length)}, a square such as ${squareName(movableSquares.head)}, or q to quit]: ")
-        val fromInput = scala.io.StdIn.readLine()
+        println()
+        val fromInput = ask(s"Choose a piece [${numberRange(movableSquares.length)}, a square such as ${squareName(movableSquares.head)}, or q to quit]: ")
         if (isQuit(fromInput)) return
 
         val fromSq = choose(fromInput, movableSquares, squareName)
@@ -84,8 +84,7 @@ object Main {
           }
           println(s"Destinations for ${squareName(mFrom(pieceMoves.head))}: ${destinations.mkString(", ")}")
           
-          print(s"Choose a destination [${numberRange(sortedPieceMoves.length)}, a square such as ${squareName(mTo(sortedPieceMoves.head))}, or q to quit]: ")
-          val toInput = scala.io.StdIn.readLine()
+          val toInput = ask(s"Choose a destination [${numberRange(sortedPieceMoves.length)}, a square such as ${squareName(mTo(sortedPieceMoves.head))}, or q to quit]: ")
           if (isQuit(toInput)) return
 
           // A bare square picks its first move, which for a promotion is the queen.
@@ -104,6 +103,13 @@ object Main {
         println(s"Computer played: ${moveName(m)}")
       }
     }
+  }
+
+  // Prints the prompt and reads an answer, asking again after a blank line.
+  private def ask(prompt: String): String = {
+    print(prompt)
+    val input = scala.io.StdIn.readLine()
+    if (input != null && input.trim.isEmpty) ask(prompt) else input
   }
 
   // null is end of input.

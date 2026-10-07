@@ -42,6 +42,14 @@ class PlaySpec extends Specification {
       out must contain(">>> 99999999999 is not one of the choices. Try again.")
     }
 
+    "ask again after a blank answer" in {
+      val out = play("4k3/8/8/8/8/8/8/R3K3 w - - 0 1", "", "a1", "", "q")
+      out must not(contain(">>>"))
+      "Your pieces with legal moves".r.findAllIn(out).length must beEqualTo(1)
+      "Choose a piece".r.findAllIn(out).length must beEqualTo(2)
+      "Choose a destination".r.findAllIn(out).length must beEqualTo(2)
+    }
+
     "quit with q at the destination prompt" in {
       val out = play("4k3/8/8/8/8/8/8/R3K3 w - - 0 1", "a1", "q")
       "Your pieces with legal moves".r.findAllIn(out).length must beEqualTo(1)
