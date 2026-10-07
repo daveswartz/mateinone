@@ -125,6 +125,15 @@ class IntegrationSpec extends Specification {
       uciExit("position fen 4k3/8/8/8/8/8/8/4K3 w - -", "quit") must beEqualTo((0, ""))
     }
 
+    "quit on an illegal move after position, saying which, as Stockfish does" in {
+      // A king can't move two squares except to castle; the go after it isn't read.
+      uciExit("position startpos moves e2e4 e7e5 e1e3", "go depth 1", "quit") must
+        beEqualTo((1, "info string invalid position: illegal move e1e3\n"))
+      // The bishop is pinned to its king by the rook.
+      uciExit("position fen 4k3/4r3/8/8/8/8/4B3/4K3 w - - moves e2d3", "go depth 1", "quit") must
+        beEqualTo((1, "info string invalid position: illegal move e2d3\n"))
+    }
+
     "stop at the movetime with the move the last finished depth found" in {
       // Depth 8 takes about 400 ms here.
       val out = uciThenQuit(s"position fen $kiwipete", "go movetime 1")

@@ -85,22 +85,26 @@ object UCI {
       if (kings(White) != 1 || kings(Black) != 1) return Some("each side needs exactly one king")
     }
 
+    // A move that isn't legal would leave the board out of step with the GUI's game, as in Stockfish.
     if (movesIdx != -1) {
-      for (i <- movesIdx + 1 until parts.length) {
-        val moveStr = parts(i)
-        val legalMoves = MoveGen.generateMoves(board)
-        legalMoves.find(m => {
-          val promoChar = mPromo(m) match {
-            case Queen => "q"; case Rook => "r"; case Bishop => "b"; case Knight => "n"; case _ => ""
-          }
-          s"${squareName(mFrom(m))}${squareName(mTo(m))}$promoChar" == moveStr.toLowerCase
-        }) match {
+      var i = movesIdx + 1
+      while (i < parts.length) {
+        MoveGen.generateMoves(board).find(m => moveName(m) == parts(i).toLowerCase && isLegal(m)) match {
           case Some(m) => board.makeMove(m)
-          case None => // Ignore invalid moves
+          case None => return Some(s"illegal move ${parts(i)}")
         }
+        i += 1
       }
     }
     None
+  }
+
+  // Whether the move leaves the mover's king out of check.
+  private def isLegal(m: Int): Boolean = {
+    board.makeMove(m)
+    val legal = !LegalChecker.isInCheck(board, board.sideToMove ^ 1)
+    board.unmakeMove(m)
+    legal
   }
 
   private def parseGo(line: String): Unit = {
