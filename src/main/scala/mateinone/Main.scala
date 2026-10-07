@@ -58,19 +58,22 @@ object Main {
         
         println("\nYour pieces with legal moves:")
         val pieceNames = Array("Pawns", "Knights", "Bishops", "Rooks", "Queens", "Kings")
+        // Number the pieces straight through the groups, in the order they're listed.
+        val numberedSquares = movableSquares.zipWithIndex
         for (pt <- 0 to 5) {
-          val pieceSqs = movableSquares.filter(sq => b.pieceAt(sq) == pt)
+          val pieceSqs = numberedSquares.filter { case (sq, _) => b.pieceAt(sq) == pt }
           if (pieceSqs.nonEmpty) {
-            val names = pieceSqs.map(squareName).mkString(", ")
+            val names = pieceSqs.map { case (sq, i) => s"${i + 1}. ${squareName(sq)}" }.mkString(", ")
             println(f"${pieceNames(pt)}%-8s: $names")
           }
         }
 
-        print(s"\nChoose a piece [a square such as ${squareName(movableSquares.head)} or q to quit]: ")
+        print(s"\nChoose a piece [${numberRange(movableSquares.length)}, a square such as ${squareName(movableSquares.head)}, or q to quit]: ")
         val fromInput = scala.io.StdIn.readLine()
         if (isQuit(fromInput)) return
 
-        val pieceMoves = moves.filter(m => squareName(mFrom(m)) == fromInput)
+        val fromSq = choose(fromInput, movableSquares, squareName)
+        val pieceMoves = moves.filter(m => fromSq.contains(mFrom(m)))
 
         if (pieceMoves.isEmpty) {
           println(notAChoice(fromInput))
@@ -79,21 +82,15 @@ object Main {
           val destinations = sortedPieceMoves.zipWithIndex.map { case (m, i) =>
             s"${i + 1}. ${destName(m)}"
           }
-          println(s"Destinations for $fromInput: ${destinations.mkString(", ")}")
+          println(s"Destinations for ${squareName(mFrom(pieceMoves.head))}: ${destinations.mkString(", ")}")
           
-          val numbers = if (sortedPieceMoves.length == 1) "1" else s"1-${sortedPieceMoves.length}"
-          print(s"Choose a destination [$numbers, a square such as ${squareName(mTo(sortedPieceMoves.head))}, or q to quit]: ")
+          print(s"Choose a destination [${numberRange(sortedPieceMoves.length)}, a square such as ${squareName(mTo(sortedPieceMoves.head))}, or q to quit]: ")
           val toInput = scala.io.StdIn.readLine()
           if (isQuit(toInput)) return
 
-          val selectedMove = if (toInput != null && toInput.nonEmpty && toInput.forall(_.isDigit)) {
-            val idx = toInput.toInt - 1
-            if (idx >= 0 && idx < sortedPieceMoves.length) Some(sortedPieceMoves(idx)) else None
-          } else {
-            // A bare square picks its first move, which for a promotion is the queen.
-            sortedPieceMoves.find(m => destName(m) == toInput)
-              .orElse(sortedPieceMoves.find(m => squareName(mTo(m)) == toInput))
-          }
+          // A bare square picks its first move, which for a promotion is the queen.
+          val selectedMove = choose(toInput, sortedPieceMoves, destName)
+            .orElse(sortedPieceMoves.find(m => squareName(mTo(m)) == toInput))
 
           selectedMove match {
             case Some(m) => b.makeMove(m)
@@ -113,6 +110,15 @@ object Main {
   private def isQuit(input: String): Boolean = input == null || input == "q" || input == "quit"
 
   private def notAChoice(input: String): String = s">>> $input is not one of the choices. Try again."
+
+  private def numberRange(n: Int): String = if (n == 1) "1" else s"1-$n"
+
+  // A number picks by its position in the list; anything else is matched against the names.
+  private def choose[A](input: String, choices: Seq[A], name: A => String): Option[A] =
+    input.toIntOption match {
+      case Some(n) => choices.lift(n - 1)
+      case None => choices.find(c => name(c) == input)
+    }
 
   // The promotion letter in UCI coordinate notation, e.g. "q" in a7a8q.
   private def promoSuffix(m: Int): String = mPromo(m) match {
