@@ -96,6 +96,10 @@ class PlaySpec extends Specification {
       play(threefold) must contain("Threefold repetition. Draw.")
     }
 
+    "announce a draw by insufficient material" in {
+      play("4k3/8/8/8/8/8/8/4K3 w - - 0 1") must contain("Insufficient material. Draw.")
+    }
+
     "name the piece when the computer promotes" in {
       val out = play("k7/8/8/8/8/8/p7/7K b - - 0 1", "q")
       out must contain("pv a2a1q")
@@ -132,7 +136,8 @@ class PlaySpec extends Specification {
     }
 
     "let the human choose the promotion piece" in {
-      val fen = "8/P6k/8/8/8/8/8/K7 w - - 0 1"
+      // Black's pawn keeps K+N vs K from ending the game as insufficient material.
+      val fen = "8/P6k/7p/8/8/8/8/K7 w - - 0 1"
       val out = play(fen, "a7", "a8n", "q")
       out must contain("Destinations for a7: 1. a8q, 2. a8r, 3. a8b, 4. a8n")
       out must contain("Choose a destination [1-4, a square such as a8, or q to quit]: ")
@@ -161,6 +166,12 @@ class PlaySpec extends Specification {
       val out = new ByteArrayOutputStream()
       Console.withOut(out)(Main.step(threefold, 1, 0))
       out.toString must contain("Threefold repetition. Draw.")
+    }
+
+    "announce a draw by insufficient material the same way as play" in {
+      val out = new ByteArrayOutputStream()
+      Console.withOut(out)(Main.step(Bitboard.fromFen("4k3/8/8/8/8/8/8/4K3 w - - 0 1"), 1, 0))
+      out.toString must beEqualTo("Insufficient material. Draw.\n")
     }
 
     "end the game when the side to move has no legal move" in {

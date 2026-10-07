@@ -39,6 +39,7 @@ object Main {
       println(f"Evaluation: ${BitboardSearch.formatScore(currentEval)}")
 
       if (b.isThreefoldRepetition) { println("Threefold repetition. Draw."); return }
+      if (b.isInsufficientMaterial) { println("Insufficient material. Draw."); return }
       val moves = legalMoves(b)
       if (moves.isEmpty) {
         // The human plays White.
@@ -193,6 +194,10 @@ object Main {
   def step(b: Bitboard, depth: Int, n: Int): Unit = {
     if (b.isThreefoldRepetition) {
       println("Threefold repetition. Draw.")
+      return
+    }
+    if (b.isInsufficientMaterial) {
+      println("Insufficient material. Draw.")
       return
     }
 
