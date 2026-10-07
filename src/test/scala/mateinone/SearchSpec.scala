@@ -27,6 +27,15 @@ class SearchSpec extends Specification {
       BitboardSearch.search(b, 5, -30000, 30000, 0) must beEqualTo(0)
     }
 
+    "score a stored mate by its distance from where the search meets the position" in {
+      // Black's only move is Kb8, and then Rh8 mates. The first search meets the position 10 plies
+      // in, as a long line does, and stores the mate; at the root it's mate in 2 plies all the same.
+      val b = Bitboard.fromFen("k7/8/1K6/8/8/8/8/7R b - - 0 1")
+      TranspositionTable.clear()
+      BitboardSearch.search(b, 3, -30000, 30000, 10) must beEqualTo(-20000 + 12)
+      BitboardSearch.search(b, 3, -30000, 30000, 0) must beEqualTo(-20000 + 2)
+    }
+
     "spend an even share of the clock on a move, plus the increment, but not its last 50 ms" in {
       BitboardSearch.timeForMove(60000, 0, 30) must beEqualTo(2000)
       BitboardSearch.timeForMove(60000, 1000, 30) must beEqualTo(3000)

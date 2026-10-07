@@ -73,6 +73,13 @@ object BitboardSearch {
     }
   }
 
+  // A mate score counts plies from the root, but the table holds it counted from its own position,
+  // as Stockfish's does, so that it's right wherever the search meets the position again.
+  private def toTable(score: Int, ply: Int): Int =
+    if (score > 15000) score + ply else if (score < -15000) score - ply else score
+  private def fromTable(score: Int, ply: Int): Int =
+    if (score > 15000) score - ply else if (score < -15000) score + ply else score
+
   private def countNode(): Unit = {
     nodesSearched += 1
     if ((nodesSearched & 2047) == 0 && shouldStop()) stopped = true
@@ -99,9 +106,10 @@ object BitboardSearch {
       // A stored result can't answer at the root, which has to search its moves to choose one.
       if (entry.depth >= depth && ply > 0) {
         ttHits += 1
-        if (entry.flag == TranspositionTable.Exact) return entry.score
-        if (entry.flag == TranspositionTable.LowerBound && entry.score >= beta) return beta
-        if (entry.flag == TranspositionTable.UpperBound && entry.score <= alpha) return alpha
+        val score = fromTable(entry.score, ply)
+        if (entry.flag == TranspositionTable.Exact) return score
+        if (entry.flag == TranspositionTable.LowerBound && score >= beta) return beta
+        if (entry.flag == TranspositionTable.UpperBound && score <= alpha) return alpha
       }
     }
 
@@ -177,7 +185,7 @@ object BitboardSearch {
             killers(ply)(0) = m
             history(b.sideToMove)(mFrom(m))(mTo(m)) += depth * depth
           }
-          TranspositionTable.store(b.hash, depth, beta, TranspositionTable.LowerBound, Some(m))
+          TranspositionTable.store(b.hash, depth, toTable(beta, ply), TranspositionTable.LowerBound, Some(m))
           if (ply == 0) rootBestMove = m
           return beta
         }
@@ -192,7 +200,7 @@ object BitboardSearch {
 
     if (legalMoves == 0) return if (LegalChecker.isInCheck(b, b.sideToMove)) -20000 + ply else 0
 
-    TranspositionTable.store(b.hash, depth, maxAlpha, flag, if (bestMove != 0) Some(bestMove) else None)
+    TranspositionTable.store(b.hash, depth, toTable(maxAlpha, ply), flag, if (bestMove != 0) Some(bestMove) else None)
     maxAlpha
   }
 
