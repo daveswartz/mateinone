@@ -67,7 +67,9 @@ object BitboardSearch {
       historyBeforeRoot = b.positionHistory
     }
 
-    if (isRepetition(b, ply)) return 0
+    // The root has to choose a move even in a drawn position, so only the positions below it are
+    // scored as repeats, as in Stockfish.
+    if (ply > 0 && isRepetition(b)) return 0
 
     val ttEntry = TranspositionTable.get(b.hash)
     var ttMove = 0
@@ -175,10 +177,10 @@ object BitboardSearch {
   }
 
   // Stockfish's rule: a position is a draw if it repeats once strictly after the root, or twice
-  // in all. The side that steered into a repeat since the root can repeat it again.
-  private def isRepetition(b: Bitboard, ply: Int): Boolean = {
+  // in all. The side that steered into a repeat since the root can repeat it again. Only for
+  // positions below the root.
+  private def isRepetition(b: Bitboard): Boolean = {
     if (b.isThreefoldRepetition) return true
-    if (ply == 0) return false
     // positionHistory is newest first, and each move pushes the position it left, so the entries
     // ahead of the root's own are the positions reached since the root.
     var h = b.positionHistory

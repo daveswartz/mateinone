@@ -26,5 +26,13 @@ class SearchSpec extends Specification {
       TranspositionTable.clear()
       BitboardSearch.search(b, 5, -30000, 30000, 0) must beEqualTo(0)
     }
+
+    "choose a root move even when the root has occurred three times" in {
+      val b = Bitboard.initial
+      for (name <- Seq("g1f3", "g8f6", "f3g1", "f6g8", "g1f3", "g8f6", "f3g1", "f6g8")) b.makeMove(move(b, name))
+      TranspositionTable.clear()
+      BitboardSearch.search(b, 1, -30000, 30000, 0)
+      BitboardSearch.rootBestMove must not(beEqualTo(0))
+    }
   }
 }
