@@ -15,11 +15,19 @@ object BitboardSearch {
   // The game's positions before the root, as positionHistory held them when the search started.
   private var historyBeforeRoot: List[Long] = Nil
 
+  // The System.nanoTime at which the search stops, and whether it has. A stopped search's scores and
+  // moves are partial, so they're for throwing away.
+  var deadline = Long.MaxValue
+  var stopped = false
+
   private val pieceValues = Array(100, 320, 330, 500, 900, 0)
   
   // Killer moves (2 per ply)
   private val MaxPly = 64
   private val killers = Array.fill(MaxPly, 2)(0)
+
+  // The deepest search the killers have room for: it uses them at plies 0 to depth - 1.
+  val MaxDepth = MaxPly
   
   // History table [color][from][to]
   private val history = Array.ofDim[Int](2, 64, 64)
@@ -60,8 +68,15 @@ object BitboardSearch {
     }
   }
 
-  def search(b: Bitboard, depth: Int, alpha: Int, beta: Int, ply: Int = 0): Int = {
+  // Counts a node, and checks the clock every 2048 nodes, about a millisecond.
+  private def countNode(): Unit = {
     nodesSearched += 1
+    if ((nodesSearched & 2047) == 0 && System.nanoTime() >= deadline) stopped = true
+  }
+
+  def search(b: Bitboard, depth: Int, alpha: Int, beta: Int, ply: Int = 0): Int = {
+    countNode()
+    if (stopped) return 0
     if (ply == 0) {
       rootBestMove = 0
       historyBeforeRoot = b.positionHistory
@@ -150,6 +165,7 @@ object BitboardSearch {
         }
         
         b.unmakeMove(m)
+        if (stopped) return 0
         
         if (score >= beta) {
           if (!mCapture(m)) {
@@ -192,7 +208,8 @@ object BitboardSearch {
   }
 
   def quiesce(b: Bitboard, alpha: Int, beta: Int, ply: Int): Int = {
-    nodesSearched += 1
+    countNode()
+    if (stopped) return 0
     val standingPat = BitboardEvaluator.evaluate(b, ply)
     if (standingPat >= beta) return beta
     var maxAlpha = Math.max(alpha, standingPat)

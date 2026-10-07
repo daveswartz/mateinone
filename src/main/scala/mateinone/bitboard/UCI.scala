@@ -64,12 +64,14 @@ object UCI {
 
   private def parseGo(line: String): Unit = {
     val parts = line.split(" ")
-    var depth = 8 // Default UCI depth
-    
-    val depthIdx = parts.indexOf("depth")
-    if (depthIdx != -1 && depthIdx < parts.length - 1) {
-      depth = parts(depthIdx + 1).toInt
+    // The number after the named token, e.g. 100 for "movetime 100".
+    def value(name: String): Option[Long] = parts.indexOf(name) match {
+      case i if i >= 0 && i < parts.length - 1 => parts(i + 1).toLongOption
+      case _ => None
     }
+    val movetime = value("movetime")
+    // With a time limit, as deep as the time allows; with neither a limit nor a depth, depth 8.
+    val depth = value("depth").map(_.toInt).getOrElse(if (movetime.isDefined) BitboardSearch.MaxDepth else 8)
 
     // Search with UCI-formatted output
     BitboardSearch.nodesSearched = 0
@@ -79,29 +81,40 @@ object UCI {
     // an earlier go's results don't hold for this one.
     TranspositionTable.clear()
     val startTime = System.nanoTime()
+    val deadline = movetime.fold(Long.MaxValue)(ms => startTime + ms * 1000000)
+    BitboardSearch.stopped = false
 
     var bestMove = 0
-    for (d <- 1 to depth) {
+    var d = 1
+    while (d <= depth && !BitboardSearch.stopped) {
+      // Depth 1 runs without the clock, so there's a move to play when the time runs out.
+      BitboardSearch.deadline = if (d == 1) Long.MaxValue else deadline
       val score = BitboardSearch.search(board, d, -30000, 30000, 0)
-      val totalDeltaMs = (System.nanoTime() - startTime) / 1000000
-      // Take the move from the search, as play does. The rest of the PV comes from the table.
-      bestMove = BitboardSearch.rootBestMove
-      val pv = if (bestMove == 0) Nil else {
-        board.makeMove(bestMove)
-        val rest = BitboardSearch.getPV(board, d - 1)
-        board.unmakeMove(bestMove)
-        bestMove :: rest
-      }
-      val pvStr = pv.map(moveName).mkString(" ")
+      if (!BitboardSearch.stopped) {
+        val totalDeltaMs = (System.nanoTime() - startTime) / 1000000
+        // Take the move from the search, as play does. The rest of the PV comes from the table.
+        bestMove = BitboardSearch.rootBestMove
+        val pv = if (bestMove == 0) Nil else {
+          board.makeMove(bestMove)
+          val rest = BitboardSearch.getPV(board, d - 1)
+          board.unmakeMove(bestMove)
+          bestMove :: rest
+        }
+        val pvStr = pv.map(moveName).mkString(" ")
       
-      val scoreType = if (Math.abs(score) > 15000) "mate" else "cp"
-      val scoreVal = if (scoreType == "mate") {
-        val sign = if (score > 0) 1 else -1
-        sign * (20000 - Math.abs(score) + 1) / 2
-      } else score
+        val scoreType = if (Math.abs(score) > 15000) "mate" else "cp"
+        val scoreVal = if (scoreType == "mate") {
+          val sign = if (score > 0) 1 else -1
+          sign * (20000 - Math.abs(score) + 1) / 2
+        } else score
 
-      println(s"info depth $d score $scoreType $scoreVal time $totalDeltaMs nodes ${BitboardSearch.nodesSearched} pv $pvStr")
+        println(s"info depth $d score $scoreType $scoreVal time $totalDeltaMs nodes ${BitboardSearch.nodesSearched} pv $pvStr")
+      }
+      d += 1
     }
+    // So that a later search without a clock runs to its depth.
+    BitboardSearch.deadline = Long.MaxValue
+    BitboardSearch.stopped = false
 
     // 0000 is UCI's null move, for a position with no legal move.
     println(s"bestmove ${if (bestMove == 0) "0000" else moveName(bestMove)}")

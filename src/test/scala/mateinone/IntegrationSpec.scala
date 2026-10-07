@@ -21,6 +21,11 @@ class IntegrationSpec extends Specification {
     out.toString
   }
 
+  val kiwipete = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"
+
+  // The deepest iteration the info lines report.
+  def lastDepth(out: String): Int = "info depth (\\d+)".r.findAllMatchIn(out).map(_.group(1).toInt).max
+
   "Engine Integration" should {
     "run a short simulation via Main" in {
       // Run with depth 1 for speed
@@ -64,6 +69,13 @@ class IntegrationSpec extends Specification {
     "apply the moves after a FEN without the move counters" in {
       // Ra8+ leaves Black only the king moves off the back rank.
       uci("position fen 4k3/8/8/8/8/8/8/R3K3 w - - moves a1a8", "go depth 1", "quit") must beMatching("(?s).*bestmove e8[def]7\n")
+    }
+
+    "stop at the movetime with the move the last finished depth found" in {
+      // Depth 8 takes about 400 ms here.
+      val out = uci(s"position fen $kiwipete", "go movetime 1", "quit")
+      lastDepth(out) must beLessThan(8)
+      out must beMatching("(?s).*bestmove [a-h][1-8][a-h][1-8]\\n")
     }
 
     "handle Transposition Table collisions correctly" in {
