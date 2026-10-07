@@ -24,10 +24,10 @@ object Attacks {
       if (rank < 7 && file > 1) k |= bb << 6
       if (rank < 6 && file < 7) k |= bb << 17
       if (rank < 6 && file > 0) k |= bb << 15
-      if (rank > 0 && file < 6) k |= bb >> 6
-      if (rank > 0 && file > 1) k |= bb >> 10
-      if (rank > 1 && file < 7) k |= bb >> 15
-      if (rank > 1 && file > 0) k |= bb >> 17
+      if (rank > 0 && file < 6) k |= bb >>> 6
+      if (rank > 0 && file > 1) k |= bb >>> 10
+      if (rank > 1 && file < 7) k |= bb >>> 15
+      if (rank > 1 && file > 0) k |= bb >>> 17
       KnightAttacks(sq) = k
 
       // King
@@ -40,12 +40,12 @@ object Attacks {
       }
       // South
       if (rank > 0) {
-        king |= bb >> 8
-        if (file > 0) king |= bb >> 9
-        if (file < 7) king |= bb >> 7
+        king |= bb >>> 8
+        if (file > 0) king |= bb >>> 9
+        if (file < 7) king |= bb >>> 7
       }
       // East/West
-      if (file > 0) king |= bb >> 1
+      if (file > 0) king |= bb >>> 1
       if (file < 7) king |= bb << 1
       KingAttacks(sq) = king
 
@@ -61,8 +61,8 @@ object Attacks {
       // Black captures South-East (-7) and South-West (-9)
       var bp = 0L
       if (rank > 0) {
-        if (file < 7) bp |= bb >> 7
-        if (file > 0) bp |= bb >> 9
+        if (file < 7) bp |= bb >>> 7
+        if (file > 0) bp |= bb >>> 9
       }
       PawnAttacks(Black)(sq) = bp
     }

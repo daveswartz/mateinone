@@ -66,6 +66,13 @@ class BitboardEdgeCaseSpec extends Specification {
       val moves = MoveGen.generateMoves(b)
       moves.exists(m => mCastle(m)) must beTrue
     }
+
+    "give a stalemated king on h8 no legal moves" in {
+      // Black king h8, white pawn h7 guarded by king g6. h8 is the sign bit of the bitboard.
+      val b = Bitboard.fromFen("7k/7P/6K1/8/8/8/8/8 b - - 0 1")
+      MoveGen.generateMoves(b).filter(m => isLegal(b, m)) must beEmpty
+      LegalChecker.isInCheck(b, Black) must beFalse
+    }
   }
 
   "UI and Search Utilities" should {
