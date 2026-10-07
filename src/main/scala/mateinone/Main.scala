@@ -99,10 +99,17 @@ object Main {
         println("Computer is thinking...")
         val m = findBestMove(b, depth)
         b.makeMove(m)
-        println(s"Computer played: ${squareName(mFrom(m))}${squareName(mTo(m))}")
+        println(s"Computer played: ${moveName(m)}")
       }
     }
   }
+
+  // The promotion letter in UCI coordinate notation, e.g. "q" in a7a8q.
+  private def promoSuffix(m: Int): String = mPromo(m) match {
+    case Queen => "q"; case Rook => "r"; case Bishop => "b"; case Knight => "n"; case _ => ""
+  }
+
+  private def moveName(m: Int): String = s"${squareName(mFrom(m))}${squareName(mTo(m))}${promoSuffix(m)}"
 
   private def findBestMove(b: Bitboard, depth: Int): Int = {
     BitboardSearch.nodesSearched = 0
@@ -135,7 +142,7 @@ object Main {
       val pv = BitboardSearch.getPV(b, d)
       if (pv.nonEmpty) bestMove = pv.head
       
-      val pvStr = pv.map(m => s"${squareName(mFrom(m))}${squareName(mTo(m))}").mkString(" ")
+      val pvStr = pv.map(moveName).mkString(" ")
       val nps = if (totalDelta > 0) (BitboardSearch.nodesSearched / totalDelta).toLong else 0
       
       println(f"depth $d%2d score ${BitboardSearch.formatScore(lastScore)}%s time $totalDelta%.2fs nodes ${BitboardSearch.nodesSearched}%,d nps $nps%,d pv $pvStr")

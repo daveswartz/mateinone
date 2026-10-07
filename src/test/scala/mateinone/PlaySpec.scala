@@ -34,5 +34,11 @@ class PlaySpec extends Specification {
     "announce a loss when the human is mated" in {
       play("6k1/8/8/8/8/8/5PPP/r5K1 w - - 0 1") must contain("Checkmate! You lose.")
     }
+
+    "name the piece when the computer promotes" in {
+      val out = play("k7/8/8/8/8/8/p7/7K b - - 0 1", "q")
+      out must contain("pv a2a1q")
+      out must contain("Computer played: a2a1q")
+    }
   }
 }
