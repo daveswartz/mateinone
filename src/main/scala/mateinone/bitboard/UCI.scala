@@ -6,14 +6,17 @@ import java.util.Scanner
 import scala.util.control.NonFatal
 
 object UCI {
-  private var board = Bitboard.initial
+  // The tests set it directly, to search a board that position would reject.
+  private[mateinone] var board = Bitboard.initial
 
   // The search runs on its own thread, so that the loop can read stop while it runs.
   private var searchThread: Option[Thread] = None
   // Set by stop on the loop's thread, and read by the search's.
   @volatile private var stopRequested = false
 
-  def loop(): Unit = {
+  // Returns the exit code: 0 after quit or the end of the input, 1 after a position the engine
+  // can't play.
+  def loop(): Int = {
     val scanner = new Scanner(System.in)
     while (scanner.hasNextLine) {
       val line = scanner.nextLine().trim
@@ -29,19 +32,27 @@ object UCI {
         TranspositionTable.clear()
       } else if (line.startsWith("position")) {
         awaitSearch()
-        parsePosition(line)
+        parsePosition(line) match {
+          // The engine can't play from a position it can't make sense of, so it says why and quits,
+          // as Stockfish does.
+          case Some(reason) =>
+            println(s"info string invalid position: $reason")
+            return 1
+          case None =>
+        }
       } else if (line.startsWith("go")) {
         awaitSearch()
         parseGo(line)
       } else if (line == "quit") {
         stopSearch()
-        return
+        return 0
       } else if (line == "stop") {
         stopSearch()
       }
     }
     // The end of the input is a quit, as in Stockfish.
     stopSearch()
+    0
   }
 
   // Waits for the search to end. The GUI shouldn't send position or go while one runs, but if it
@@ -57,9 +68,10 @@ object UCI {
     awaitSearch()
   }
 
-  private def parsePosition(line: String): Unit = {
+  // Sets the board, and returns why the position can't be played, if it can't.
+  private def parsePosition(line: String): Option[String] = {
     val parts = line.split(" ")
-    if (parts.length < 2) return
+    if (parts.length < 2) return None
     val movesIdx = parts.indexOf("moves")
 
     if (parts(1) == "startpos") {
@@ -68,6 +80,9 @@ object UCI {
       // The FEN runs up to "moves", since it can leave out its move counters.
       val fenParts = parts.slice(2, if (movesIdx == -1) parts.length else movesIdx)
       board = Bitboard.fromFen(fenParts.mkString(" "))
+      // The search needs one king a side, as Stockfish's does.
+      val kings = (side: Int) => java.lang.Long.bitCount(board.pieceBB(side)(King))
+      if (kings(White) != 1 || kings(Black) != 1) return Some("each side needs exactly one king")
     }
 
     if (movesIdx != -1) {
@@ -85,6 +100,7 @@ object UCI {
         }
       }
     }
+    None
   }
 
   private def parseGo(line: String): Unit = {

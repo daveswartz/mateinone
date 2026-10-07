@@ -9,17 +9,20 @@ class IntegrationSpec extends Specification {
   // The examples share global state (TranspositionTable, System.in), so run them one at a time.
   sequential
 
-  // Runs the UCI loop on the commands and returns everything printed.
-  def uci(commands: String*): String = {
+  // Runs the UCI loop on the commands and returns its exit code and everything printed.
+  def uciExit(commands: String*): (Int, String) = {
     // UCI.loop reads System.in. Its println writes to Console.out, which
     // System.setOut does not redirect once Console has been used.
     val originalIn = System.in
     val out = new ByteArrayOutputStream()
     System.setIn(new ByteArrayInputStream(commands.mkString("", "\n", "\n").getBytes("UTF-8")))
-    try scala.Console.withOut(out)(UCI.loop())
+    val code = try scala.Console.withOut(out)(UCI.loop())
     finally System.setIn(originalIn)
-    out.toString
+    (code, out.toString)
   }
+
+  // Runs the UCI loop on the commands and returns everything printed.
+  def uci(commands: String*): String = uciExit(commands: _*)._2
 
   // Runs the UCI loop on its own thread, as a GUI drives an engine: commands go in as they're
   // sent, and the output can be read as it comes.
@@ -113,6 +116,15 @@ class IntegrationSpec extends Specification {
       uci("position fen 4k3/8/8/8/8/8/8/R3K3 w - - moves a1a8", "go depth 1", "quit") must beMatching("(?s).*bestmove e8[def]7\n")
     }
 
+    "quit on a position without one king a side, saying why, as Stockfish does" in {
+      val reason = "info string invalid position: each side needs exactly one king\n"
+      // White has no king; the go after it isn't read.
+      uciExit("position fen 4k3/8/8/8/8/8/P7/8 w - -", "go depth 1", "quit") must beEqualTo((1, reason))
+      // Black has two.
+      uciExit("position fen 4k2k/8/8/8/8/8/8/4K3 w - -", "go depth 1", "quit") must beEqualTo((1, reason))
+      uciExit("position fen 4k3/8/8/8/8/8/8/4K3 w - -", "quit") must beEqualTo((0, ""))
+    }
+
     "stop at the movetime with the move the last finished depth found" in {
       // Depth 8 takes about 400 ms here.
       val out = uciThenQuit(s"position fen $kiwipete", "go movetime 1")
@@ -152,10 +164,11 @@ class IntegrationSpec extends Specification {
 
     "answer bestmove with the last finished depth's move when the search fails" in {
       // White has no king, so the move generator fails once the search reaches White's captures,
-      // at depth 2: the pawn can't check, so depth 1 ends at Black's reply. The stack trace goes
-      // to stderr.
+      // at depth 2: the pawn can't check, so depth 1 ends at Black's reply. position would reject
+      // the board, so the test sets it. The stack trace goes to stderr.
+      UCI.board = Bitboard.fromFen("4k3/8/8/8/8/8/P7/8 w - -")
       val err = new ByteArrayOutputStream()
-      val out = scala.Console.withErr(err)(uciThenQuit("position fen 4k3/8/8/8/8/8/P7/8 w - -", "go depth 3"))
+      val out = scala.Console.withErr(err)(uciThenQuit("go depth 3"))
       out must contain("info string search failed: java.lang.ArrayIndexOutOfBoundsException")
       val depth1Move = "info depth 1 .* pv (\\S+)".r.findFirstMatchIn(out).get.group(1)
       out must endWith(s"bestmove $depth1Move\n")

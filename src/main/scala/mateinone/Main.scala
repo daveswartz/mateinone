@@ -6,10 +6,7 @@ import mateinone.TerminalPrinter._
 
 object Main {
   def main(args: Array[String]): Unit = {
-    if (args.contains("--uci")) {
-      UCI.loop()
-      return
-    }
+    if (args.contains("--uci")) sys.exit(UCI.loop())
 
     val depthArg = args.indexOf("--depth") match {
       case i if i >= 0 && i < args.length - 1 => Some(args(i + 1).toInt)
