@@ -56,6 +56,11 @@ class IntegrationSpec extends Specification {
       uci(s"position fen $fen", "go depth 1", "quit") must contain("bestmove d8d4")
     }
 
+    "answer bestmove 0000 when the side to move has no legal move" in {
+      // Black is mated by the rook on the back rank.
+      uci("position fen R5k1/5ppp/8/8/8/8/8/6K1 b - - 0 1", "go depth 2", "quit") must contain("bestmove 0000")
+    }
+
     "handle Transposition Table collisions correctly" in {
       TranspositionTable.clear()
       val hash1 = 12345L

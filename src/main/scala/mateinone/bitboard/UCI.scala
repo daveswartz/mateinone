@@ -79,16 +79,19 @@ object UCI {
     TranspositionTable.clear()
     val startTime = System.nanoTime()
 
+    var bestMove = 0
     for (d <- 1 to depth) {
       val score = BitboardSearch.search(board, d, -30000, 30000, 0)
       val totalDeltaMs = (System.nanoTime() - startTime) / 1000000
-      val pv = BitboardSearch.getPV(board, d)
-      val pvStr = pv.map(m => {
-        val promoChar = mPromo(m) match {
-          case Queen => "q"; case Rook => "r"; case Bishop => "b"; case Knight => "n"; case _ => ""
-        }
-        s"${squareName(mFrom(m))}${squareName(mTo(m))}$promoChar"
-      }).mkString(" ")
+      // Take the move from the search, as play does. The rest of the PV comes from the table.
+      bestMove = BitboardSearch.rootBestMove
+      val pv = if (bestMove == 0) Nil else {
+        board.makeMove(bestMove)
+        val rest = BitboardSearch.getPV(board, d - 1)
+        board.unmakeMove(bestMove)
+        bestMove :: rest
+      }
+      val pvStr = pv.map(moveName).mkString(" ")
       
       val scoreType = if (Math.abs(score) > 15000) "mate" else "cp"
       val scoreVal = if (scoreType == "mate") {
@@ -99,11 +102,14 @@ object UCI {
       println(s"info depth $d score $scoreType $scoreVal time $totalDeltaMs nodes ${BitboardSearch.nodesSearched} pv $pvStr")
     }
 
-    val finalPv = BitboardSearch.getPV(board, depth)
-    val bestMove = if (finalPv.nonEmpty) finalPv.head else MoveGen.generateMoves(board).head
-    val bestPromoChar = mPromo(bestMove) match {
+    // 0000 is UCI's null move, for a position with no legal move.
+    println(s"bestmove ${if (bestMove == 0) "0000" else moveName(bestMove)}")
+  }
+
+  private def moveName(m: Int): String = {
+    val promoChar = mPromo(m) match {
       case Queen => "q"; case Rook => "r"; case Bishop => "b"; case Knight => "n"; case _ => ""
     }
-    println(s"bestmove ${squareName(mFrom(bestMove))}${squareName(mTo(bestMove))}$bestPromoChar")
+    s"${squareName(mFrom(m))}${squareName(mTo(m))}$promoChar"
   }
 }
