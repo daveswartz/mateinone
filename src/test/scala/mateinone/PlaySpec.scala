@@ -76,6 +76,10 @@ class PlaySpec extends Specification {
       out must not(contain("You lose"))
     }
 
+    "show the human's move the way it shows the computer's" in {
+      play("6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1", "a1", "a8") must contain("You played: a1a8")
+    }
+
     "announce a loss when the human is mated" in {
       play("6k1/8/8/8/8/8/5PPP/r5K1 w - - 0 1") must contain("Checkmate. You lose.")
     }

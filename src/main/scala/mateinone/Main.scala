@@ -92,7 +92,9 @@ object Main {
             .orElse(sortedPieceMoves.find(m => squareName(mTo(m)) == toInput))
 
           selectedMove match {
-            case Some(m) => b.makeMove(m)
+            case Some(m) =>
+              b.makeMove(m)
+              println(s"You played: ${moveName(m)}")
             case None => println(notAChoice(toInput))
           }
         }
