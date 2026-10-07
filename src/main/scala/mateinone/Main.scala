@@ -62,7 +62,7 @@ object Main {
           }
         }
 
-        print(s"\nChoose piece to move [e2, 'q' to quit]: ")
+        print(s"\nChoose piece to move [${squareName(movableSquares.head)}, 'q' to quit]: ")
         val fromInput = scala.io.StdIn.readLine()
         if (fromInput == null || fromInput == "q" || fromInput == "quit") return
         
@@ -77,7 +77,8 @@ object Main {
           }
           println(s"Destinations for $fromInput: ${destinations.mkString(", ")}")
           
-          print(s"Select destination [Number or e4]: ")
+          val numbers = if (sortedPieceMoves.length == 1) "1" else s"1-${sortedPieceMoves.length}"
+          print(s"Select destination [$numbers or ${squareName(mTo(sortedPieceMoves.head))}]: ")
           val toInput = scala.io.StdIn.readLine()
           
           val selectedMove = if (toInput != null && toInput.nonEmpty && toInput.forall(_.isDigit)) {
