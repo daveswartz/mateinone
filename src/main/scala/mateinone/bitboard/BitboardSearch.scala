@@ -65,7 +65,8 @@ object BitboardSearch {
     if (ttEntry.isDefined) {
       val entry = ttEntry.get
       ttMove = entry.bestMove.collect { case m: Int => m }.getOrElse(0)
-      if (entry.depth >= depth) {
+      // A stored result can't answer at the root, which has to search its moves to choose one.
+      if (entry.depth >= depth && ply > 0) {
         ttHits += 1
         if (entry.flag == TranspositionTable.Exact) return entry.score
         if (entry.flag == TranspositionTable.LowerBound && entry.score >= beta) return beta
