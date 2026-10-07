@@ -167,6 +167,12 @@ class MateInOneSpec extends Specification {
       Bitboard.fromFen("4k3/8/8/8/2b5/2B5/8/4K3 w - - 0 1").isInsufficientMaterial must beFalse
     }
 
+    "read a FEN without the halfmove and fullmove counters" in {
+      val b = Bitboard.fromFen("4k3/8/8/8/8/8/8/R3K3 w - -")
+      b.halfMoveClock must beEqualTo(0)
+      b.fullMoveNumber must beEqualTo(1)
+    }
+
     "detect Fifty-Move Rule" in {
       val b = Bitboard.initial
       b.halfMoveClock = 100

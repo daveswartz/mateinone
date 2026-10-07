@@ -242,8 +242,9 @@ object Bitboard {
       b.enPassantSq = squareIndex(f, r)
     }
     
-    b.halfMoveClock = parts(4).toInt
-    b.fullMoveNumber = parts(5).toInt
+    // The move counters are often left out, as in EPD. Stockfish reads them as 0 and 1 then too.
+    b.halfMoveClock = if (parts.length > 4) parts(4).toInt else 0
+    b.fullMoveNumber = if (parts.length > 5) parts(5).toInt else 1
     
     b.updateOccupancy()
     
