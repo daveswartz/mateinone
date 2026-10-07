@@ -3,6 +3,7 @@ package mateinone.bitboard
 import Constants._
 import mateinone.TranspositionTable
 import java.util.Scanner
+import scala.util.control.NonFatal
 
 object UCI {
   private var board = Bitboard.initial
@@ -122,31 +123,39 @@ object UCI {
 
     var bestMove = 0
     var d = 1
-    // Depth 1 runs to the end, so there's a move to play when the search stops.
-    while (d <= depth && (d == 1 || !stop())) {
-      BitboardSearch.shouldStop = if (d == 1) () => false else stop
-      val score = BitboardSearch.search(board, d, -30000, 30000, 0)
-      if (!BitboardSearch.stopped) {
-        val totalDeltaMs = (System.nanoTime() - startTime) / 1000000
-        // Take the move from the search, as play does. The rest of the PV comes from the table.
-        bestMove = BitboardSearch.rootBestMove
-        val pv = if (bestMove == 0) Nil else {
-          board.makeMove(bestMove)
-          val rest = BitboardSearch.getPV(board, d - 1)
-          board.unmakeMove(bestMove)
-          bestMove :: rest
-        }
-        val pvStr = pv.map(moveName).mkString(" ")
+    try {
+      // Depth 1 runs to the end, so there's a move to play when the search stops.
+      while (d <= depth && (d == 1 || !stop())) {
+        BitboardSearch.shouldStop = if (d == 1) () => false else stop
+        val score = BitboardSearch.search(board, d, -30000, 30000, 0)
+        if (!BitboardSearch.stopped) {
+          val totalDeltaMs = (System.nanoTime() - startTime) / 1000000
+          // Take the move from the search, as play does. The rest of the PV comes from the table.
+          bestMove = BitboardSearch.rootBestMove
+          val pv = if (bestMove == 0) Nil else {
+            board.makeMove(bestMove)
+            val rest = BitboardSearch.getPV(board, d - 1)
+            board.unmakeMove(bestMove)
+            bestMove :: rest
+          }
+          val pvStr = pv.map(moveName).mkString(" ")
       
-        val scoreType = if (Math.abs(score) > 15000) "mate" else "cp"
-        val scoreVal = if (scoreType == "mate") {
-          val sign = if (score > 0) 1 else -1
-          sign * (20000 - Math.abs(score) + 1) / 2
-        } else score
+          val scoreType = if (Math.abs(score) > 15000) "mate" else "cp"
+          val scoreVal = if (scoreType == "mate") {
+            val sign = if (score > 0) 1 else -1
+            sign * (20000 - Math.abs(score) + 1) / 2
+          } else score
 
-        println(s"info depth $d score $scoreType $scoreVal time $totalDeltaMs nodes ${BitboardSearch.nodesSearched} pv $pvStr")
+          println(s"info depth $d score $scoreType $scoreVal time $totalDeltaMs nodes ${BitboardSearch.nodesSearched} pv $pvStr")
+        }
+        d += 1
       }
-      d += 1
+    } catch {
+      // A failed search mustn't leave the GUI waiting for bestmove, so it gets the last finished
+      // depth's move, and an info string saying why it went no deeper.
+      case NonFatal(e) =>
+        println(s"info string search failed: $e")
+        e.printStackTrace(Console.err)
     }
     // An infinite search answers only at stop, even once it's as deep as it goes.
     while (infinite && !stopRequested) Thread.sleep(1)

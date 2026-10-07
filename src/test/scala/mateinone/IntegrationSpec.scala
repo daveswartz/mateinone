@@ -150,6 +150,18 @@ class IntegrationSpec extends Specification {
       beforeStop must not(contain("bestmove"))
     }
 
+    "answer bestmove with the last finished depth's move when the search fails" in {
+      // White has no king, so the move generator fails once the search reaches White's captures,
+      // at depth 2: the pawn can't check, so depth 1 ends at Black's reply. The stack trace goes
+      // to stderr.
+      val err = new ByteArrayOutputStream()
+      val out = scala.Console.withErr(err)(uciThenQuit("position fen 4k3/8/8/8/8/8/P7/8 w - -", "go depth 3"))
+      out must contain("info string search failed: java.lang.ArrayIndexOutOfBoundsException")
+      val depth1Move = "info depth 1 .* pv (\\S+)".r.findFirstMatchIn(out).get.group(1)
+      out must endWith(s"bestmove $depth1Move\n")
+      err.toString must contain("at mateinone.bitboard.MoveGen")
+    }
+
     "handle Transposition Table collisions correctly" in {
       TranspositionTable.clear()
       val hash1 = 12345L
