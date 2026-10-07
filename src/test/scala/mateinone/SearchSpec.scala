@@ -89,6 +89,16 @@ class SearchSpec extends Specification {
       BitboardSearch.quiesce(inCheck, -30000, 30000, 1) must beEqualTo(0)
     }
 
+    "take no stored result at a clock of 96 or more, where the fifty-move rule is near" in {
+      // White is a queen up, and the table says so, as a search of the same position at a lower
+      // clock would have stored. Its key has no clock, though, and here every line is drawn by the
+      // rule within 3 plies.
+      val b = Bitboard.fromFen("8/8/8/4k3/8/8/8/3QK3 w - - 97 80")
+      TranspositionTable.clear()
+      TranspositionTable.store(b.hash, 10, 900, TranspositionTable.Exact, None)
+      BitboardSearch.search(b, 3, -30000, 30000, 1) must beEqualTo(0)
+    }
+
     "spend an even share of the clock on a move, plus the increment, but not its last 50 ms" in {
       BitboardSearch.timeForMove(60000, 0, 30) must beEqualTo(2000)
       BitboardSearch.timeForMove(60000, 1000, 30) must beEqualTo(3000)

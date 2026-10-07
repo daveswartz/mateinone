@@ -108,8 +108,10 @@ object BitboardSearch {
     if (ttEntry.isDefined) {
       val entry = ttEntry.get
       ttMove = entry.bestMove.collect { case m: Int => m }.getOrElse(0)
-      // A stored result can't answer at the root, which has to search its moves to choose one.
-      if (entry.depth >= depth && ply > 0) {
+      // A stored result can't answer at the root, which has to search its moves to choose one. Nor
+      // near the fifty-move rule: the table's key has no clock, so a result stored at a lower clock
+      // can miss the draw. Stockfish takes none at a clock of 96 or more either.
+      if (entry.depth >= depth && ply > 0 && b.halfMoveClock < 96) {
         ttHits += 1
         val score = fromTable(entry.score, ply)
         if (entry.flag == TranspositionTable.Exact) return score
