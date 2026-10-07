@@ -5,6 +5,8 @@ import mateinone.bitboard._
 import java.io._
 
 class IntegrationSpec extends Specification {
+  // The examples share global state (TranspositionTable, System.in), so run them one at a time.
+  sequential
 
   "Engine Integration" should {
     "run a short simulation via Main" in {
@@ -14,38 +16,26 @@ class IntegrationSpec extends Specification {
     }
 
     "handle full UCI protocol commands" in {
+      val commands = Seq(
+        "uci",
+        "isready",
+        "ucinewgame",
+        "position startpos moves e2e4 e7e5 g1f3",
+        "go depth 2",
+        "position fen rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 moves g1f3",
+        "go depth 1",
+        "quit"
+      ).mkString("", "\n", "\n")
+
+      // UCI.loop reads System.in. Its println writes to Console.out, which
+      // System.setOut does not redirect once Console has been used.
       val originalIn = System.in
-      val originalOut = System.out
-      
-      val in = new PipedInputStream()
-      val out = new PipedOutputStream(in)
-      val writer = new PrintWriter(out)
-      
       val outputBuffer = new ByteArrayOutputStream()
-      System.setOut(new PrintStream(outputBuffer))
-      System.setIn(in)
-      
-      val uciThread = new Thread(new Runnable {
-        def run(): Unit = UCI.loop()
-      })
-      uciThread.start()
-      
-      writer.println("uci")
-      writer.println("isready")
-      writer.println("ucinewgame")
-      writer.println("position startpos moves e2e4 e7e5 g1f3")
-      writer.println("go depth 2")
-      writer.println("position fen rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 moves g1f3")
-      writer.println("go depth 1")
-      writer.println("quit")
-      writer.flush()
-      
-      uciThread.join(5000)
-      
+      System.setIn(new ByteArrayInputStream(commands.getBytes("UTF-8")))
+      try scala.Console.withOut(outputBuffer)(UCI.loop())
+      finally System.setIn(originalIn)
+
       val output = outputBuffer.toString
-      System.setIn(originalIn)
-      System.setOut(originalOut)
-      
       output must contain("uciok")
       output must contain("readyok")
       output must contain("bestmove")

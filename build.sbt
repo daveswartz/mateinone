@@ -9,6 +9,9 @@ resolvers ++= Resolver.sonatypeOssRepos("snapshots") ++ Resolver.sonatypeOssRepo
 
 libraryDependencies ++= Seq("org.specs2" %% "specs2-core" % "4.20.4" % "test")
 
+// Specs share global state (TranspositionTable, search tables), so don't run them in parallel
+Test / parallelExecution := false
+
 // Usage:
 // - sbt test: Run all unit tests
 // - sbt coverage test coverageReport: Generate code coverage report in target/scala-2.13/scoverage-report
